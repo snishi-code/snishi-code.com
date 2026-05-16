@@ -133,6 +133,16 @@ def md_to_html(src):
             out.append(f'<blockquote><p>{inline(" ".join(bq))}</p></blockquote>')
             continue
 
+        # Ordered list
+        if re.match(r'^\d+\.\s', line):
+            items = []
+            while i < len(lines) and re.match(r'^\d+\.\s', lines[i]):
+                text = re.sub(r'^\d+\.\s', '', lines[i])
+                items.append(f'<li>{inline(text)}</li>')
+                i += 1
+            out.append('<ol>' + ''.join(items) + '</ol>')
+            continue
+
         # Unordered list
         if re.match(r'^[-*]\s', line):
             items = []
@@ -149,7 +159,8 @@ def md_to_html(src):
             if (not l.strip()
                     or l.startswith(('```', '#', '|', '>'))
                     or re.match(r'^-{3,}\s*$', l)
-                    or (re.match(r'^[-*]\s', l) and not para)):
+                    or (re.match(r'^[-*]\s', l) and not para)
+                    or (re.match(r'^\d+\.\s', l) and not para)):
                 break
             # Obsidian image alone on a line → flush para then emit image block
             if re.match(r'^!\[\[', l) and not para:
@@ -181,6 +192,7 @@ DOCS_CSS = """
 .docs-body h3 { font-size: 1rem; font-weight: 700; margin: 24px 0 8px; color: var(--blue); }
 .docs-body p { margin: 0 0 14px; line-height: 1.75; }
 .docs-body ul { margin: 0 0 14px 20px; }
+.docs-body ol { margin: 0 0 14px 20px; }
 .docs-body li { margin-bottom: 6px; line-height: 1.75; }
 .docs-body hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
 .docs-body blockquote { margin: 14px 0; padding: 10px 16px; background: var(--blue-light); border-left: 3px solid var(--blue); border-radius: 0 6px 6px 0; }
@@ -209,7 +221,7 @@ DOCS_CSS = """
 .docs-toc .toc-arrow { margin-left: auto; color: var(--muted); }
 """
 
-def page_html(title, content_html, prev_page, next_page, app_name="回診管理"):
+def page_html(title, content_html, prev_page, next_page, app_name="回診"):
     prev_link = ''
     next_link = ''
     if prev_page:
@@ -274,7 +286,7 @@ def index_html(pages):
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>回診管理 説明書</title>
+  <title>回診 説明書</title>
   <link rel="stylesheet" href="/shared.css">
   <style>{DOCS_CSS}</style>
 </head>
@@ -292,10 +304,10 @@ def index_html(pages):
   <main>
     <div class="docs-wrap">
       <div class="docs-breadcrumb">
-        <a href="/medical/">医療用ツール</a> › 回診管理 説明書
+        <a href="/medical/">医療用ツール</a> › 回診 説明書
       </div>
       <article class="docs-body">
-        <h1>回診管理 — 説明書</h1>
+        <h1>回診 — 説明書</h1>
         <p>各機能の使い方を説明します。</p>
         <ul class="docs-toc">
     {items}</ul>

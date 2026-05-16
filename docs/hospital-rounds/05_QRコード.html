@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QRコード — 回診管理 説明書</title>
+  <title>QRコード — 回診 説明書</title>
   <link rel="stylesheet" href="/shared.css">
   <style>
 .docs-wrap { max-width: 800px; margin: 0 auto; padding: 24px 16px 64px; }
@@ -15,6 +15,7 @@
 .docs-body h3 { font-size: 1rem; font-weight: 700; margin: 24px 0 8px; color: var(--blue); }
 .docs-body p { margin: 0 0 14px; line-height: 1.75; }
 .docs-body ul { margin: 0 0 14px 20px; }
+.docs-body ol { margin: 0 0 14px 20px; }
 .docs-body li { margin-bottom: 6px; line-height: 1.75; }
 .docs-body hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
 .docs-body blockquote { margin: 14px 0; padding: 10px 16px; background: var(--blue-light); border-left: 3px solid var(--blue); border-radius: 0 6px 6px 0; }
@@ -57,7 +58,7 @@
   <main>
     <div class="docs-wrap">
       <div class="docs-breadcrumb">
-        <a href="/medical/">医療用ツール</a> › <a href="/docs/hospital-rounds/">回診管理 説明書</a> › QRコード
+        <a href="/medical/">医療用ツール</a> › <a href="/docs/hospital-rounds/">回診 説明書</a> › QRコード
       </div>
       <article class="docs-body">
         <h1>QRコード</h1>
@@ -67,7 +68,7 @@
 <hr>
 <h2>個別患者のQR（SOAP内容）</h2>
 <h3>送信側</h3>
-<p>1. 患者の詳細入力画面でステータスを「緑（回診済）」にする 2. QRコードが自動表示されます 3. データ量が多い場合は複数枚に分割されます（「前」「次」で切り替え）</p>
+<ol><li>患者の詳細入力画面でステータスを「緑（回診済）」にする</li><li>QRコードが自動表示されます</li><li>データ量が多い場合は複数枚に分割されます（「前」「次」で切り替え）</li></ol>
 <h3>受信側・電子カルテへの転記</h3>
 <p>QRコードを読み取るとテキストが得られます。以下の形式で出力されます。</p>
 <pre><code>（メモ内容）
@@ -90,9 +91,9 @@ SpO2：98％  血圧：120/80mmHg  脈拍：72回  体温：36.5℃
 <hr>
 <h2>共有一覧のQR（複数患者まとめて）</h2>
 <h3>送信側</h3>
-<p>1. 各患者の詳細入力画面で「共有」欄に引き継ぎ内容を入力する 2. 「共有」画面を開く 3. 「QR表示」ボタンをタップ 4. 複数QRに分割されている場合は「前」「次」で順番に表示</p>
+<ol><li>各患者の詳細入力画面で「共有」欄に引き継ぎ内容を入力する</li><li>「共有」画面を開く</li><li>「QR表示」ボタンをタップ</li><li>複数QRに分割されている場合は「前」「次」で順番に表示</li></ol>
 <h3>受信側</h3>
-<p>1. スマートフォンのデフォルトカメラアプリでQRコードを読み取り、テキストをコピーする 2. 「共有」画面を開く 3. 「受信メモ」欄にテキストを貼り付けて内容を確認する</p>
+<ol><li>スマートフォンのデフォルトカメラアプリでQRコードを読み取り、テキストをコピーする</li><li>「共有」画面を開く</li><li>「受信メモ」欄にテキストを貼り付けて内容を確認する</li></ol>
 <blockquote><p><strong>ヒント</strong>: 複数QRの場合は必ず順番（1/3 → 2/3 → 3/3）に読み取ってください。</p></blockquote>
       </article>
       <nav class="docs-page-nav"><a class="prev" href="04_メモ・共有一覧.html">メモ・共有一覧</a><a class="next" href="06_総覧・印刷.html">総覧・印刷</a></nav>

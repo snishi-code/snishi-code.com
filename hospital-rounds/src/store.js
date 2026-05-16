@@ -163,7 +163,7 @@ function migrateLegacyO(r) {
 }
 
 export function normalizeLoaded(raw) {
-  const out = { v: 2, title: "回診管理", patients: [] };
+  const out = { v: 2, title: "回診", patients: [] };
   if (raw && typeof raw.title === "string") out.title = raw.title;
   const arr = raw && raw.patients && Array.isArray(raw.patients) ? raw.patients : (Array.isArray(raw) ? raw : null);
   const len = arr ? arr.length : DEFAULT_PATIENT_COUNT;
