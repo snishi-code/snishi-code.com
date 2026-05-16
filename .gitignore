@@ -22,6 +22,9 @@ node_modules/
 *.log
 npm-debug.log*
 
+# 説明書の元ネタ（Obsidian vault・画像含むため gitignore）
+docs-src/
+
 # 患者データエクスポートJSON（タイトル_YYYY_MMDD_HHMM.json 形式）
 # 日本語タイトルも含めてタイムスタンプパターンで除外
 *_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9].json
