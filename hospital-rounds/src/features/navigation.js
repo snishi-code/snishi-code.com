@@ -13,6 +13,7 @@ export function showView(which, pushState = true) {
   const settingsView = document.getElementById("settingsView");
   const detailView = document.getElementById("detailView");
   const sharedQrViewEl = document.getElementById("sharedQrView");
+  const docsQrViewEl = document.getElementById("docsQrView");
 
   if (homeView) homeView.classList.toggle("active", which === "home");
   if (memoView) memoView.classList.toggle("active", which === "memo");
@@ -21,11 +22,7 @@ export function showView(which, pushState = true) {
   if (settingsView) settingsView.classList.toggle("active", which === "settings");
   if (detailView) detailView.classList.toggle("active", which === "detail");
   if (sharedQrViewEl) sharedQrViewEl.classList.toggle("active", which === "sharedQr");
-
-  if (which !== "settings") {
-    const docsQrWrap = document.getElementById("docsQrWrap");
-    if (docsQrWrap) docsQrWrap.classList.remove("active");
-  }
+  if (docsQrViewEl) docsQrViewEl.classList.toggle("active", which === "docsQr");
 
   window.scrollTo(0, 0);
 }

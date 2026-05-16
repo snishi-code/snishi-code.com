@@ -20,7 +20,7 @@ import { renderSettings, initSettingsView } from "./views/settings-view.js";
 import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./features/navigation.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initImportExport } from "./features/import-export.js";
-import { initSharedQr, initDocsQr, showDocsQr } from "./features/qr-shared.js";
+import { initSharedQr, initDocsQr, renderDocsQr } from "./features/qr-shared.js";
 
 // ============================
 // Wrappers that capture current context
@@ -159,9 +159,12 @@ if (headerSharedBtn) headerSharedBtn.addEventListener("click", navToShared);
 if (headerHomeBtn) headerHomeBtn.addEventListener("click", navToHome);
 if (headerSettingsBtn) headerSettingsBtn.addEventListener("click", navToSettings);
 if (headerHelpBtn) headerHelpBtn.addEventListener("click", () => {
-  navToSettings();
-  showDocsQr();
+  showView("docsQr");
+  renderDocsQr();
 });
+
+const docsQrCloseBtn = document.getElementById("docsQrCloseBtn");
+if (docsQrCloseBtn) docsQrCloseBtn.addEventListener("click", navToHome);
 
 const memoEditBtn = document.getElementById("memoEditBtn");
 if (memoEditBtn) memoEditBtn.addEventListener("click", () => {

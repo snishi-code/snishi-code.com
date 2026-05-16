@@ -47,10 +47,12 @@ export function renderSettings() {
       lbl.style.gap = "6px";
       if (STATUS_SWATCHES[key]) {
         const dot = document.createElement("span");
-        dot.style.cssText = `display:inline-block;width:12px;height:12px;border-radius:3px;background:${STATUS_SWATCHES[key]};flex-shrink:0;`;
+        dot.style.cssText = `display:inline-block;width:16px;height:16px;border-radius:3px;background:${STATUS_SWATCHES[key]};flex-shrink:0;`;
+        dot.title = CLEAR_LABELS[key];
         lbl.appendChild(dot);
+      } else {
+        lbl.appendChild(document.createTextNode(CLEAR_LABELS[key]));
       }
-      lbl.appendChild(document.createTextNode(CLEAR_LABELS[key]));
       row.appendChild(cb);
       row.appendChild(lbl);
       clearTargetsBody.appendChild(row);
@@ -112,8 +114,10 @@ export function renderSettings() {
 
     const del = document.createElement("button");
     del.type = "button";
-    del.className = "secondary";
-    del.textContent = "削除";
+    del.className = "iconBtn";
+    del.title = "削除";
+    del.setAttribute("aria-label", "削除");
+    del.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
     del.addEventListener("click", () => {
       const ok = confirm("このO項目を削除します（患者データ側の既存値は残ります）。よろしいですか？");
       if (!ok) return;

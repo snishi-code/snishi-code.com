@@ -45,7 +45,9 @@
     <section class="view active" id="homeView" aria-label="ホーム画面">
       <div class="chipRow" style="margin-bottom: 12px;">
         <button class="danger" id="resetBtn" type="button">全消去</button>
-        <button class="secondary" id="clearAllBtn" type="button" title="全患者クリア" aria-label="全患者クリア">クリア</button>
+        <button class="iconBtn" id="clearAllBtn" type="button" title="全患者クリア" aria-label="全患者クリア">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
         <button class="secondary" id="settingsImportBtn" type="button" title="取込" aria-label="取込" style="margin-left:8px;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </button>
@@ -92,6 +94,7 @@
           </button>
         </div>
       </div>
+      <div class="memoScroll" id="sharedListHost"></div>
       <div class="card" id="sharedPasteCard" style="margin-top: 14px;">
         <div class="cardHead" id="sharedPasteToggle" style="cursor:pointer;user-select:none;">
           <div class="label">受信メモ</div>
@@ -103,7 +106,6 @@
           <textarea id="sharedPasteArea" style="min-height: 160px;"></textarea>
         </div>
       </div>
-      <div class="memoScroll" id="sharedListHost"></div>
     </section>
 
     <!-- Shared QR view -->
@@ -138,6 +140,25 @@
       </div>
     </section>
 
+    <!-- Docs QR view -->
+    <section class="view" id="docsQrView" aria-label="説明書QR">
+      <div class="detailTop noprint">
+        <div class="detailTitle">説明書</div>
+        <div class="detailTopActions">
+          <button class="iconBtn" id="docsQrCloseBtn" type="button" title="閉じる" aria-label="閉じる">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="card" style="margin-top: 14px;">
+        <div class="cardHead">
+          <div class="label">説明書 QR</div>
+          <div class="qrHint">カメラで読み取ってください</div>
+        </div>
+        <canvas id="docsQrCanvas"></canvas>
+      </div>
+    </section>
+
     <!-- Overview view -->
     <section class="view" id="overviewView" aria-label="総覧">
       <div class="detailTop noprint">
@@ -160,22 +181,13 @@
         <div class="detailTitle">設定</div>
         <div class="detailTopActions">
           <input type="file" id="settingsImportFile" accept=".json" style="display:none" />
-          <button class="iconBtn" id="settingsHelpBtn" type="button" title="説明書" aria-label="説明書">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <button class="iconBtn" id="overviewBtn" type="button" title="総覧" aria-label="総覧">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
           </button>
-          <button class="secondary" id="overviewBtn" type="button">総覧</button>
           <button class="iconBtn" id="settingsPrintBtn" type="button" title="印刷" aria-label="印刷">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
           </button>
         </div>
-      </div>
-
-      <div class="card qrWrap" id="docsQrWrap">
-        <div class="cardHead">
-          <div class="label">説明書 QR</div>
-          <div class="qrHint">カメラで読み取ってください</div>
-        </div>
-        <canvas id="docsQrCanvas"></canvas>
       </div>
 
       <div class="card">
@@ -184,7 +196,7 @@
           <div class="qrHint">空欄なら未入力時も空欄になります</div>
         </div>
         <div class="cardBody">
-          <textarea id="setSDefault" placeholder="例) 変わりありません"></textarea>
+          <textarea id="setSDefault"></textarea>
         </div>
       </div>
 
@@ -196,8 +208,12 @@
         <div class="cardBody">
           <div id="setORules"></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-            <button class="secondary" id="addORuleBtn" type="button">＋ 追加</button>
-            <button class="secondary" id="resetORulesBtn" type="button">初期化</button>
+            <button class="iconBtn" id="addORuleBtn" type="button" title="追加" aria-label="追加">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <button class="iconBtn" id="resetORulesBtn" type="button" title="初期化" aria-label="初期化">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.46"/></svg>
+            </button>
           </div>
         </div>
       </div>
@@ -238,7 +254,9 @@
           style="border:none; background:transparent; outline:none; margin:0; padding:2px; width:100%; max-width:200px; color:inherit; font-family:inherit;"
           value="—" />
         <div class="detailTopActions">
-          <button class="secondary" id="clearBtn" type="button">クリア</button>
+          <button class="iconBtn" id="clearBtn" type="button" title="クリア" aria-label="クリア">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
           <div class="statusPick" aria-label="ステータス選択">
             <button class="statusBtn yellow" id="topStatusYellowBtn" type="button" title="保留（黄）" aria-label="保留（黄）"></button>
             <button class="statusBtn green" id="topStatusGreenBtn" type="button" title="済（緑）" aria-label="済（緑）"></button>
@@ -275,9 +293,8 @@
 
       <div class="card" id="detailMemoCard">
         <div class="cardHead">
-          <div class="label" style="display:flex;align-items:center;gap:5px;">
+          <div class="label" style="display:flex;align-items:center;" title="メモ" aria-label="メモ">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            メモ
           </div>
         </div>
         <div class="cardBody">
@@ -356,7 +373,9 @@
 
       <div class="card">
         <div class="cardBody" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-          <button class="secondary" id="clearBtnBottom" type="button">クリア</button>
+          <button class="iconBtn" id="clearBtnBottom" type="button" title="クリア" aria-label="クリア">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
           <div class="statusPick" aria-label="ステータス選択">
             <button class="statusBtn yellow" id="statusYellowBtn" type="button" title="保留（黄）"
               aria-label="保留（黄）"></button>
@@ -369,9 +388,8 @@
 
       <div class="card" id="detailSharedCard">
         <div class="cardHead">
-          <div class="label" style="display:flex;align-items:center;gap:5px;">
+          <div class="label" style="display:flex;align-items:center;" title="共有" aria-label="共有">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            共有
           </div>
         </div>
         <div class="cardBody">

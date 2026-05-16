@@ -92,23 +92,11 @@ function renderDocsQrCanvas() {
   }
 }
 
-export function showDocsQr() {
-  const wrap = document.getElementById("docsQrWrap");
-  if (!wrap) return;
-  wrap.classList.add("active");
+export function renderDocsQr() {
   renderDocsQrCanvas();
 }
 
-export function initDocsQr() {
-  const btn = document.getElementById("settingsHelpBtn");
-  if (!btn) return;
-  btn.addEventListener("click", () => {
-    const wrap = document.getElementById("docsQrWrap");
-    if (!wrap) return;
-    const active = wrap.classList.toggle("active");
-    if (active) renderDocsQrCanvas();
-  });
-}
+export function initDocsQr() {}
 
 export function initSharedQr() {
   const ecl = qrcodegen.QrCode.Ecc.LOW;
