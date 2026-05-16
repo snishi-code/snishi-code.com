@@ -20,6 +20,7 @@ export function bindLongPressAndDrag(el, getIndexFn, onDrop, onMenu, onTap) {
   let startX = 0, startY = 0;
   let mode = 0;
   let localTimer = null;
+  let longPressAt = 0; // ロングプレス検出時刻（低性能端末の誤touchend判定を除外するため）
 
   const onMove = (e) => {
     if (mode === 0) return;
@@ -29,14 +30,14 @@ export function bindLongPressAndDrag(el, getIndexFn, onDrop, onMenu, onTap) {
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (mode === 1) {
-      if (dist > 10) {
+      if (dist > 8) {
         clearTimeout(localTimer);
         mode = 0;
         unbindDoc();
       }
     } else if (mode === 2 || mode === 3) {
       e.preventDefault();
-      if (mode === 2 && dist > 10) {
+      if (mode === 2 && dist > 8) {
         mode = 3;
         startCustomDrag(el, getIndexFn(), pt.clientX, pt.clientY);
       }
@@ -51,6 +52,12 @@ export function bindLongPressAndDrag(el, getIndexFn, onDrop, onMenu, onTap) {
     el.style.transform = "";
     el.style.opacity = "";
     if (mode === 2) {
+      // ロングプレス検出直後200ms以内のtouchendは低性能端末の誤検出として無視する
+      if (Date.now() - longPressAt < 200) {
+        mode = 0;
+        unbindDoc();
+        return;
+      }
       if (e.cancelable) e.preventDefault();
       onMenu(getIndexFn());
     } else if (mode === 3) {
@@ -92,11 +99,12 @@ export function bindLongPressAndDrag(el, getIndexFn, onDrop, onMenu, onTap) {
     localTimer = setTimeout(() => {
       if (mode === 1) {
         mode = 2;
+        longPressAt = Date.now();
         if (navigator.vibrate) navigator.vibrate(50);
         el.style.transform = "scale(0.96)";
         el.style.opacity = "0.8";
       }
-    }, 500);
+    }, 400);
     bindDoc();
   };
 
