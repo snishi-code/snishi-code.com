@@ -24,6 +24,7 @@ import { initSharedQr, initDocsQr, renderDocsQr, refreshSharedQrIfActive, setSha
 import { sortPatientsByRoom } from "./features/room.js";
 import { initAdminUI, refreshAdminAvailability, setAdminAppliedHandler } from "./features/admin-ui.js";
 import { isAdminTerminal, isNonAdminTerminal, isAdminEnabled, findIncompleteAdminPatients, clearIncompleteAdminPatients } from "./features/admin.js";
+import { ensureRoster, flushCommit } from "./features/roster.js";
 
 // ============================
 // Wrappers that capture current context
@@ -324,15 +325,18 @@ if (sharedRoomSortBtn) sharedRoomSortBtn.addEventListener("click", doSortByRoom)
 // Shared paste area toggle
 // ============================
 
-const sharedPasteToggle = document.getElementById("sharedPasteToggle");
-if (sharedPasteToggle) {
-  sharedPasteToggle.addEventListener("click", () => {
-    const body = document.getElementById("sharedPasteBody");
-    const chevron = document.getElementById("sharedPasteChevronBtn");
-    if (!body) return;
-    const isOpen = body.style.display !== "none";
-    body.style.display = isOpen ? "none" : "";
-    if (chevron) chevron.style.transform = isOpen ? "" : "rotate(180deg)";
+const sharedPasteBtn = document.getElementById("sharedPasteBtn");
+if (sharedPasteBtn) {
+  sharedPasteBtn.addEventListener("click", () => {
+    const card = document.getElementById("sharedPasteCard");
+    if (!card) return;
+    const isOpen = card.classList.contains("active");
+    card.classList.toggle("active", !isOpen);
+    sharedPasteBtn.classList.toggle("editActive", !isOpen);
+    if (!isOpen) {
+      const area = document.getElementById("sharedPasteArea");
+      if (area) setTimeout(() => area.focus(), 50);
+    }
   });
 }
 
@@ -399,6 +403,11 @@ function updateAppTitle(val) {
 // ============================
 
 setAppState(load());
+ensureRoster();
+
+// Flush any pending op-batch when leaving the app or backgrounding
+window.addEventListener("beforeunload", () => { try { flushCommit(); } catch (_) {} });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") { try { flushCommit(); } catch (_) {} } });
 
 const appTitleInput = document.getElementById("appTitleInput");
 if (appTitleInput) {

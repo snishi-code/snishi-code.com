@@ -1,6 +1,7 @@
 "use strict";
 
 import { settings, appState, markUpdated, scheduleSave } from "../store.js";
+import { recordOp } from "./roster.js";
 
 const TAG_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
 
@@ -44,8 +45,11 @@ export function getPatientTags(patientIndex) {
 }
 
 function setPatientTags(patientIndex, tags) {
-  if (!appState.patients[patientIndex]) return;
-  appState.patients[patientIndex].tags = tags.slice();
+  const p = appState.patients[patientIndex];
+  if (!p) return;
+  const next = tags.slice();
+  p.tags = next;
+  if (p.pid) recordOp({ type: "update", pid: p.pid, field: "tags", value: next });
   markUpdated(patientIndex + 1);
   scheduleSave();
 }

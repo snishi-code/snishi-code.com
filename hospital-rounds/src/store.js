@@ -1,6 +1,6 @@
 "use strict";
 
-import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS, DEFAULT_TAGS_ENABLED, DEFAULT_ROOM_ENABLED, DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL, DEFAULT_ADMIN_IMPORT_ONLY, clone } from "./constants.js";
+import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS, DEFAULT_TAGS_ENABLED, DEFAULT_ROOM_ENABLED, DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL, DEFAULT_ADMIN_IMPORT_ONLY, DEFAULT_ROSTER_PASSPHRASE, clone } from "./constants.js";
 
 // ============================
 // Settings
@@ -22,6 +22,8 @@ export function defaultSettings() {
     adminEnabled: DEFAULT_ADMIN_ENABLED,
     adminTerminal: DEFAULT_ADMIN_TERMINAL,
     adminImportOnly: DEFAULT_ADMIN_IMPORT_ONLY,
+    rosterPassphrase: DEFAULT_ROSTER_PASSPHRASE,
+    deviceId: "",
   };
 }
 
@@ -83,6 +85,8 @@ export function loadSettings() {
     if (raw && typeof raw.adminEnabled === "boolean") out.adminEnabled = raw.adminEnabled;
     if (raw && typeof raw.adminTerminal === "boolean") out.adminTerminal = raw.adminTerminal;
     if (raw && typeof raw.adminImportOnly === "boolean") out.adminImportOnly = raw.adminImportOnly;
+    if (raw && typeof raw.rosterPassphrase === "string") out.rosterPassphrase = raw.rosterPassphrase;
+    if (raw && typeof raw.deviceId === "string") out.deviceId = raw.deviceId;
     return out;
   } catch (e) {
     console.warn("settings load failed:", e);
@@ -117,7 +121,7 @@ export function makeEmptyOByRules() {
 // (ES module live bindings — setters allow reassignment)
 // ============================
 
-export let appState = { v: 2, patients: [] };
+export let appState = { v: 3, patients: [], rosterId: "", baseSnapshot: null, commits: [], head: null };
 export let settings = loadSettings();
 export let selectedNo = 1;
 
@@ -132,8 +136,14 @@ let lastSavedAt = 0;
 // Patient data helpers
 // ============================
 
+function newId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+
 export function makeDefaultPatient() {
   return {
+    pid: newId(),
     status: STATUS.NONE,
     name: "",
     room: "",
@@ -187,8 +197,12 @@ function migrateLegacyO(r) {
 }
 
 export function normalizeLoaded(raw) {
-  const out = { v: 2, title: "回診", patients: [] };
+  const out = { v: 3, title: "回診", patients: [], rosterId: "", baseSnapshot: null, commits: [], head: null };
   if (raw && typeof raw.title === "string") out.title = raw.title;
+  if (raw && typeof raw.rosterId === "string") out.rosterId = raw.rosterId;
+  if (raw && raw.baseSnapshot && typeof raw.baseSnapshot === "object") out.baseSnapshot = raw.baseSnapshot;
+  if (raw && Array.isArray(raw.commits)) out.commits = raw.commits;
+  if (raw && typeof raw.head === "string") out.head = raw.head;
   const arr = raw && raw.patients && Array.isArray(raw.patients) ? raw.patients : (Array.isArray(raw) ? raw : null);
   const len = arr ? arr.length : DEFAULT_PATIENT_COUNT;
   out.patients = new Array(len);
@@ -196,6 +210,7 @@ export function normalizeLoaded(raw) {
     const r = arr ? arr[i] : null;
     const d = makeDefaultPatient();
     out.patients[i] = {
+      pid: (r && typeof r.pid === "string" && r.pid) ? r.pid : d.pid,
       status: (r && typeof r.status === "string" && [STATUS.NONE, STATUS.YELLOW, STATUS.GREEN, STATUS.GRAY].includes(r.status)) ? r.status : d.status,
       name: (r && typeof r.name === "string") ? r.name : d.name,
       room: (r && typeof r.room === "string") ? r.room : (r && typeof r.room === "number" ? String(r.room) : d.room),
