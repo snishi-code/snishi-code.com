@@ -5,17 +5,24 @@ import { STATUS } from "../constants.js";
 import { buildTabPayload } from "../payload.js";
 import { utf8ByteLength } from "../payload.js";
 import { qrcodegen } from "../libs/qrcodegen.js";
+import { isTagsEnabled, makePatientTagPicker } from "../features/tags.js";
+import { isRoomEnabled, makeRoomInput } from "../features/room.js";
+import { isNonAdminTerminal } from "../features/admin.js";
 
 // ============================
 // QR generation helpers
 // ============================
 
+const MAX_BYTES_PER_QR = 800;
+
 function splitTextToFitQr(raw, ecl) {
   const s = String(raw ?? "");
-  try {
-    qrcodegen.QrCode.encodeText(s, ecl);
-    return [s];
-  } catch (_) { }
+  if (utf8ByteLength(s) <= MAX_BYTES_PER_QR) {
+    try {
+      qrcodegen.QrCode.encodeText(s, ecl);
+      return [s];
+    } catch (_) { }
+  }
 
   const cps = Array.from(s);
   const pages = [];
@@ -27,6 +34,7 @@ function splitTextToFitQr(raw, ecl) {
     while (lo <= hi) {
       const mid = Math.floor((lo + hi) / 2);
       const chunk = cps.slice(pos, mid).join("");
+      if (utf8ByteLength(chunk) > MAX_BYTES_PER_QR) { hi = mid - 1; continue; }
       try {
         qrcodegen.QrCode.encodeText(chunk, ecl);
         best = mid;
@@ -242,9 +250,42 @@ export function renderDetail(syncDetailMemoDisplay) {
   const oFreeText = document.getElementById("oFreeText");
 
   const displayName = p?.name ? p.name : String(selectedNo);
-  if (detailTitle) detailTitle.value = displayName;
+  if (detailTitle) {
+    detailTitle.value = displayName;
+    // Non-admin terminal: cannot edit existing names; can fill empty
+    if (isNonAdminTerminal() && p?.name) {
+      detailTitle.readOnly = true;
+    } else {
+      detailTitle.readOnly = false;
+    }
+  }
   if (syncDetailMemoDisplay) syncDetailMemoDisplay();
   setSelectedStatusButtons(p.status);
+
+  const nonAdmin = isNonAdminTerminal();
+  const detailRoomSlot = document.getElementById("detailRoomSlot");
+  if (detailRoomSlot) {
+    detailRoomSlot.textContent = "";
+    if (isRoomEnabled()) {
+      const roomInp = makeRoomInput(selectedNo - 1);
+      roomInp.classList.add("detailRoomInput");
+      if (nonAdmin) roomInp.readOnly = true;
+      detailRoomSlot.appendChild(roomInp);
+    }
+  }
+
+  const detailDoctorSlot = document.getElementById("detailDoctorSlot");
+  if (detailDoctorSlot) {
+    detailDoctorSlot.textContent = "";
+    if (isTagsEnabled()) {
+      const picker = makePatientTagPicker(selectedNo - 1);
+      if (nonAdmin) {
+        const trigger = picker.querySelector(".tagPickerTrigger");
+        if (trigger) { trigger.disabled = true; trigger.style.cursor = "default"; trigger.style.background = "#f9fafb"; }
+      }
+      detailDoctorSlot.appendChild(picker);
+    }
+  }
 
   if (sText) sText.value = p.s;
   if (aText) aText.value = p.a.text;
@@ -300,6 +341,10 @@ function doClear(renderHomeFn, syncMemoFn) {
   if (ct.a) p.a = { text: "" };
   if (ct.p) p.p = { text: "" };
   if (ct.shared) p.shared = "";
+  if (p.status === STATUS.YELLOW && ct.statusYellow) p.status = STATUS.NONE;
+  else if (p.status === STATUS.GREEN && ct.statusGreen) p.status = STATUS.NONE;
+  else if (p.status === STATUS.GRAY && ct.statusGray) p.status = STATUS.NONE;
+  else if (p.status === STATUS.BLUE && ct.statusBlue) p.status = STATUS.NONE;
   markUpdated(selectedNo);
   scheduleSave();
   renderDetail(syncMemoFn);

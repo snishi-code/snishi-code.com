@@ -1,6 +1,6 @@
 "use strict";
 
-import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, clone } from "./constants.js";
+import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS, DEFAULT_TAGS_ENABLED, DEFAULT_ROOM_ENABLED, DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL, clone } from "./constants.js";
 
 // ============================
 // Settings
@@ -16,6 +16,11 @@ export function defaultSettings() {
     },
     oRules: clone(DEFAULT_O_RULES),
     clearTargets: clone(DEFAULT_CLEAR_TARGETS),
+    tagsEnabled: DEFAULT_TAGS_ENABLED,
+    tags: clone(DEFAULT_TAGS),
+    roomEnabled: DEFAULT_ROOM_ENABLED,
+    adminEnabled: DEFAULT_ADMIN_ENABLED,
+    adminTerminal: DEFAULT_ADMIN_TERMINAL,
   };
 }
 
@@ -46,6 +51,7 @@ export function loadSettings() {
           label,
           normalText: String(r.normalText ?? ""),
           placeholder: String(r.placeholder ?? ""),
+          fromAdmin: !!r.fromAdmin,
         });
       }
       if (cleaned.length) out.oRules = cleaned;
@@ -59,8 +65,22 @@ export function loadSettings() {
         a:      typeof ct.a      === "boolean" ? ct.a      : DEFAULT_CLEAR_TARGETS.a,
         p:      typeof ct.p      === "boolean" ? ct.p      : DEFAULT_CLEAR_TARGETS.p,
         shared: typeof ct.shared === "boolean" ? ct.shared : DEFAULT_CLEAR_TARGETS.shared,
+        statusYellow: typeof ct.statusYellow === "boolean" ? ct.statusYellow : DEFAULT_CLEAR_TARGETS.statusYellow,
+        statusGreen:  typeof ct.statusGreen  === "boolean" ? ct.statusGreen  : DEFAULT_CLEAR_TARGETS.statusGreen,
+        statusGray:   typeof ct.statusGray   === "boolean" ? ct.statusGray   : DEFAULT_CLEAR_TARGETS.statusGray,
+        statusBlue:   typeof ct.statusBlue   === "boolean" ? ct.statusBlue   : DEFAULT_CLEAR_TARGETS.statusBlue,
       };
     }
+    if (raw && typeof raw.tagsEnabled === "boolean") out.tagsEnabled = raw.tagsEnabled;
+    else if (raw && typeof raw.doctorEnabled === "boolean") out.tagsEnabled = raw.doctorEnabled;
+    if (raw && Array.isArray(raw.tags)) {
+      out.tags = raw.tags.filter(d => typeof d === "string").map(d => String(d));
+    } else if (raw && Array.isArray(raw.doctors)) {
+      out.tags = raw.doctors.filter(d => typeof d === "string").map(d => String(d));
+    }
+    if (raw && typeof raw.roomEnabled === "boolean") out.roomEnabled = raw.roomEnabled;
+    if (raw && typeof raw.adminEnabled === "boolean") out.adminEnabled = raw.adminEnabled;
+    if (raw && typeof raw.adminTerminal === "boolean") out.adminTerminal = raw.adminTerminal;
     return out;
   } catch (e) {
     console.warn("settings load failed:", e);
@@ -114,6 +134,8 @@ export function makeDefaultPatient() {
   return {
     status: STATUS.NONE,
     name: "",
+    room: "",
+    tags: [],
     s: "",
     memo: "",
     shared: "",
@@ -174,6 +196,10 @@ export function normalizeLoaded(raw) {
     out.patients[i] = {
       status: (r && typeof r.status === "string" && [STATUS.NONE, STATUS.YELLOW, STATUS.GREEN, STATUS.GRAY].includes(r.status)) ? r.status : d.status,
       name: (r && typeof r.name === "string") ? r.name : d.name,
+      room: (r && typeof r.room === "string") ? r.room : (r && typeof r.room === "number" ? String(r.room) : d.room),
+      tags: (r && Array.isArray(r.tags))
+        ? r.tags.filter(t => typeof t === "string" && t.trim()).map(t => String(t))
+        : (r && typeof r.doctor === "string" && r.doctor.trim()) ? [r.doctor.trim()] : [],
       s: (r && typeof r.s === "string") ? r.s : d.s,
       memo: (r && typeof r.memo === "string") ? r.memo : d.memo,
       shared: (r && typeof r.shared === "string") ? r.shared : d.shared,

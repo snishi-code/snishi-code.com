@@ -3,6 +3,9 @@
 import { appState } from "../store.js";
 import { STATUS } from "../constants.js";
 import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
+import { isTagsEnabled, makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
+import { isRoomEnabled, formatPatientLabel } from "../features/room.js";
+import { isNonAdminTerminal } from "../features/admin.js";
 
 export function statusClass(status) {
   if (status === STATUS.YELLOW) return "status-yellow";
@@ -24,17 +27,40 @@ export function updateCountChip() {
   countChip.textContent = "緑: " + countGreen() + " / " + appState.patients.length;
 }
 
+function renderHomeTagFilter(onChange) {
+  const slot = document.getElementById("homeTagFilterSlot");
+  if (!slot) return;
+  slot.textContent = "";
+  if (!isTagsEnabled()) {
+    slot.style.display = "none";
+    return;
+  }
+  slot.style.display = "";
+  const picker = makeSharedTagFilterPicker(onChange);
+  slot.appendChild(picker);
+}
+
+function renderHomeSortBtn() {
+  const btn = document.getElementById("homeRoomSortBtn");
+  if (!btn) return;
+  btn.style.display = (isRoomEnabled() && !isNonAdminTerminal()) ? "" : "none";
+}
+
 export function renderHome(onPatientClick) {
+  renderHomeTagFilter(() => renderHome(onPatientClick));
+  renderHomeSortBtn();
   const homeGrid = document.getElementById("homeGrid");
   if (!homeGrid) return;
   homeGrid.textContent = "";
   const frag = document.createDocumentFragment();
+  const tagsEnabled = isTagsEnabled();
   for (let i = 1; i <= appState.patients.length; i++) {
     const p = appState.patients[i - 1];
+    if (tagsEnabled && !patientMatchesSharedFilter(p)) continue;
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "patientBtn " + statusClass(p.status);
-    const displayName = p?.name ? p.name : String(i);
+    const displayName = formatPatientLabel(p, String(i));
     btn.textContent = displayName;
     btn.setAttribute("aria-label", displayName);
     if (onPatientClick) {

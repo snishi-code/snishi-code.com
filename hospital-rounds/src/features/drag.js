@@ -1,6 +1,7 @@
 "use strict";
 
 import { appState, settings, makeDefaultPatient, scheduleSave, ensurePatientsHaveAllOKeys } from "../store.js";
+import { isNonAdminTerminal } from "./admin.js";
 
 // Callback registered by main.js to re-render the current view after data changes
 let _onDataChange = null;
@@ -208,6 +209,8 @@ export function onPatientDrop(fromIdx, toIdx) {
 let targetActionIdx = -1;
 
 export function openActionMenu(idx) {
+  // Non-admin terminal: hide add/delete operations
+  if (isNonAdminTerminal()) return;
   targetActionIdx = idx;
   const p = appState.patients[idx];
   const name = p.name ? p.name : String(idx + 1);

@@ -19,6 +19,12 @@ export const DEFAULT_O_RULES = [
   { key: "abdomen", label: "腹部", normalText: "平坦軟、圧痛なし", placeholder: "例) 軽度膨満 / 下腹部に軽度圧痛" },
 ];
 
+export const DEFAULT_TAGS = [];
+export const DEFAULT_TAGS_ENABLED = false;
+export const DEFAULT_ROOM_ENABLED = false;
+export const DEFAULT_ADMIN_ENABLED = false;
+export const DEFAULT_ADMIN_TERMINAL = false;
+
 export const DEFAULT_CLEAR_TARGETS = {
   memo: false,
   s: true,
@@ -26,6 +32,10 @@ export const DEFAULT_CLEAR_TARGETS = {
   a: true,
   p: false,
   shared: false,
+  statusYellow: true,
+  statusGreen: true,
+  statusGray: true,
+  statusBlue: false,
 };
 
 export function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
