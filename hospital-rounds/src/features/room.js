@@ -21,7 +21,6 @@ export function makeRoomInput(patientIndex, onChange) {
   inp.inputMode = "numeric";
   inp.pattern = "[0-9]*";
   inp.className = "roomInput";
-  inp.placeholder = "号";
   inp.maxLength = 6;
   inp.value = getPatientRoom(patientIndex);
   inp.addEventListener("input", () => {

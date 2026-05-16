@@ -743,6 +743,51 @@
       margin-right: 2px;
     }
 
+    /* Memo/Shared edit-mode row: fixed columns to vertically align across rows */
+    .memoRow .nameDoctorRow {
+      flex: 0 0 auto;
+      width: auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .memoRow .nameDoctorRow > input.roomInput {
+      flex: 0 0 60px;
+      width: 60px;
+    }
+
+    .memoRow .nameDoctorRow > input.memoNoInp {
+      flex: 0 0 120px;
+      width: 120px;
+      max-width: none;
+    }
+
+    .memoRow .nameDoctorRow > .tagPicker {
+      flex: 0 0 auto;
+      width: 200px;
+    }
+
+    .memoRow .nameDoctorRow > .tagPicker .tagPickerTrigger {
+      width: 100%;
+      max-width: none;
+      justify-content: flex-start;
+      min-height: 32px;
+    }
+
+    @media (max-width: 640px) {
+      .memoRow .nameDoctorRow > input.roomInput {
+        flex: 0 0 48px;
+        width: 48px;
+      }
+      .memoRow .nameDoctorRow > input.memoNoInp {
+        flex: 0 0 88px;
+        width: 88px;
+      }
+      .memoRow .nameDoctorRow > .tagPicker {
+        width: 140px;
+      }
+    }
+
     /* Patient name + tag picker row */
     .nameDoctorRow {
       display: flex;
