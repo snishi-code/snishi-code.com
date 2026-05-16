@@ -740,13 +740,8 @@
       outline: none;
     }
 
-    /* Shared QR inline patient grid (smaller buttons) */
-    #sharedQrPatientGrid .patientBtn {
-      min-height: 48px;
-      font-size: 15px;
-    }
-
-    #sharedQrPatientGrid .patientBtn.unselected {
+    /* Shared list patient button - unselected state during QR mode */
+    .memoRow .memoNoBtn.unselected {
       opacity: 0.4;
       filter: grayscale(0.5);
     }

@@ -20,7 +20,7 @@ import { renderSettings, initSettingsView } from "./views/settings-view.js";
 import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./features/navigation.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initImportExport } from "./features/import-export.js";
-import { initSharedQr, initDocsQr, renderDocsQr, refreshSharedQrIfActive } from "./features/qr-shared.js";
+import { initSharedQr, initDocsQr, renderDocsQr, refreshSharedQrIfActive, setSharedQrSelectionChangeHandler } from "./features/qr-shared.js";
 
 // ============================
 // Wrappers that capture current context
@@ -252,6 +252,11 @@ initActionMenu();
 
 initSharedQr();
 initDocsQr();
+
+setSharedQrSelectionChangeHandler(() => {
+  const sharedView = document.getElementById("sharedView");
+  if (sharedView && sharedView.classList.contains("active")) doRenderShared();
+});
 
 // ============================
 // Shared paste area toggle

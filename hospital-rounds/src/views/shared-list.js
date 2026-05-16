@@ -3,6 +3,7 @@
 import { appState, selectedNo, markUpdated, scheduleSave } from "../store.js";
 import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
 import { isDoctorEnabled, makeDoctorSelect } from "../features/doctor.js";
+import { isSharedQrActive, isPatientSelected, toggleSharedQrPatient } from "../features/qr-shared.js";
 import { statusClass } from "./home.js";
 
 let _editMode = false;
@@ -45,17 +46,23 @@ export function renderSharedScreen(renderHomeFn, opts, navigateToPatientFn) {
     } else {
       const numBtn = document.createElement("button");
       numBtn.type = "button";
+      const qrActive = isSharedQrActive();
       numBtn.className = "memoNoBtn secondary " + statusClass(p.status);
+      if (qrActive && !isPatientSelected(i)) numBtn.classList.add("unselected");
       const displayName = p?.name ? p.name : String(i);
       numBtn.textContent = displayName;
       numBtn.title = displayName;
-      bindLongPressAndDrag(
-        numBtn,
-        () => appState.patients.indexOf(p),
-        onPatientDrop,
-        openActionMenu,
-        navigateToPatientFn ? () => navigateToPatientFn(i) : null
-      );
+      if (qrActive) {
+        numBtn.addEventListener("click", () => toggleSharedQrPatient(i));
+      } else {
+        bindLongPressAndDrag(
+          numBtn,
+          () => appState.patients.indexOf(p),
+          onPatientDrop,
+          openActionMenu,
+          navigateToPatientFn ? () => navigateToPatientFn(i) : null
+        );
+      }
       row.appendChild(numBtn);
     }
 

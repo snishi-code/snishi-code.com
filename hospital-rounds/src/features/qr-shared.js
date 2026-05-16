@@ -4,7 +4,9 @@ import { appState, settings } from "../store.js";
 import { qrcodegen } from "../libs/qrcodegen.js";
 import { utf8ByteLength } from "../payload.js";
 import { isDoctorEnabled, getDoctors } from "./doctor.js";
-import { statusClass } from "../views/home.js";
+
+let _onSelectionChange = null;
+export function setSharedQrSelectionChangeHandler(fn) { _onSelectionChange = fn; }
 
 // ============================
 // Shared QR state
@@ -144,29 +146,13 @@ function renderQrPage() {
   drawSharedQrCanvas(text, ecl);
 }
 
-function renderPatientGrid() {
-  const host = document.getElementById("sharedQrPatientGrid");
-  if (!host) return;
-  host.textContent = "";
-  const frag = document.createDocumentFragment();
-  for (let i = 1; i <= appState.patients.length; i++) {
-    const p = appState.patients[i - 1];
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "patientBtn " + statusClass(p.status);
-    if (!sharedQrSelected.has(i)) btn.classList.add("unselected");
-    const displayName = p?.name ? p.name : String(i);
-    btn.textContent = displayName;
-    btn.setAttribute("aria-label", displayName);
-    btn.addEventListener("click", () => {
-      if (sharedQrSelected.has(i)) sharedQrSelected.delete(i);
-      else sharedQrSelected.add(i);
-      regenerateAndRender();
-      renderPatientGrid();
-    });
-    frag.appendChild(btn);
-  }
-  host.appendChild(frag);
+export function isPatientSelected(no) { return sharedQrSelected.has(no); }
+
+export function toggleSharedQrPatient(no) {
+  if (sharedQrSelected.has(no)) sharedQrSelected.delete(no);
+  else sharedQrSelected.add(no);
+  regenerateAndRender();
+  if (_onSelectionChange) _onSelectionChange();
 }
 
 function selectDefault() {
@@ -224,14 +210,15 @@ function openSharedQr() {
   sharedQrDoctorFilter = "";
   populateDoctorOptions();
   wrap.classList.add("active");
-  renderPatientGrid();
   regenerateAndRender();
+  if (_onSelectionChange) _onSelectionChange();
 }
 
 function closeSharedQr() {
   const wrap = document.getElementById("sharedQrWrap");
   if (!wrap) return;
   wrap.classList.remove("active");
+  if (_onSelectionChange) _onSelectionChange();
 }
 
 export function isSharedQrActive() {
@@ -242,8 +229,8 @@ export function isSharedQrActive() {
 export function refreshSharedQrIfActive() {
   if (!isSharedQrActive()) return;
   populateDoctorOptions();
-  renderPatientGrid();
   regenerateAndRender();
+  if (_onSelectionChange) _onSelectionChange();
 }
 
 // ============================
@@ -320,7 +307,7 @@ export function initSharedQr() {
   const sel = document.getElementById("sharedQrDoctorSelect");
   if (sel) sel.addEventListener("change", () => {
     applyDoctorFilter(sel.value);
-    renderPatientGrid();
     regenerateAndRender();
+    if (_onSelectionChange) _onSelectionChange();
   });
 }
