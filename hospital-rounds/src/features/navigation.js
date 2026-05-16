@@ -22,6 +22,11 @@ export function showView(which, pushState = true) {
   if (detailView) detailView.classList.toggle("active", which === "detail");
   if (sharedQrViewEl) sharedQrViewEl.classList.toggle("active", which === "sharedQr");
 
+  if (which !== "settings") {
+    const docsQrWrap = document.getElementById("docsQrWrap");
+    if (docsQrWrap) docsQrWrap.classList.remove("active");
+  }
+
   window.scrollTo(0, 0);
 }
 

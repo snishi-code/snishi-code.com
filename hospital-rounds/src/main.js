@@ -20,7 +20,7 @@ import { renderSettings, initSettingsView } from "./views/settings-view.js";
 import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./features/navigation.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initImportExport } from "./features/import-export.js";
-import { initSharedQr } from "./features/qr-shared.js";
+import { initSharedQr, initDocsQr } from "./features/qr-shared.js";
 
 // ============================
 // Wrappers that capture current context
@@ -237,6 +237,23 @@ initActionMenu();
 // ============================
 
 initSharedQr();
+initDocsQr();
+
+// ============================
+// Shared paste area toggle
+// ============================
+
+const sharedPasteToggle = document.getElementById("sharedPasteToggle");
+if (sharedPasteToggle) {
+  sharedPasteToggle.addEventListener("click", () => {
+    const body = document.getElementById("sharedPasteBody");
+    const chevron = document.getElementById("sharedPasteChevronBtn");
+    if (!body) return;
+    const isOpen = body.style.display !== "none";
+    body.style.display = isOpen ? "none" : "";
+    if (chevron) chevron.style.transform = isOpen ? "" : "rotate(180deg)";
+  });
+}
 
 // ============================
 // Reset
