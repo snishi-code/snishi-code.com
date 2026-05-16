@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>回診 説明書</title>
+  <title>設定 — 回診 説明書</title>
   <link rel="stylesheet" href="/shared.css">
   <style>
 .docs-wrap { max-width: 800px; margin: 0 auto; padding: 24px 16px 64px; }
@@ -61,77 +61,43 @@
   <main>
     <div class="docs-wrap">
       <div class="docs-breadcrumb">
-        <a href="/medical/">医療用ツール</a> › 回診 説明書
+        <a href="/medical/">医療用ツール</a> › <a href="/docs/hospital-rounds/">回診 説明書</a> › 設定
       </div>
       <article class="docs-body">
-        <h1>回診 — 説明書</h1>
-        <p>各機能の使い方を説明します。</p>
-        <ul class="docs-toc">
-    <li>
-      <a href="01_はじめに.html">
-        <span class="toc-num">01</span>
-        <span class="toc-title">はじめに</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    <li>
-      <a href="02_ホーム.html">
-        <span class="toc-num">02</span>
-        <span class="toc-title">ホーム</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    <li>
-      <a href="03_患者画面.html">
-        <span class="toc-num">03</span>
-        <span class="toc-title">患者画面</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    <li>
-      <a href="04_メモ・共有.html">
-        <span class="toc-num">04</span>
-        <span class="toc-title">メモ・共有</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    <li>
-      <a href="05_データの取込・保存.html">
-        <span class="toc-num">05</span>
-        <span class="toc-title">データの取込・保存</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    <li>
-      <a href="06_設定.html">
-        <span class="toc-num">06</span>
-        <span class="toc-title">設定</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    <li>
-      <a href="07_管理機能（ベータ）.html">
-        <span class="toc-num">07</span>
-        <span class="toc-title">管理機能（ベータ）</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    <li>
-      <a href="08_部屋番号機能（オプション）.html">
-        <span class="toc-num">08</span>
-        <span class="toc-title">部屋番号機能（オプション）</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    <li>
-      <a href="09_タグ機能（オプション）.html">
-        <span class="toc-num">09</span>
-        <span class="toc-title">タグ機能（オプション）</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    </ul>
+        <h1>設定</h1>
+<p>ホーム画面のギアアイコン（設定）から開きます。</p>
+<p class="img-block"><img src="images/06_設定-1778942490470.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<hr>
+<h2>デフォルト文言</h2>
+<p>S・A・Pの各欄が空欄のときに出力される文言を設定します。</p>
+<div class="table-wrap"><table><thead><tr><th>項目</th><th>初期値</th><th>用途</th></tr></thead><tbody><tr><td>S</td><td>（空欄）</td><td>空欄のまま出力したい場合は空にしておく</td></tr><tr><td>A</td><td>著変なし</td><td>変化がない場合の定型文</td></tr><tr><td>P</td><td>現行加療継続</td><td>継続治療の定型文</td></tr></tbody></table></div>
+<hr>
+<h2>O所見項目のカスタマイズ</h2>
+<p>身体所見（O）の「正常」ボタン項目を追加・編集・削除・並び替えできます。</p>
+<h3>初期設定の項目</h3>
+<div class="table-wrap"><table><thead><tr><th>項目名</th><th>「正常」ボタン押下時の出力</th></tr></thead><tbody><tr><td>General</td><td>良好</td></tr><tr><td>肺音</td><td>明らかなラ音なし</td></tr><tr><td>腸音</td><td>正常</td></tr><tr><td>腹部</td><td>平坦軟、圧痛なし</td></tr></tbody></table></div>
+<h3>項目の追加</h3>
+<p>＋アイコンをタップすると新しい項目を追加できます。</p>
+<div class="table-wrap"><table><thead><tr><th>入力欄</th><th>内容</th></tr></thead><tbody><tr><td>項目名</td><td>一覧に表示されるラベル（例：「浮腫」）</td></tr><tr><td>正常テキスト</td><td>「正常」ボタンを押したときに出力される文言（例：「なし」）</td></tr></tbody></table></div>
+<h3>項目の削除</h3>
+<p>各項目のゴミ箱アイコンをタップすると該当項目を削除できます（確認あり）。</p>
+<h3>初期化</h3>
+<p>回転矢印アイコン（初期化）をタップすると初期設定の4項目に戻ります（確認あり）。</p>
+<hr>
+<h2>✕印（クリア対象のカスタマイズ）</h2>
+<p>患者画面の✕丸アイコン（クリア）で消去する項目を選択します。カード見出しの✕丸アイコンで各項目のオン／オフを切り替えられます。</p>
+<div class="table-wrap"><table><thead><tr><th>項目</th><th>デフォルト</th></tr></thead><tbody><tr><td>メモ</td><td>OFF</td></tr><tr><td>S</td><td>ON</td></tr><tr><td>O（バイタル含む）</td><td>ON</td></tr><tr><td>A</td><td>ON</td></tr><tr><td>P</td><td>OFF</td></tr><tr><td>共有</td><td>OFF</td></tr><tr><td>黄</td><td>ON</td></tr><tr><td>緑</td><td>ON</td></tr><tr><td>灰</td><td>ON</td></tr><tr><td>青</td><td>OFF</td></tr></tbody></table></div>
+<hr>
+<h2>一覧・印刷</h2>
+<p>設定画面内の表アイコン（総覧）をタップすると一覧画面に移動します。プリンターアイコン（印刷）をタップするとブラウザの印刷ダイアログが開きます。</p>
+<hr>
+<h2>デフォルトで無効の機能</h2>
+<p class="img-block"><img src="images/06_設定-1778942695083.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>上から順に、管理機能、部屋番号機能、タグ機能です。 必要に応じてONにして使ってください。</p>
+<ul><li><a href="07_管理機能（ベータ）.html">07_管理機能（ベータ）</a></li><li><a href="08_部屋番号機能（オプション）.html">08_部屋番号機能</a></li><li><a href="09_タグ機能（オプション）.html">09_タグ機能</a></li></ul>
+<p>管理機能は未完成です。詳細はリンク先を参照してください。</p>
       </article>
+      <nav class="docs-page-nav"><a class="prev" href="05_データの取込・保存.html">データの取込・保存</a><a class="next" href="07_管理機能（ベータ）.html">管理機能（ベータ）</a></nav>
     </div>
   </main>
   <footer>

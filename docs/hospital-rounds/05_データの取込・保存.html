@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>回診 説明書</title>
+  <title>データの取込・保存 — 回診 説明書</title>
   <link rel="stylesheet" href="/shared.css">
   <style>
 .docs-wrap { max-width: 800px; margin: 0 auto; padding: 24px 16px 64px; }
@@ -61,77 +61,32 @@
   <main>
     <div class="docs-wrap">
       <div class="docs-breadcrumb">
-        <a href="/medical/">医療用ツール</a> › 回診 説明書
+        <a href="/medical/">医療用ツール</a> › <a href="/docs/hospital-rounds/">回診 説明書</a> › データの取込・保存
       </div>
       <article class="docs-body">
-        <h1>回診 — 説明書</h1>
-        <p>各機能の使い方を説明します。</p>
-        <ul class="docs-toc">
-    <li>
-      <a href="01_はじめに.html">
-        <span class="toc-num">01</span>
-        <span class="toc-title">はじめに</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    <li>
-      <a href="02_ホーム.html">
-        <span class="toc-num">02</span>
-        <span class="toc-title">ホーム</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    <li>
-      <a href="03_患者画面.html">
-        <span class="toc-num">03</span>
-        <span class="toc-title">患者画面</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    <li>
-      <a href="04_メモ・共有.html">
-        <span class="toc-num">04</span>
-        <span class="toc-title">メモ・共有</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    <li>
-      <a href="05_データの取込・保存.html">
-        <span class="toc-num">05</span>
-        <span class="toc-title">データの取込・保存</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    <li>
-      <a href="06_設定.html">
-        <span class="toc-num">06</span>
-        <span class="toc-title">設定</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    <li>
-      <a href="07_管理機能（ベータ）.html">
-        <span class="toc-num">07</span>
-        <span class="toc-title">管理機能（ベータ）</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    <li>
-      <a href="08_部屋番号機能（オプション）.html">
-        <span class="toc-num">08</span>
-        <span class="toc-title">部屋番号機能（オプション）</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    <li>
-      <a href="09_タグ機能（オプション）.html">
-        <span class="toc-num">09</span>
-        <span class="toc-title">タグ機能（オプション）</span>
-        <span class="toc-arrow">→</span>
-      </a>
-    </li>
-    </ul>
+        <h1>データの取込・保存</h1>
+<p>ホーム画面の上矢印アイコン（保存）・下矢印アイコン（取込）から操作します。</p>
+<hr>
+<h2>保存</h2>
+<p class="img-block"><img src="images/05_データの取込・出力-1778942370239.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>上矢印アイコン（保存）をタップすると現在のデータをJSONファイルとしてダウンロードします。ファイル名は <code>タイトル_日付_時刻.json</code> 形式です。</p>
+<p><strong>回診終了後や定期的に保存しておくことを推奨します。</strong> ブラウザのデータ消去や端末の初期化でアプリ内のデータが失われた場合でも、保存したファイルから復元できます。</p>
+<hr>
+<h2>取込</h2>
+<p>下矢印アイコン（取込）をタップするとファイル選択画面が開きます。保存したJSONファイルを選択してください。</p>
+<p>既存データがある場合は以下を選択できます。</p>
+<p class="img-block"><img src="images/05_データの取込・出力-1778942392433.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<div class="table-wrap"><table><thead><tr><th>操作</th><th>内容</th></tr></thead><tbody><tr><td>上書き</td><td>現在のデータをすべて削除してインポート</td></tr><tr><td>追記</td><td>現在のデータに差分を追加</td></tr></tbody></table></div>
+<blockquote><p><strong>注意</strong>: 上書きを選択すると現在のデータは元に戻せません。事前に保存でバックアップしておくことをお勧めします。</p></blockquote>
+<h3>追記について</h3>
+<p class="img-block"><img src="images/05_データの取込・出力-1778942413520.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="images/05_データの取込・出力-1778942429148.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>追記を選択すると、インポート元のデータが現在のデータに差分追加されます。追記された患者のステータスは自動で<strong>青</strong>になります。追記されたテキストには「（患者名のデータが追記されました）」と表示されるので、元のデータと区別できます。</p>
+<p class="img-block"><img src="images/05_データの取込・出力-1778942454895.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>患者の対応付けは番号順で行われます。取込前に患者の並び順が一致しているか確認してください。</p>
+<blockquote><p><strong>注意</strong>: 追記機能は現在改善中のため、今後動作が変わる可能性があります。</p></blockquote>
       </article>
+      <nav class="docs-page-nav"><a class="prev" href="04_メモ・共有.html">メモ・共有</a><a class="next" href="06_設定.html">設定</a></nav>
     </div>
   </main>
   <footer>

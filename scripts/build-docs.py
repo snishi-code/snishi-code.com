@@ -7,17 +7,15 @@ SRC  = Path("docs-src/hospital-rounds")
 DEST = Path("docs/hospital-rounds")
 
 PAGES = [
-    ("01_はじめに.md",          "はじめに"),
-    ("02_ホーム画面.md",         "ホーム画面"),
-    ("03_詳細入力画面.md",       "詳細入力画面"),
-    ("04_メモ・共有一覧.md",     "メモ・共有一覧"),
-    ("05_QRコード.md",           "QRコード"),
-    ("06_総覧・印刷.md",         "総覧・印刷"),
-    ("07_設定.md",               "設定"),
-    ("08_データの取込・出力.md", "データの取込・出力"),
-    ("09_タグ機能.md",           "タグ機能"),
-    ("10_部屋番号機能.md",       "部屋番号機能"),
-    ("11_管理機能.md",           "管理機能（ベータ）"),
+    ("01_はじめに.md",                       "はじめに"),
+    ("02_ホーム.md",                          "ホーム"),
+    ("03_患者画面.md",                        "患者画面"),
+    ("04_メモ・共有.md",                      "メモ・共有"),
+    ("05_データの取込・保存.md",              "データの取込・保存"),
+    ("06_設定.md",                            "設定"),
+    ("07_管理機能（ベータ）.md",              "管理機能（ベータ）"),
+    ("08_部屋番号機能（オプション）.md",     "部屋番号機能（オプション）"),
+    ("09_タグ機能（オプション）.md",         "タグ機能（オプション）"),
 ]
 
 # ── Inline transformations ─────────────────────────────────────────────────
@@ -104,7 +102,7 @@ def md_to_html(src):
             continue
 
         # Heading
-        m = re.match(r'^(#{1,3})\s+(.+)', line)
+        m = re.match(r'^(#{1,6})\s+(.+)', line)
         if m:
             level = len(m.group(1))
             content = inline(m.group(2))
@@ -193,6 +191,9 @@ DOCS_CSS = """
 .docs-body h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 24px; padding-bottom: 12px; border-bottom: 2px solid var(--border); }
 .docs-body h2 { font-size: 1.2rem; font-weight: 700; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
 .docs-body h3 { font-size: 1rem; font-weight: 700; margin: 24px 0 8px; color: var(--blue); }
+.docs-body h4 { font-size: .95rem; font-weight: 700; margin: 18px 0 6px; color: var(--text); }
+.docs-body h5 { font-size: .9rem; font-weight: 700; margin: 14px 0 6px; color: var(--text); }
+.docs-body h6 { font-size: .9rem; font-weight: 700; margin: 12px 0 6px; color: var(--muted); }
 .docs-body p { margin: 0 0 14px; line-height: 1.75; }
 .docs-body ul { margin: 0 0 14px 20px; }
 .docs-body ol { margin: 0 0 14px 20px; }
