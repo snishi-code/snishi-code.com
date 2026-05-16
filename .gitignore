@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Build output (Cloudflare Pages が生成するのでコミット不要)
+dist/
+
+# npm
+node_modules/
+
+# 環境変数 (現状不使用だが念のため)
+.env
+.env.local
+.env.*.local
+
+# エディタ
+.vscode/
+.idea/
+
+# ログ
+*.log
+npm-debug.log*
