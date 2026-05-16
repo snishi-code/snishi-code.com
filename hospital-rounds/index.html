@@ -98,6 +98,9 @@
           </button>
         </div>
         <div class="detailTopActions">
+          <button class="iconBtn" id="sharedAdminBtn" type="button" title="管理" aria-label="管理" style="display:none;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+          </button>
           <button class="iconBtn" id="sharedShowQrBtn" type="button" title="QR表示" aria-label="QR表示">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="5" y="5" width="3" height="3" fill="currentColor"/><rect x="16" y="5" width="3" height="3" fill="currentColor"/><rect x="5" y="16" width="3" height="3" fill="currentColor"/><rect x="14" y="14" width="3" height="3" fill="currentColor"/><rect x="19" y="14" width="2" height="2" fill="currentColor"/><rect x="14" y="19" width="2" height="2" fill="currentColor"/><rect x="19" y="19" width="2" height="2" fill="currentColor"/></svg>
           </button>
@@ -106,6 +109,63 @@
           </button>
         </div>
       </div>
+      <div class="card qrWrap" id="adminQrWrap">
+        <div class="cardHead">
+          <div class="label">名簿QR（管理端末）</div>
+          <div class="qrHint"><span class="mono" id="adminQrPageMeta"></span></div>
+        </div>
+        <div class="cardBody">
+          <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="checkbox" id="adminIncludeMemo" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <span>メモ</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="checkbox" id="adminIncludeShared" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              <span>共有</span>
+            </label>
+          </div>
+          <div class="qrHint">
+            <div class="mono" id="adminQrTextPreview" style="word-break:break-all;white-space:pre-wrap;font-size:11px;"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border-top:1px solid var(--line);background:#fafafa;flex-wrap:wrap">
+          <div class="qrHint">複数QRの場合は順番に読み取ってください。</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="secondary" id="adminQrPrevBtn" type="button" title="前" aria-label="前">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button class="secondary" id="adminQrNextBtn" type="button" title="次" aria-label="次">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <canvas id="adminQrCanvas" width="800" height="800"></canvas>
+      </div>
+
+      <div class="card qrWrap" id="adminImportWrap">
+        <div class="cardHead">
+          <div class="label">名簿取込（管理端末から受信）</div>
+        </div>
+        <div class="cardBody">
+          <div class="qrHint" style="margin-bottom:8px;">
+            カメラで読み取った各QRのテキストを順不同で貼り付け、最後に「取込」をタップしてください。
+          </div>
+          <textarea id="adminImportArea" style="min-height:160px;font-size:12px;" placeholder="==ADMIN 1/N==&#10;..."></textarea>
+          <div id="adminImportStatus" class="qrHint" style="margin-top:6px;"></div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+            <button class="iconBtn" id="adminImportApplyBtn" type="button" title="取込" aria-label="取込">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </button>
+            <button class="iconBtn" id="adminImportClearBtn" type="button" title="入力をクリア" aria-label="入力をクリア">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="card qrWrap" id="sharedQrWrap">
         <div class="cardHead">
           <div class="label">共有QR</div>
@@ -256,6 +316,25 @@
           <div class="qrHint">クリアボタンで消去する項目</div>
         </div>
         <div class="cardBody" id="clearTargetsBody"></div>
+      </div>
+
+      <div class="card" id="adminCard">
+        <div class="cardHead">
+          <div class="label" title="管理機能" aria-label="管理機能" style="display:flex;align-items:center;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+          </div>
+          <button class="iconBtn" id="adminEnableBtn" type="button" title="有効/無効切替" aria-label="有効/無効切替">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="adminToggleIcon"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/></svg>
+          </button>
+        </div>
+        <div class="cardBody" id="adminBody">
+          <div class="toggleLine" style="margin-top:0;">
+            <span class="tLabel">この端末を管理端末に</span>
+            <button class="iconBtn" id="adminTerminalBtn" type="button" title="管理端末切替" aria-label="管理端末切替">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="adminTerminalToggleIcon"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/></svg>
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="card" id="roomCard">

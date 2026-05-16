@@ -2,6 +2,7 @@
 
 import { settings, saveSettings, ensurePatientsHaveAllOKeys } from "../store.js";
 import { DEFAULT_O_RULES, DEFAULT_TAGS, clone } from "../constants.js";
+import { canEditORule, canDeleteORule, isAdminEnabled, isAdminTerminal, isNonAdminTerminal } from "../features/admin.js";
 
 const STATUS_SWATCHES = { statusYellow: "#fbbf24", statusGreen: "#34d399", statusGray: "#6b7280", statusBlue: "#2563eb" };
 
@@ -70,6 +71,28 @@ function renderClearTargets() {
     item.appendChild(lbl);
     body.appendChild(item);
   }
+}
+
+function renderToggleIcon(iconEl, on) {
+  if (!iconEl) return;
+  if (on) {
+    iconEl.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5" fill="${getComputedStyle(document.documentElement).getPropertyValue('--status-green-bg') || '#34d399'}" stroke="currentColor"/><circle cx="16" cy="12" r="3" fill="#ffffff" stroke="currentColor"/>`;
+  } else {
+    iconEl.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/>`;
+  }
+}
+
+function renderAdminToggles() {
+  const card = document.getElementById("adminCard");
+  const body = document.getElementById("adminBody");
+  const adminIcon = document.getElementById("adminToggleIcon");
+  const termIcon = document.getElementById("adminTerminalToggleIcon");
+  if (!card) return;
+  const on = !!settings.adminEnabled;
+  card.classList.toggle("disabled", !on);
+  renderToggleIcon(adminIcon, on);
+  renderToggleIcon(termIcon, !!settings.adminTerminal);
+  if (body) body.style.display = on ? "" : "none";
 }
 
 function renderRoomToggleIcon() {
@@ -157,6 +180,7 @@ export function renderSettings() {
   if (setPDefault) setPDefault.value = String(settings?.defaults?.p ?? "");
 
   renderClearTargets();
+  renderAdminToggles();
   renderRoomToggleIcon();
   renderTagsToggleIcon();
   renderTagsList();
@@ -214,13 +238,25 @@ export function renderSettings() {
     actions.style.marginTop = "10px";
     actions.style.flexWrap = "wrap";
 
+    const canEdit = canEditORule(r);
+    if (!canEdit) {
+      inLabel.disabled = true;
+      inNormal.disabled = true;
+    }
+
     const del = document.createElement("button");
     del.type = "button";
     del.className = "iconBtn";
     del.title = "削除";
     del.setAttribute("aria-label", "削除");
     del.innerHTML = TRASH_SVG;
+    if (!canDeleteORule(r)) {
+      del.disabled = true;
+      del.style.opacity = "0.4";
+      del.title = "管理端末配布項目は削除できません";
+    }
     del.addEventListener("click", () => {
+      if (!canDeleteORule(r)) return;
       const ok = confirm("このO項目を削除します（患者データ側の既存値は残ります）。よろしいですか？");
       if (!ok) return;
       settings.oRules.splice(idx, 1);
@@ -302,9 +338,55 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
 
   const roomEnableBtn = document.getElementById("roomEnableBtn");
   if (roomEnableBtn) roomEnableBtn.addEventListener("click", () => {
+    if (isNonAdminTerminal()) { alert("管理機能ONの非管理端末では変更できません"); return; }
+    if (isAdminTerminal() && settings.roomEnabled) { alert("管理端末では部屋番号機能は必須です"); return; }
     settings.roomEnabled = !settings.roomEnabled;
     saveSettings();
     renderRoomToggleIcon();
+    if (_renderPatientUIFn) _renderPatientUIFn();
+  });
+
+  const adminEnableBtn = document.getElementById("adminEnableBtn");
+  if (adminEnableBtn) adminEnableBtn.addEventListener("click", () => {
+    if (settings.adminEnabled) {
+      // Disabling
+      if (!confirm("管理機能をオフにします。よろしいですか？")) return;
+      if (isNonAdminTerminal()) {
+        if (!confirm("この端末は非管理端末です。管理端末の保持者に確認してから無効化してください。\n本当にオフにしますか？")) return;
+      }
+      settings.adminEnabled = false;
+      settings.adminTerminal = false;
+    } else {
+      // Enabling
+      settings.adminEnabled = true;
+    }
+    saveSettings();
+    renderAdminToggles();
+    renderTagsToggleIcon();
+    renderRoomToggleIcon();
+    renderTagsList();
+    if (_renderPatientUIFn) _renderPatientUIFn();
+  });
+
+  const adminTerminalBtn = document.getElementById("adminTerminalBtn");
+  if (adminTerminalBtn) adminTerminalBtn.addEventListener("click", () => {
+    if (!settings.adminEnabled) { alert("管理機能をONにしてください"); return; }
+    if (settings.adminTerminal) {
+      // Turning off admin terminal: also disables admin feature effectively (becomes non-admin)
+      if (!confirm("この端末を管理端末から外します。よろしいですか？")) return;
+      settings.adminTerminal = false;
+    } else {
+      if (!confirm("この端末を管理端末にします。管理端末は同じ病棟・チーム内で1台のみにしてください。\nよろしいですか？")) return;
+      settings.adminTerminal = true;
+      // Auto-enable room and tags
+      settings.roomEnabled = true;
+      settings.tagsEnabled = true;
+    }
+    saveSettings();
+    renderAdminToggles();
+    renderRoomToggleIcon();
+    renderTagsToggleIcon();
+    renderTagsList();
     if (_renderPatientUIFn) _renderPatientUIFn();
   });
 

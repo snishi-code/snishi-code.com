@@ -7,6 +7,7 @@ import { utf8ByteLength } from "../payload.js";
 import { qrcodegen } from "../libs/qrcodegen.js";
 import { isTagsEnabled, makePatientTagPicker } from "../features/tags.js";
 import { isRoomEnabled, makeRoomInput } from "../features/room.js";
+import { isNonAdminTerminal } from "../features/admin.js";
 
 // ============================
 // QR generation helpers
@@ -249,16 +250,26 @@ export function renderDetail(syncDetailMemoDisplay) {
   const oFreeText = document.getElementById("oFreeText");
 
   const displayName = p?.name ? p.name : String(selectedNo);
-  if (detailTitle) detailTitle.value = displayName;
+  if (detailTitle) {
+    detailTitle.value = displayName;
+    // Non-admin terminal: cannot edit existing names; can fill empty
+    if (isNonAdminTerminal() && p?.name) {
+      detailTitle.readOnly = true;
+    } else {
+      detailTitle.readOnly = false;
+    }
+  }
   if (syncDetailMemoDisplay) syncDetailMemoDisplay();
   setSelectedStatusButtons(p.status);
 
+  const nonAdmin = isNonAdminTerminal();
   const detailRoomSlot = document.getElementById("detailRoomSlot");
   if (detailRoomSlot) {
     detailRoomSlot.textContent = "";
     if (isRoomEnabled()) {
       const roomInp = makeRoomInput(selectedNo - 1);
       roomInp.classList.add("detailRoomInput");
+      if (nonAdmin) roomInp.readOnly = true;
       detailRoomSlot.appendChild(roomInp);
     }
   }
@@ -267,7 +278,12 @@ export function renderDetail(syncDetailMemoDisplay) {
   if (detailDoctorSlot) {
     detailDoctorSlot.textContent = "";
     if (isTagsEnabled()) {
-      detailDoctorSlot.appendChild(makePatientTagPicker(selectedNo - 1));
+      const picker = makePatientTagPicker(selectedNo - 1);
+      if (nonAdmin) {
+        const trigger = picker.querySelector(".tagPickerTrigger");
+        if (trigger) { trigger.disabled = true; trigger.style.cursor = "default"; trigger.style.background = "#f9fafb"; }
+      }
+      detailDoctorSlot.appendChild(picker);
     }
   }
 

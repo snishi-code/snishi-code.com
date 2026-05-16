@@ -22,6 +22,8 @@ import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initImportExport } from "./features/import-export.js";
 import { initSharedQr, initDocsQr, renderDocsQr, refreshSharedQrIfActive, setSharedQrSelectionChangeHandler } from "./features/qr-shared.js";
 import { sortPatientsByRoom } from "./features/room.js";
+import { initAdminUI, refreshAdminAvailability, setAdminAppliedHandler } from "./features/admin-ui.js";
+import { isAdminTerminal, isNonAdminTerminal, isAdminEnabled, findIncompleteAdminPatients, clearIncompleteAdminPatients } from "./features/admin.js";
 
 // ============================
 // Wrappers that capture current context
@@ -45,6 +47,8 @@ const CHECK_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" s
 function updateMemoEditBtn() {
   const btn = document.getElementById("memoEditBtn");
   if (!btn) return;
+  if (isNonAdminTerminal()) { btn.style.display = "none"; return; }
+  btn.style.display = "";
   const active = getMemoEditMode();
   btn.innerHTML = active ? CHECK_SVG : PENCIL_SVG;
   btn.classList.toggle("editActive", active);
@@ -55,6 +59,8 @@ function updateMemoEditBtn() {
 function updateSharedEditBtn() {
   const btn = document.getElementById("sharedEditBtn");
   if (!btn) return;
+  if (isNonAdminTerminal()) { btn.style.display = "none"; return; }
+  btn.style.display = "";
   const active = getSharedEditMode();
   btn.innerHTML = active ? CHECK_SVG : PENCIL_SVG;
   btn.classList.toggle("editActive", active);
@@ -97,10 +103,12 @@ setDataChangeHandler(() => {
 // ============================
 
 function refreshPatientUI() {
+  refreshAdminAvailability();
   const viewId = document.querySelector(".view.active")?.id;
   if (viewId === "memoView") doRenderMemo();
   else if (viewId === "sharedView") doRenderShared();
   else if (viewId === "detailView") doRenderDetail();
+  else if (viewId === "homeView") doRenderHome();
   refreshSharedQrIfActive();
 }
 
@@ -125,19 +133,37 @@ window.addEventListener("popstate", (e) => {
   else showView("home", false);
 });
 
+function validateAdminTerminal() {
+  if (!isAdminTerminal()) return true;
+  const missing = findIncompleteAdminPatients();
+  if (!missing.length) return true;
+  const sample = missing.slice(0, 8).join(", ") + (missing.length > 8 ? ", ..." : "");
+  const ok = confirm(
+    `次の位置の患者は部屋番号またはタグが未入力です: ${sample}\n` +
+    `\n[OK]を押して進むと、これらの患者の名前・部屋番号・タグはクリアされます（SOAP・メモ・共有は残ります）。\n` +
+    `[キャンセル]で編集に戻れます。`
+  );
+  if (!ok) return false;
+  clearIncompleteAdminPatients();
+  return true;
+}
+
 function navToMemo() {
+  if (!validateAdminTerminal()) return;
   setSharedEditMode(false);
   updateSharedEditBtn();
   doRenderMemo();
   showView("memo");
 }
 function navToShared() {
+  if (!validateAdminTerminal()) return;
   setMemoEditMode(false);
   updateMemoEditBtn();
   doRenderShared();
   showView("shared");
 }
 function navToHome() {
+  if (!validateAdminTerminal()) return;
   setMemoEditMode(false);
   setSharedEditMode(false);
   updateMemoEditBtn();
@@ -177,14 +203,19 @@ if (docsQrCloseBtn) docsQrCloseBtn.addEventListener("click", navToHome);
 
 const memoEditBtn = document.getElementById("memoEditBtn");
 if (memoEditBtn) memoEditBtn.addEventListener("click", () => {
-  setMemoEditMode(!getMemoEditMode());
+  const nextActive = !getMemoEditMode();
+  // Exiting edit mode on admin terminal: validate
+  if (!nextActive && !validateAdminTerminal()) return;
+  setMemoEditMode(nextActive);
   updateMemoEditBtn();
   doRenderMemo();
 });
 
 const sharedEditBtn = document.getElementById("sharedEditBtn");
 if (sharedEditBtn) sharedEditBtn.addEventListener("click", () => {
-  setSharedEditMode(!getSharedEditMode());
+  const nextActive = !getSharedEditMode();
+  if (!nextActive && !validateAdminTerminal()) return;
+  setSharedEditMode(nextActive);
   updateSharedEditBtn();
   doRenderShared();
 });
@@ -253,6 +284,14 @@ initActionMenu();
 
 initSharedQr();
 initDocsQr();
+initAdminUI();
+setAdminAppliedHandler(() => {
+  doRenderHome();
+  doRenderDetail();
+  const v = document.querySelector(".view.active")?.id;
+  if (v === "memoView") doRenderMemo();
+  else if (v === "sharedView") doRenderShared();
+});
 
 setSharedQrSelectionChangeHandler(() => {
   const sharedView = document.getElementById("sharedView");

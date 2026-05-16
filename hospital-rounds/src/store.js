@@ -1,6 +1,6 @@
 "use strict";
 
-import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS, DEFAULT_TAGS_ENABLED, DEFAULT_ROOM_ENABLED, clone } from "./constants.js";
+import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS, DEFAULT_TAGS_ENABLED, DEFAULT_ROOM_ENABLED, DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL, clone } from "./constants.js";
 
 // ============================
 // Settings
@@ -19,6 +19,8 @@ export function defaultSettings() {
     tagsEnabled: DEFAULT_TAGS_ENABLED,
     tags: clone(DEFAULT_TAGS),
     roomEnabled: DEFAULT_ROOM_ENABLED,
+    adminEnabled: DEFAULT_ADMIN_ENABLED,
+    adminTerminal: DEFAULT_ADMIN_TERMINAL,
   };
 }
 
@@ -49,6 +51,7 @@ export function loadSettings() {
           label,
           normalText: String(r.normalText ?? ""),
           placeholder: String(r.placeholder ?? ""),
+          fromAdmin: !!r.fromAdmin,
         });
       }
       if (cleaned.length) out.oRules = cleaned;
@@ -76,6 +79,8 @@ export function loadSettings() {
       out.tags = raw.doctors.filter(d => typeof d === "string").map(d => String(d));
     }
     if (raw && typeof raw.roomEnabled === "boolean") out.roomEnabled = raw.roomEnabled;
+    if (raw && typeof raw.adminEnabled === "boolean") out.adminEnabled = raw.adminEnabled;
+    if (raw && typeof raw.adminTerminal === "boolean") out.adminTerminal = raw.adminTerminal;
     return out;
   } catch (e) {
     console.warn("settings load failed:", e);

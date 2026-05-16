@@ -5,6 +5,7 @@ import { STATUS } from "../constants.js";
 import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
 import { isTagsEnabled, makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
 import { isRoomEnabled, formatPatientLabel } from "../features/room.js";
+import { isNonAdminTerminal } from "../features/admin.js";
 
 export function statusClass(status) {
   if (status === STATUS.YELLOW) return "status-yellow";
@@ -42,7 +43,7 @@ function renderHomeTagFilter(onChange) {
 function renderHomeSortBtn() {
   const btn = document.getElementById("homeRoomSortBtn");
   if (!btn) return;
-  btn.style.display = isRoomEnabled() ? "" : "none";
+  btn.style.display = (isRoomEnabled() && !isNonAdminTerminal()) ? "" : "none";
 }
 
 export function renderHome(onPatientClick) {
