@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>メモ・共有一覧 — 回診管理 説明書</title>
+  <link rel="stylesheet" href="/shared.css">
+  <style>
+.docs-wrap { max-width: 800px; margin: 0 auto; padding: 24px 16px 64px; }
+.docs-breadcrumb { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+.docs-breadcrumb a { color: var(--blue); text-decoration: none; }
+.docs-breadcrumb a:hover { text-decoration: underline; }
+.docs-body h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 24px; padding-bottom: 12px; border-bottom: 2px solid var(--border); }
+.docs-body h2 { font-size: 1.2rem; font-weight: 700; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.docs-body h3 { font-size: 1rem; font-weight: 700; margin: 24px 0 8px; color: var(--blue); }
+.docs-body p { margin: 0 0 14px; line-height: 1.75; }
+.docs-body ul { margin: 0 0 14px 20px; }
+.docs-body li { margin-bottom: 6px; line-height: 1.75; }
+.docs-body hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+.docs-body blockquote { margin: 14px 0; padding: 10px 16px; background: var(--blue-light); border-left: 3px solid var(--blue); border-radius: 0 6px 6px 0; }
+.docs-body blockquote p { margin: 0; }
+.docs-body code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: .875em; font-family: ui-monospace, monospace; }
+.docs-body pre { background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 0 0 14px; }
+.docs-body pre code { background: none; padding: 0; color: inherit; font-size: .85em; }
+.docs-body strong { font-weight: 700; }
+.table-wrap { overflow-x: auto; margin: 0 0 14px; }
+.table-wrap table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.table-wrap th { background: var(--blue-light); padding: 8px 12px; text-align: left; border-bottom: 2px solid var(--blue-border); white-space: nowrap; }
+.table-wrap td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.table-wrap tr:last-child td { border-bottom: none; }
+.img-block { text-align: center; margin: 16px 0; }
+.doc-img { border-radius: 8px; border: 1px solid var(--border); box-shadow: var(--shadow); display: inline-block; max-width: 100%; height: auto; }
+.docs-page-nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); }
+.docs-page-nav a { display: flex; align-items: center; gap: 6px; padding: 10px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); text-decoration: none; color: var(--text); font-size: .9rem; transition: border-color .15s; }
+.docs-page-nav a:hover { border-color: var(--blue); color: var(--blue); }
+.docs-page-nav .prev::before { content: '←'; }
+.docs-page-nav .next::after { content: '→'; }
+.docs-toc { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.docs-toc li a { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); text-decoration: none; color: var(--text); transition: border-color .15s, box-shadow .15s; }
+.docs-toc li a:hover { border-color: var(--blue); box-shadow: var(--shadow); }
+.docs-toc .toc-num { font-size: .75rem; color: var(--muted); width: 20px; }
+.docs-toc .toc-title { font-weight: 600; }
+.docs-toc .toc-arrow { margin-left: auto; color: var(--muted); }
+</style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <a class="logo-mark" href="/">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </a>
+        <a class="site-name" href="/" style="text-decoration:none;color:inherit;font-weight:600;font-size:.95rem;">snishi-code</a>
+      </div>
+    </div>
+  </header>
+  <main>
+    <div class="docs-wrap">
+      <div class="docs-breadcrumb">
+        <a href="/medical/">医療用ツール</a> › <a href="/docs/hospital-rounds/">回診管理 説明書</a> › メモ・共有一覧
+      </div>
+      <article class="docs-body">
+        <h1>メモ・共有一覧</h1>
+<h2>メモ一覧</h2>
+<p class="img-block"><img src="images/04_メモ・共有一覧-1778912506413.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>ヘッダーの「メモ」ボタンで開きます。全患者のメモを一覧で確認できます。</p>
+<h3>編集モード</h3>
+<p class="img-block"><img src="images/04_メモ・共有一覧-1778912535590.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>右上の鉛筆アイコンをタップすると編集モードになり、一覧上で直接メモを編集できます。チェックアイコンをタップして編集を終了します。編集モードでは患者の並び替えや削除も可能です。</p>
+<h3>患者名をタップ</h3>
+<p>一覧の患者名をタップすると、その患者の詳細入力画面に移動します。ホーム画面と同様に長押しで並び替え・削除ができます。ボタンの色はホーム画面と同じステータス色で表示されます。</p>
+<h3>印刷</h3>
+<p>「印刷」ボタンで現在表示されているメモを印刷できます。</p>
+<hr>
+<h2>共有一覧</h2>
+<p class="img-block"><img src="images/04_メモ・共有一覧-1778909193997.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>ヘッダーの「共有」ボタンで開きます。全患者の「共有」欄の内容を一覧で確認できます。</p>
+<h3>QR表示</h3>
+<p>「QR表示」ボタンをタップすると、共有データをQRコードとして表示します。他端末で読み取ることでデータを引き継げます（データ量が多い場合は複数QRに分割されます）。</p>
+<h3>受信メモ（テキスト貼り付け）</h3>
+<p class="img-block"><img src="images/04_メモ・共有一覧-1778909370628.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>他端末のQRコードを読み取った後、テキストをここに貼り付けると内容を確認できます。テキストにはタイトルとタイムスタンプが含まれます。複数人で運用する場合は、アプリタイトルに担当者名や場所を入れておくと送信元が分かりやすくなります。</p>
+<h3>編集モード・印刷</h3>
+<p>メモ一覧と同様に、編集モード（直接編集・並び替え・詳細画面への移動）や印刷が利用できます。</p>
+      </article>
+      <nav class="docs-page-nav"><a class="prev" href="03_詳細入力画面.html">詳細入力画面</a><a class="next" href="05_QRコード.html">QRコード</a></nav>
+    </div>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      <span>© 2026 snishi-code. All rights reserved.</span>
+    </div>
+  </footer>
+</body>
+</html>

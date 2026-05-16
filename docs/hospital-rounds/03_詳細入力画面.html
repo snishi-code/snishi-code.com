@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>詳細入力画面 — 回診管理 説明書</title>
+  <link rel="stylesheet" href="/shared.css">
+  <style>
+.docs-wrap { max-width: 800px; margin: 0 auto; padding: 24px 16px 64px; }
+.docs-breadcrumb { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+.docs-breadcrumb a { color: var(--blue); text-decoration: none; }
+.docs-breadcrumb a:hover { text-decoration: underline; }
+.docs-body h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 24px; padding-bottom: 12px; border-bottom: 2px solid var(--border); }
+.docs-body h2 { font-size: 1.2rem; font-weight: 700; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.docs-body h3 { font-size: 1rem; font-weight: 700; margin: 24px 0 8px; color: var(--blue); }
+.docs-body p { margin: 0 0 14px; line-height: 1.75; }
+.docs-body ul { margin: 0 0 14px 20px; }
+.docs-body li { margin-bottom: 6px; line-height: 1.75; }
+.docs-body hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+.docs-body blockquote { margin: 14px 0; padding: 10px 16px; background: var(--blue-light); border-left: 3px solid var(--blue); border-radius: 0 6px 6px 0; }
+.docs-body blockquote p { margin: 0; }
+.docs-body code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: .875em; font-family: ui-monospace, monospace; }
+.docs-body pre { background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 0 0 14px; }
+.docs-body pre code { background: none; padding: 0; color: inherit; font-size: .85em; }
+.docs-body strong { font-weight: 700; }
+.table-wrap { overflow-x: auto; margin: 0 0 14px; }
+.table-wrap table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.table-wrap th { background: var(--blue-light); padding: 8px 12px; text-align: left; border-bottom: 2px solid var(--blue-border); white-space: nowrap; }
+.table-wrap td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.table-wrap tr:last-child td { border-bottom: none; }
+.img-block { text-align: center; margin: 16px 0; }
+.doc-img { border-radius: 8px; border: 1px solid var(--border); box-shadow: var(--shadow); display: inline-block; max-width: 100%; height: auto; }
+.docs-page-nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); }
+.docs-page-nav a { display: flex; align-items: center; gap: 6px; padding: 10px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); text-decoration: none; color: var(--text); font-size: .9rem; transition: border-color .15s; }
+.docs-page-nav a:hover { border-color: var(--blue); color: var(--blue); }
+.docs-page-nav .prev::before { content: '←'; }
+.docs-page-nav .next::after { content: '→'; }
+.docs-toc { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.docs-toc li a { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); text-decoration: none; color: var(--text); transition: border-color .15s, box-shadow .15s; }
+.docs-toc li a:hover { border-color: var(--blue); box-shadow: var(--shadow); }
+.docs-toc .toc-num { font-size: .75rem; color: var(--muted); width: 20px; }
+.docs-toc .toc-title { font-weight: 600; }
+.docs-toc .toc-arrow { margin-left: auto; color: var(--muted); }
+</style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <a class="logo-mark" href="/">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </a>
+        <a class="site-name" href="/" style="text-decoration:none;color:inherit;font-weight:600;font-size:.95rem;">snishi-code</a>
+      </div>
+    </div>
+  </header>
+  <main>
+    <div class="docs-wrap">
+      <div class="docs-breadcrumb">
+        <a href="/medical/">医療用ツール</a> › <a href="/docs/hospital-rounds/">回診管理 説明書</a> › 詳細入力画面
+      </div>
+      <article class="docs-body">
+        <h1>詳細入力画面</h1>
+<h2>概要</h2>
+<p>患者名の入力と、SOAP形式での回診メモを記録する画面です。ホーム画面で患者マスをタップすると開きます。</p>
+<h2>患者名</h2>
+<p class="img-block"><img src="images/03_詳細入力画面-1778907931006.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="images/03_詳細入力画面-1778907943859.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>画面上部の入力欄に患者名を入力します。名前を入れると、ホーム画面の患者マスにも名前が表示されます。空欄の場合は番号が表示されます。</p>
+<blockquote><p><strong>ヒント</strong>: 病棟回診などでは「102 テスト一郎」のように病室番号を名前の前に入れておくと、ホーム画面で部屋順が一目でわかり便利です。</p></blockquote>
+<h2>ステータスボタン</h2>
+<p>画面上部と下部に同じボタンがあります。</p>
+<div class="table-wrap"><table><thead><tr><th>ボタン</th><th>ステータス</th></tr></thead><tbody><tr><td>黄ボタン</td><td>保留</td></tr><tr><td>緑ボタン</td><td>回診済（QRコードが表示されます）</td></tr><tr><td>灰ボタン</td><td>完了</td></tr></tbody></table></div>
+<p>現在選択中のボタンは強調表示されます。同じボタンをもう一度タップすると白（未回診）に戻ります。</p>
+<h2>クリアボタン</h2>
+<p class="img-block"><img src="images/03_詳細入力画面-1778912437495.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>ステータスボタンの左に「クリア」ボタンがあります（上部・下部の両方）。設定で指定した項目の入力内容を一括で消去します。デフォルトではS・O・Aがクリア対象です。</p>
+<p>→ クリア対象のカスタマイズは <a href="07_設定.html">07_設定</a> を参照</p>
+<h2>メモ</h2>
+<p class="img-block"><img src="images/03_詳細入力画面-1778908090167.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>SOAPとは別に使える自由メモ欄です。QRコードを生成した際に、SOAP内容の先頭に表示されます。プロブレムリストなどカルテの冒頭に毎回記載するような情報を入れておくと便利です。</p>
+<h2>S（Subjective / 主観的情報）</h2>
+<p>患者の訴え・自覚症状を入力します。デフォルトでは空欄のまま出力されます。定型文を使いたい場合は設定で変更できます。</p>
+<h2>O（Objective / 客観的情報）</h2>
+<h3>バイタルサイン</h3>
+<div class="table-wrap"><table><thead><tr><th>項目</th><th>単位</th></tr></thead><tbody><tr><td>SpO2</td><td>％（メモ欄あり：例「RA」「カニューレ2L」など）</td></tr><tr><td>呼吸数</td><td>回</td></tr><tr><td>血圧</td><td>収縮期 / 拡張期（mmHg）</td></tr><tr><td>脈拍</td><td>回</td></tr><tr><td>体温</td><td>℃</td></tr></tbody></table></div>
+<p>すべて空欄の場合は「Vital：安定」と出力されます。バイタル項目のカスタマイズは現時点では非対応です。</p>
+<h3>身体所見（O項目）</h3>
+<p>設定でカスタマイズ可能な所見項目です。初期設定では以下の4項目があります。</p>
+<div class="table-wrap"><table><thead><tr><th>項目</th><th>「正常」ボタンを押した場合の出力</th></tr></thead><tbody><tr><td>General</td><td>良好</td></tr><tr><td>肺音</td><td>明らかなラ音なし</td></tr><tr><td>腸音</td><td>正常</td></tr><tr><td>腹部</td><td>平坦軟、圧痛なし</td></tr></tbody></table></div>
+<ul><li>「正常」ボタンをタップするとオン／オフが切り替わります</li><li>テキストを入力すると「正常」ボタンは自動でオフになります</li><li>テキスト欄には異常所見を入力してください（正常の場合はボタンのみ）</li><li>確認・評価していない項目は何も選択せずに空欄のままでかまいません</li></ul>
+<h3>O（フリーテキスト）</h3>
+<p>上記の項目に当てはまらない所見を自由に記入できます。</p>
+<h2>A（Assessment / 評価）</h2>
+<p>空欄の場合はデフォルト文言（初期値：「著変なし」）が出力されます。</p>
+<h2>P（Plan / 計画）</h2>
+<p>空欄の場合はデフォルト文言（初期値：「現行加療継続」）が出力されます。</p>
+<h2>共有</h2>
+<p>他端末（他の医師・看護師等）に引き継ぐ情報を入力します。鎮痛薬の処方希望など、これまで口頭やメモ書きで渡していたような情報の受け渡しを想定しています。</p>
+<p>→ 詳細は <a href="05_QRコード.html">05_QRコード</a> を参照</p>
+<h2>QRコード（ステータスが緑のとき）</h2>
+<p class="img-block"><img src="images/03_詳細入力画面-1778908668104.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="images/03_詳細入力画面-1778908692624.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>ステータスを「緑（回診済）」にすると、SOAP内容のQRコードが自動生成されます。</p>
+<p>QRコードの上にテキストプレビューが表示されます。QRコードにはこのテキストと同じ内容が格納されています。</p>
+<ul><li>データ量が多い場合は複数QRに分割されます（「前」「次」ボタンで切り替え）</li><li>QRコードリーダーを電子カルテに接続することで、読み取ったテキストをそのまま入力できます。カルテの転記したい欄にカーソルを置いた状態で読み取ってください（キーボードと同じ動作をします）</li><li>リーダーの電子カルテへの接続可否は施設のシステム担当者にご確認ください</li></ul>
+      </article>
+      <nav class="docs-page-nav"><a class="prev" href="02_ホーム画面.html">ホーム画面</a><a class="next" href="04_メモ・共有一覧.html">メモ・共有一覧</a></nav>
+    </div>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      <span>© 2026 snishi-code. All rights reserved.</span>
+    </div>
+  </footer>
+</body>
+</html>
