@@ -1,5 +1,5 @@
-const CACHE = 'hospital-rounds-v1';
-const SHELL = ['/', '/index.html'];
+const CACHE = 'hospital-rounds-v2';
+const SHELL = ['/hospital-rounds/', '/hospital-rounds/index.html'];
 
 // インストール時にアプリシェルをキャッシュ
 self.addEventListener('install', (e) => {
@@ -23,6 +23,6 @@ self.addEventListener('fetch', (e) => {
   if (!e.request.url.startsWith(self.location.origin)) return;
 
   e.respondWith(
-    caches.match(e.request).then((cached) => cached || caches.match('/'))
+    caches.match(e.request).then((cached) => cached || caches.match('/hospital-rounds/'))
   );
 });
