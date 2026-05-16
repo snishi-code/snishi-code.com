@@ -325,15 +325,18 @@ if (sharedRoomSortBtn) sharedRoomSortBtn.addEventListener("click", doSortByRoom)
 // Shared paste area toggle
 // ============================
 
-const sharedPasteToggle = document.getElementById("sharedPasteToggle");
-if (sharedPasteToggle) {
-  sharedPasteToggle.addEventListener("click", () => {
-    const body = document.getElementById("sharedPasteBody");
-    const chevron = document.getElementById("sharedPasteChevronBtn");
-    if (!body) return;
-    const isOpen = body.style.display !== "none";
-    body.style.display = isOpen ? "none" : "";
-    if (chevron) chevron.style.transform = isOpen ? "" : "rotate(180deg)";
+const sharedPasteBtn = document.getElementById("sharedPasteBtn");
+if (sharedPasteBtn) {
+  sharedPasteBtn.addEventListener("click", () => {
+    const card = document.getElementById("sharedPasteCard");
+    if (!card) return;
+    const isOpen = card.classList.contains("active");
+    card.classList.toggle("active", !isOpen);
+    sharedPasteBtn.classList.toggle("editActive", !isOpen);
+    if (!isOpen) {
+      const area = document.getElementById("sharedPasteArea");
+      if (area) setTimeout(() => area.focus(), 50);
+    }
   });
 }
 

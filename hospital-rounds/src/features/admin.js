@@ -73,12 +73,16 @@ function makePages(kind, encryptedBody, rosterId) {
 }
 
 // ============================
-// Build pages (admin terminal side)
+// Build pages (originator / admin terminal side)
 // ============================
+//
+// COPY (旧フルダンプ) is encrypted with the user-chosen 合言葉.
+// The roster's authentication code (rosterId) is embedded inside the encrypted payload.
+// DIFF is encrypted with the rosterId itself, so only terminals that have already received
+// a copy can decrypt subsequent diffs—no passphrase prompt on every sync.
 
-export async function buildFullPages(passphrase) {
+export async function buildCopyPages(secret) {
   ensureRoster();
-  // Ensure pending edits are committed
   flushCommit();
   const view = rebuildRoster();
   const body = {
@@ -87,14 +91,16 @@ export async function buildFullPages(passphrase) {
     ts: Date.now(),
     baseTs: appState.baseSnapshot?.ts || 0,
     base: view,
-    commits: [], // full = snapshot only; commits start fresh on receiver from this view
+    commits: [],
   };
   const plaintext = JSON.stringify(body);
-  const enc = await encryptText(plaintext, passphrase, appState.rosterId);
+  const enc = await encryptText(plaintext, secret, "ROSTER-COPY");
   return { pages: makePages("FULL", enc, appState.rosterId), bytes: utf8ByteLength(enc) };
 }
+// Back-compat alias
+export const buildFullPages = buildCopyPages;
 
-export async function buildDiffPages(passphrase, windowDays = ROSTER_DIFF_WINDOW_DAYS) {
+export async function buildDiffPages(_unused, windowDays = ROSTER_DIFF_WINDOW_DAYS) {
   ensureRoster();
   flushCommit();
   const commits = getCommitsWithinWindow(windowDays);
@@ -106,7 +112,8 @@ export async function buildDiffPages(passphrase, windowDays = ROSTER_DIFF_WINDOW
     commits,
   };
   const plaintext = JSON.stringify(body);
-  const enc = await encryptText(plaintext, passphrase, appState.rosterId);
+  // Use rosterId as the symmetric key for diff QRs—same roster terminals can decrypt automatically.
+  const enc = await encryptText(plaintext, appState.rosterId, "ROSTER-DIFF");
   return { pages: makePages("DIFF", enc, appState.rosterId), bytes: utf8ByteLength(enc), count: commits.length };
 }
 
@@ -153,10 +160,13 @@ export function parseRosterPages(text) {
   return { ok: true, kind: g.kind, rosterId, encrypted: combined };
 }
 
-export async function decodeRosterPayload(parsed, passphrase) {
+// For COPY (kind=FULL): caller provides the 合言葉.
+// For DIFF: caller provides the local rosterId.
+export async function decodeRosterPayload(parsed, secret) {
   let plaintext;
+  const salt = parsed.kind === "DIFF" ? "ROSTER-DIFF" : "ROSTER-COPY";
   try {
-    plaintext = await decryptText(parsed.encrypted, passphrase, parsed.rosterId);
+    plaintext = await decryptText(parsed.encrypted, secret, salt);
   } catch (e) {
     return { ok: false, error: e.message || "復号失敗" };
   }

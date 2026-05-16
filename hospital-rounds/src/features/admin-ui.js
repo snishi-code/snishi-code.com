@@ -5,10 +5,11 @@ import { utf8ByteLength } from "../payload.js";
 import { settings } from "../store.js";
 import {
   isAdminEnabled, isAdminTerminal, isAdminImportOnly,
-  buildFullPages, buildDiffPages,
+  buildCopyPages, buildDiffPages,
   parseRosterPages, decodeRosterPayload, applyFullPayload, applyDiffPayload,
 } from "./admin.js";
 import { flushCommit } from "./roster.js";
+import { appState } from "../store.js";
 
 let _pages = [];
 let _pageIndex = 0;
@@ -81,26 +82,26 @@ function renderPage() {
 
 async function regenerate() {
   const status = document.getElementById("adminQrStatus");
-  const passphrase = settings.rosterPassphrase || "";
-  if (!passphrase) {
-    _pages = [];
-    if (status) status.textContent = "⚠ 設定でパスフレーズを設定してください。";
-    renderPage();
-    return;
-  }
   if (status) status.textContent = "";
   try {
     if (_mode === "qr-full") {
+      const phrase = settings.rosterPassphrase || "";
+      if (!phrase) {
+        _pages = [];
+        if (status) status.textContent = "⚠ 設定で合言葉を入力してください。";
+        renderPage();
+        return;
+      }
       flushCommit();
-      const r = await buildFullPages(passphrase);
+      const r = await buildCopyPages(phrase);
       _pages = r.pages;
       _qrSource = "full";
     } else if (_mode === "qr-diff") {
       flushCommit();
-      const r = await buildDiffPages(passphrase);
+      const r = await buildDiffPages();
       _pages = r.pages;
       _qrSource = "diff";
-      if (status) status.textContent = `直近${30}日の差分: ${r.count}件のコミット`;
+      if (status) status.textContent = `直近30日の差分: ${r.count}件のコミット`;
     }
     _pageIndex = 0;
     renderPage();
@@ -161,21 +162,37 @@ async function handleImport() {
   const area = document.getElementById("adminImportArea");
   const status = document.getElementById("adminImportStatus");
   const text = area ? area.value : "";
-  const passphrase = settings.rosterPassphrase || "";
-  if (!passphrase) {
-    if (status) status.textContent = "⚠ 設定でパスフレーズを入力してから取り込んでください。";
-    return;
-  }
   const parsed = parseRosterPages(text);
   if (!parsed.ok) { if (status) status.textContent = "エラー: " + parsed.error; return; }
-  const decoded = await decodeRosterPayload(parsed, passphrase);
+
+  let secret;
+  if (parsed.kind === "DIFF") {
+    // Diffs are encrypted with the local roster's authentication code (rosterId)
+    secret = appState.rosterId || "";
+    if (!secret) {
+      if (status) status.textContent = "エラー: ローカルに名簿がありません。先にコピーを取込んでください。";
+      return;
+    }
+  } else {
+    // COPY (FULL) needs the 合言葉
+    const phrase = prompt("名簿コピーを取り込みます。送信側と同じ合言葉を入力してください：");
+    if (!phrase) { if (status) status.textContent = "取込をキャンセルしました"; return; }
+    secret = phrase;
+  }
+
+  const decoded = await decodeRosterPayload(parsed, secret);
   if (!decoded.ok) { if (status) status.textContent = "エラー: " + decoded.error; return; }
   const body = decoded.body;
+
   if (body.kind === "full") {
-    const msg = `名簿フルダンプを取込みます\n- 患者: ${body.base?.patients?.length || 0} 名\n- タグ: ${body.base?.tags?.length || 0} 件\n\n現在のローカル名簿は新しい名簿で置換されます（SOAP・メモ・共有はpid一致で保持）。よろしいですか？`;
+    const msg = `名簿コピーを取込みます\n- 患者: ${body.base?.patients?.length || 0} 名\n- タグ: ${body.base?.tags?.length || 0} 件\n\n現在のローカル名簿は新しい名簿で置換されます（SOAP・メモ・共有はpid一致で保持）。よろしいですか？`;
     if (!confirm(msg)) return;
     applyFullPayload(body);
-    if (status) status.textContent = "フルダンプ取込完了。";
+    // Inherit the sender's 合言葉 so this receiver can also produce copies later if needed
+    if (!settings.rosterPassphrase) {
+      settings.rosterPassphrase = secret;
+    }
+    if (status) status.textContent = "コピー取込完了。";
     closeAdminPanel();
     if (_onApplied) _onApplied();
   } else if (body.kind === "diff") {

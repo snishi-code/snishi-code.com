@@ -84,6 +84,9 @@ function renderToggleIcon(iconEl, on) {
 }
 
 function renderAdminExtras() {
+  const wrap = document.getElementById("rosterPassphraseWrap");
+  // Show passphrase field only when this device is an admin terminal
+  if (wrap) wrap.style.display = (settings.adminEnabled && settings.adminTerminal) ? "" : "none";
   const passInp = document.getElementById("rosterPassphraseInput");
   if (passInp) passInp.value = String(settings.rosterPassphrase || "");
   const idLabel = document.getElementById("rosterIdLabel");
@@ -385,6 +388,7 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
     }
     saveSettings();
     renderAdminToggles();
+    renderAdminExtras();
     renderTagsToggleIcon();
     renderRoomToggleIcon();
     renderTagsList();
@@ -403,9 +407,14 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
       settings.adminImportOnly = false; // mutual exclusivity
       settings.roomEnabled = true;
       settings.tagsEnabled = true;
+      if (!settings.rosterPassphrase) {
+        const phrase = prompt("名簿コピーに使う「合言葉」を設定してください。\n日本語・英語など自由。受信側にも口頭などで共有してください。");
+        if (phrase && phrase.trim()) settings.rosterPassphrase = phrase.trim();
+      }
     }
     saveSettings();
     renderAdminToggles();
+    renderAdminExtras();
     renderRoomToggleIcon();
     renderTagsToggleIcon();
     renderTagsList();
