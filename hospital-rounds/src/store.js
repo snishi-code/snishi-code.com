@@ -1,6 +1,6 @@
 "use strict";
 
-import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS, DEFAULT_TAGS_ENABLED, DEFAULT_ROOM_ENABLED, DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL, clone } from "./constants.js";
+import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS, DEFAULT_TAGS_ENABLED, DEFAULT_ROOM_ENABLED, DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL, DEFAULT_ADMIN_IMPORT_ONLY, clone } from "./constants.js";
 
 // ============================
 // Settings
@@ -21,6 +21,7 @@ export function defaultSettings() {
     roomEnabled: DEFAULT_ROOM_ENABLED,
     adminEnabled: DEFAULT_ADMIN_ENABLED,
     adminTerminal: DEFAULT_ADMIN_TERMINAL,
+    adminImportOnly: DEFAULT_ADMIN_IMPORT_ONLY,
   };
 }
 
@@ -81,6 +82,7 @@ export function loadSettings() {
     if (raw && typeof raw.roomEnabled === "boolean") out.roomEnabled = raw.roomEnabled;
     if (raw && typeof raw.adminEnabled === "boolean") out.adminEnabled = raw.adminEnabled;
     if (raw && typeof raw.adminTerminal === "boolean") out.adminTerminal = raw.adminTerminal;
+    if (raw && typeof raw.adminImportOnly === "boolean") out.adminImportOnly = raw.adminImportOnly;
     return out;
   } catch (e) {
     console.warn("settings load failed:", e);

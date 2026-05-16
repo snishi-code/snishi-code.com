@@ -87,11 +87,13 @@ function renderAdminToggles() {
   const body = document.getElementById("adminBody");
   const adminIcon = document.getElementById("adminToggleIcon");
   const termIcon = document.getElementById("adminTerminalToggleIcon");
+  const importIcon = document.getElementById("adminImportOnlyToggleIcon");
   if (!card) return;
   const on = !!settings.adminEnabled;
   card.classList.toggle("disabled", !on);
   renderToggleIcon(adminIcon, on);
   renderToggleIcon(termIcon, !!settings.adminTerminal);
+  renderToggleIcon(importIcon, !!settings.adminImportOnly);
   if (body) body.style.display = on ? "" : "none";
 }
 
@@ -349,15 +351,14 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
   const adminEnableBtn = document.getElementById("adminEnableBtn");
   if (adminEnableBtn) adminEnableBtn.addEventListener("click", () => {
     if (settings.adminEnabled) {
-      // Disabling
       if (!confirm("管理機能をオフにします。よろしいですか？")) return;
       if (isNonAdminTerminal()) {
         if (!confirm("この端末は非管理端末です。管理端末の保持者に確認してから無効化してください。\n本当にオフにしますか？")) return;
       }
       settings.adminEnabled = false;
       settings.adminTerminal = false;
+      settings.adminImportOnly = false;
     } else {
-      // Enabling
       settings.adminEnabled = true;
     }
     saveSettings();
@@ -372,13 +373,31 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
   if (adminTerminalBtn) adminTerminalBtn.addEventListener("click", () => {
     if (!settings.adminEnabled) { alert("管理機能をONにしてください"); return; }
     if (settings.adminTerminal) {
-      // Turning off admin terminal: also disables admin feature effectively (becomes non-admin)
       if (!confirm("この端末を管理端末から外します。よろしいですか？")) return;
       settings.adminTerminal = false;
     } else {
       if (!confirm("この端末を管理端末にします。管理端末は同じ病棟・チーム内で1台のみにしてください。\nよろしいですか？")) return;
       settings.adminTerminal = true;
-      // Auto-enable room and tags
+      settings.adminImportOnly = false; // mutual exclusivity
+      settings.roomEnabled = true;
+      settings.tagsEnabled = true;
+    }
+    saveSettings();
+    renderAdminToggles();
+    renderRoomToggleIcon();
+    renderTagsToggleIcon();
+    renderTagsList();
+    if (_renderPatientUIFn) _renderPatientUIFn();
+  });
+
+  const adminImportOnlyBtn = document.getElementById("adminImportOnlyBtn");
+  if (adminImportOnlyBtn) adminImportOnlyBtn.addEventListener("click", () => {
+    if (!settings.adminEnabled) { alert("管理機能をONにしてください"); return; }
+    if (settings.adminImportOnly) {
+      settings.adminImportOnly = false;
+    } else {
+      settings.adminImportOnly = true;
+      settings.adminTerminal = false; // mutual exclusivity
       settings.roomEnabled = true;
       settings.tagsEnabled = true;
     }

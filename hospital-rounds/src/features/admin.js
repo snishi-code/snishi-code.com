@@ -13,21 +13,24 @@ const PAGE_HEAD_RE = /==ADMIN\s+(\d+)\/(\d+)==/g;
 
 export function isAdminEnabled() { return !!settings.adminEnabled; }
 export function isAdminTerminal() { return !!settings.adminTerminal; }
-export function isNonAdminTerminal() { return isAdminEnabled() && !isAdminTerminal(); }
+export function isAdminImportOnly() { return !!settings.adminImportOnly; }
+// "Restricted (non-admin) terminal" = admin enabled, but neither admin terminal nor import-only
+export function isNonAdminTerminal() {
+  return isAdminEnabled() && !isAdminTerminal() && !isAdminImportOnly();
+}
 
 export function canEditPatientFields() {
-  // Returns true if room/tags can be edited, and existing names can be changed
   if (!isAdminEnabled()) return true;
-  return isAdminTerminal();
+  if (isAdminTerminal() || isAdminImportOnly()) return true;
+  return false;
 }
 
 export function canFillEmptyName() {
-  // On non-admin terminal, only allow filling empty names
-  return true; // Always allowed (empty → filled)
+  return true;
 }
 
 export function canEditORule(rule) {
-  if (!isAdminEnabled() || isAdminTerminal()) return true;
+  if (!isAdminEnabled() || isAdminTerminal() || isAdminImportOnly()) return true;
   return !rule?.fromAdmin;
 }
 
@@ -326,6 +329,7 @@ export function applyAdminImport(parsed) {
 // ============================
 
 export function findIncompleteAdminPatients() {
+  // Validation only applies to admin terminal (not import-only mode)
   if (!isAdminTerminal()) return [];
   const list = [];
   for (let i = 0; i < appState.patients.length; i++) {
