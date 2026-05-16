@@ -1,18 +1,15 @@
 #!/bin/bash
 set -e
 
-mkdir -p dist/medical dist/personal
-
-# サイトページをコピー
-cp index.html dist/index.html
-cp medical/index.html dist/medical/index.html
-cp personal/index.html dist/personal/index.html
-
-# hospital-rounds をビルドして dist/hospital-rounds/ に配置
+# hospital-rounds をビルド（リポジトリルートに成果物を直接配置）
 cd hospital-rounds
 npm install
 npm run build
 cd ..
-cp -r hospital-rounds/dist/. dist/hospital-rounds/
 
-echo "Build complete → dist/"
+# ソースを削除してビルド成果物で置き換え
+cp -r hospital-rounds/dist _hr_built
+rm -rf hospital-rounds
+mv _hr_built hospital-rounds
+
+echo "Build complete."
