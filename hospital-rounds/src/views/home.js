@@ -3,7 +3,8 @@
 import { appState } from "../store.js";
 import { STATUS } from "../constants.js";
 import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
-import { isTagsEnabled, getAllTags, makeTagPicker } from "../features/tags.js";
+import { isTagsEnabled, makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
+import { isRoomEnabled, formatPatientLabel } from "../features/room.js";
 
 export function statusClass(status) {
   if (status === STATUS.YELLOW) return "status-yellow";
@@ -25,35 +26,28 @@ export function updateCountChip() {
   countChip.textContent = "緑: " + countGreen() + " / " + appState.patients.length;
 }
 
-let homeTagFilter = [];
-
-function patientHasAllTags(p, tags) {
-  if (!tags.length) return true;
-  const pt = Array.isArray(p.tags) ? p.tags : [];
-  return tags.every(t => pt.includes(t));
-}
-
 function renderHomeTagFilter(onChange) {
   const slot = document.getElementById("homeTagFilterSlot");
   if (!slot) return;
   slot.textContent = "";
   if (!isTagsEnabled()) {
     slot.style.display = "none";
-    homeTagFilter = [];
     return;
   }
   slot.style.display = "";
-  const picker = makeTagPicker({
-    getSelected: () => homeTagFilter.slice(),
-    setSelected: (tags) => { homeTagFilter = tags.slice(); },
-    allTags: getAllTags,
-    onChange: () => { if (onChange) onChange(); },
-  });
+  const picker = makeSharedTagFilterPicker(onChange);
   slot.appendChild(picker);
+}
+
+function renderHomeSortBtn() {
+  const btn = document.getElementById("homeRoomSortBtn");
+  if (!btn) return;
+  btn.style.display = isRoomEnabled() ? "" : "none";
 }
 
 export function renderHome(onPatientClick) {
   renderHomeTagFilter(() => renderHome(onPatientClick));
+  renderHomeSortBtn();
   const homeGrid = document.getElementById("homeGrid");
   if (!homeGrid) return;
   homeGrid.textContent = "";
@@ -61,11 +55,11 @@ export function renderHome(onPatientClick) {
   const tagsEnabled = isTagsEnabled();
   for (let i = 1; i <= appState.patients.length; i++) {
     const p = appState.patients[i - 1];
-    if (tagsEnabled && homeTagFilter.length && !patientHasAllTags(p, homeTagFilter)) continue;
+    if (tagsEnabled && !patientMatchesSharedFilter(p)) continue;
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "patientBtn " + statusClass(p.status);
-    const displayName = p?.name ? p.name : String(i);
+    const displayName = formatPatientLabel(p, String(i));
     btn.textContent = displayName;
     btn.setAttribute("aria-label", displayName);
     if (onPatientClick) {

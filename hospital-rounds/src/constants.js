@@ -21,6 +21,7 @@ export const DEFAULT_O_RULES = [
 
 export const DEFAULT_TAGS = [];
 export const DEFAULT_TAGS_ENABLED = false;
+export const DEFAULT_ROOM_ENABLED = false;
 
 export const DEFAULT_CLEAR_TARGETS = {
   memo: false,

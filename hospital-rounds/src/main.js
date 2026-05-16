@@ -21,6 +21,7 @@ import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./fea
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initImportExport } from "./features/import-export.js";
 import { initSharedQr, initDocsQr, renderDocsQr, refreshSharedQrIfActive, setSharedQrSelectionChangeHandler } from "./features/qr-shared.js";
+import { sortPatientsByRoom } from "./features/room.js";
 
 // ============================
 // Wrappers that capture current context
@@ -257,6 +258,28 @@ setSharedQrSelectionChangeHandler(() => {
   const sharedView = document.getElementById("sharedView");
   if (sharedView && sharedView.classList.contains("active")) doRenderShared();
 });
+
+function doSortByRoom() {
+  if (!confirm("部屋番号順に並び替えますか？")) return;
+  const cur = appState.patients[selectedNo - 1];
+  sortPatientsByRoom();
+  if (cur) {
+    const idx = appState.patients.indexOf(cur);
+    if (idx >= 0) setSelectedNo(idx + 1);
+  }
+  doRenderHome();
+  doRenderDetail();
+  const viewId = document.querySelector(".view.active")?.id;
+  if (viewId === "memoView") doRenderMemo();
+  else if (viewId === "sharedView") doRenderShared();
+}
+
+const homeRoomSortBtn = document.getElementById("homeRoomSortBtn");
+const memoRoomSortBtn = document.getElementById("memoRoomSortBtn");
+const sharedRoomSortBtn = document.getElementById("sharedRoomSortBtn");
+if (homeRoomSortBtn) homeRoomSortBtn.addEventListener("click", doSortByRoom);
+if (memoRoomSortBtn) memoRoomSortBtn.addEventListener("click", doSortByRoom);
+if (sharedRoomSortBtn) sharedRoomSortBtn.addEventListener("click", doSortByRoom);
 
 // ============================
 // Shared paste area toggle

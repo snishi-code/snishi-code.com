@@ -6,6 +6,7 @@ import { buildTabPayload } from "../payload.js";
 import { utf8ByteLength } from "../payload.js";
 import { qrcodegen } from "../libs/qrcodegen.js";
 import { isTagsEnabled, makePatientTagPicker } from "../features/tags.js";
+import { isRoomEnabled, makeRoomInput } from "../features/room.js";
 
 // ============================
 // QR generation helpers
@@ -251,6 +252,16 @@ export function renderDetail(syncDetailMemoDisplay) {
   if (detailTitle) detailTitle.value = displayName;
   if (syncDetailMemoDisplay) syncDetailMemoDisplay();
   setSelectedStatusButtons(p.status);
+
+  const detailRoomSlot = document.getElementById("detailRoomSlot");
+  if (detailRoomSlot) {
+    detailRoomSlot.textContent = "";
+    if (isRoomEnabled()) {
+      const roomInp = makeRoomInput(selectedNo - 1);
+      roomInp.classList.add("detailRoomInput");
+      detailRoomSlot.appendChild(roomInp);
+    }
+  }
 
   const detailDoctorSlot = document.getElementById("detailDoctorSlot");
   if (detailDoctorSlot) {

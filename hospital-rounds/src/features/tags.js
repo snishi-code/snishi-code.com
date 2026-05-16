@@ -14,6 +14,29 @@ export function getAllTags() {
     : [];
 }
 
+// ============================
+// Shared tag filter (home/memo/shared)
+// ============================
+
+let _sharedTagFilter = [];
+
+export function getSharedTagFilter() { return _sharedTagFilter.slice(); }
+export function setSharedTagFilter(tags) { _sharedTagFilter = tags.slice(); }
+export function patientMatchesSharedFilter(p) {
+  if (!_sharedTagFilter.length) return true;
+  const pt = Array.isArray(p.tags) ? p.tags : [];
+  return _sharedTagFilter.every(t => pt.includes(t));
+}
+
+export function makeSharedTagFilterPicker(onChange) {
+  return makeTagPicker({
+    getSelected: getSharedTagFilter,
+    setSelected: setSharedTagFilter,
+    allTags: getAllTags,
+    onChange,
+  });
+}
+
 export function getPatientTags(patientIndex) {
   const p = appState.patients[patientIndex];
   if (!p) return [];

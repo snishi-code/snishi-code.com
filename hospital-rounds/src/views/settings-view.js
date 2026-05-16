@@ -72,6 +72,19 @@ function renderClearTargets() {
   }
 }
 
+function renderRoomToggleIcon() {
+  const card = document.getElementById("roomCard");
+  const icon = document.getElementById("roomToggleIcon");
+  if (!card || !icon) return;
+  const on = !!settings.roomEnabled;
+  card.classList.toggle("disabled", !on);
+  if (on) {
+    icon.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5" fill="${getComputedStyle(document.documentElement).getPropertyValue('--status-green-bg') || '#34d399'}" stroke="currentColor"/><circle cx="16" cy="12" r="3" fill="#ffffff" stroke="currentColor"/>`;
+  } else {
+    icon.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/>`;
+  }
+}
+
 function renderTagsToggleIcon() {
   const card = document.getElementById("tagsCard");
   const icon = document.getElementById("tagsToggleIcon");
@@ -144,6 +157,7 @@ export function renderSettings() {
   if (setPDefault) setPDefault.value = String(settings?.defaults?.p ?? "");
 
   renderClearTargets();
+  renderRoomToggleIcon();
   renderTagsToggleIcon();
   renderTagsList();
 
@@ -284,6 +298,14 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
     renderSettings();
     if (_renderDetailFn) _renderDetailFn();
     if (_renderQrFn) _renderQrFn();
+  });
+
+  const roomEnableBtn = document.getElementById("roomEnableBtn");
+  if (roomEnableBtn) roomEnableBtn.addEventListener("click", () => {
+    settings.roomEnabled = !settings.roomEnabled;
+    saveSettings();
+    renderRoomToggleIcon();
+    if (_renderPatientUIFn) _renderPatientUIFn();
   });
 
   if (tagsEnableBtn) tagsEnableBtn.addEventListener("click", () => {

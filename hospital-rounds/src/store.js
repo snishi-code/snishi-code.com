@@ -1,6 +1,6 @@
 "use strict";
 
-import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS, DEFAULT_TAGS_ENABLED, clone } from "./constants.js";
+import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS, DEFAULT_TAGS_ENABLED, DEFAULT_ROOM_ENABLED, clone } from "./constants.js";
 
 // ============================
 // Settings
@@ -18,6 +18,7 @@ export function defaultSettings() {
     clearTargets: clone(DEFAULT_CLEAR_TARGETS),
     tagsEnabled: DEFAULT_TAGS_ENABLED,
     tags: clone(DEFAULT_TAGS),
+    roomEnabled: DEFAULT_ROOM_ENABLED,
   };
 }
 
@@ -74,6 +75,7 @@ export function loadSettings() {
     } else if (raw && Array.isArray(raw.doctors)) {
       out.tags = raw.doctors.filter(d => typeof d === "string").map(d => String(d));
     }
+    if (raw && typeof raw.roomEnabled === "boolean") out.roomEnabled = raw.roomEnabled;
     return out;
   } catch (e) {
     console.warn("settings load failed:", e);
@@ -127,6 +129,7 @@ export function makeDefaultPatient() {
   return {
     status: STATUS.NONE,
     name: "",
+    room: "",
     tags: [],
     s: "",
     memo: "",
@@ -188,6 +191,7 @@ export function normalizeLoaded(raw) {
     out.patients[i] = {
       status: (r && typeof r.status === "string" && [STATUS.NONE, STATUS.YELLOW, STATUS.GREEN, STATUS.GRAY].includes(r.status)) ? r.status : d.status,
       name: (r && typeof r.name === "string") ? r.name : d.name,
+      room: (r && typeof r.room === "string") ? r.room : (r && typeof r.room === "number" ? String(r.room) : d.room),
       tags: (r && Array.isArray(r.tags))
         ? r.tags.filter(t => typeof t === "string" && t.trim()).map(t => String(t))
         : (r && typeof r.doctor === "string" && r.doctor.trim()) ? [r.doctor.trim()] : [],
