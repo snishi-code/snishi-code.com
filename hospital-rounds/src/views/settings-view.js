@@ -1,8 +1,9 @@
 "use strict";
 
-import { settings, saveSettings, ensurePatientsHaveAllOKeys } from "../store.js";
+import { settings, appState, saveSettings, ensurePatientsHaveAllOKeys } from "../store.js";
 import { DEFAULT_O_RULES, DEFAULT_TAGS, clone } from "../constants.js";
 import { canEditORule, canDeleteORule, isAdminEnabled, isAdminTerminal, isNonAdminTerminal } from "../features/admin.js";
+import { recordOp } from "../features/roster.js";
 
 const STATUS_SWATCHES = { statusYellow: "#fbbf24", statusGreen: "#34d399", statusGray: "#6b7280", statusBlue: "#2563eb" };
 
@@ -82,6 +83,13 @@ function renderToggleIcon(iconEl, on) {
   }
 }
 
+function renderAdminExtras() {
+  const passInp = document.getElementById("rosterPassphraseInput");
+  if (passInp) passInp.value = String(settings.rosterPassphrase || "");
+  const idLabel = document.getElementById("rosterIdLabel");
+  if (idLabel) idLabel.textContent = appState.rosterId ? appState.rosterId.slice(0, 18) : "—";
+}
+
 function renderAdminToggles() {
   const card = document.getElementById("adminCard");
   const body = document.getElementById("adminBody");
@@ -142,8 +150,19 @@ function renderTagsList() {
     inp.className = "settingsInp";
     inp.value = String(settings.tags[idx] ?? "");
     inp.placeholder = "タグ名";
+    let prev = String(settings.tags[idx] ?? "");
     inp.addEventListener("input", () => {
-      settings.tags[idx] = String(inp.value ?? "");
+      const next = String(inp.value ?? "");
+      const oldVal = prev;
+      settings.tags[idx] = next;
+      // Record tag.rename / tag.add / tag.remove
+      if (oldVal && oldVal !== next) {
+        if (next.trim()) recordOp({ type: "tag.rename", from: oldVal, to: next });
+        else recordOp({ type: "tag.remove", name: oldVal });
+      } else if (!oldVal && next.trim()) {
+        recordOp({ type: "tag.add", name: next });
+      }
+      prev = next;
       saveSettings();
       if (_renderPatientUIFn) _renderPatientUIFn();
     });
@@ -158,7 +177,9 @@ function renderTagsList() {
     del.addEventListener("click", () => {
       const ok = confirm("このタグを削除します（患者データ側の既存値は残ります）。よろしいですか？");
       if (!ok) return;
+      const oldName = settings.tags[idx];
       settings.tags.splice(idx, 1);
+      if (oldName) recordOp({ type: "tag.remove", name: oldName });
       saveSettings();
       renderTagsList();
       if (_renderPatientUIFn) _renderPatientUIFn();
@@ -183,6 +204,7 @@ export function renderSettings() {
 
   renderClearTargets();
   renderAdminToggles();
+  renderAdminExtras();
   renderRoomToggleIcon();
   renderTagsToggleIcon();
   renderTagsList();
@@ -388,6 +410,12 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
     renderTagsToggleIcon();
     renderTagsList();
     if (_renderPatientUIFn) _renderPatientUIFn();
+  });
+
+  const rosterPassphraseInput = document.getElementById("rosterPassphraseInput");
+  if (rosterPassphraseInput) rosterPassphraseInput.addEventListener("input", () => {
+    settings.rosterPassphrase = String(rosterPassphraseInput.value ?? "");
+    saveSettings();
   });
 
   const adminImportOnlyBtn = document.getElementById("adminImportOnlyBtn");

@@ -24,6 +24,7 @@ import { initSharedQr, initDocsQr, renderDocsQr, refreshSharedQrIfActive, setSha
 import { sortPatientsByRoom } from "./features/room.js";
 import { initAdminUI, refreshAdminAvailability, setAdminAppliedHandler } from "./features/admin-ui.js";
 import { isAdminTerminal, isNonAdminTerminal, isAdminEnabled, findIncompleteAdminPatients, clearIncompleteAdminPatients } from "./features/admin.js";
+import { ensureRoster, flushCommit } from "./features/roster.js";
 
 // ============================
 // Wrappers that capture current context
@@ -399,6 +400,11 @@ function updateAppTitle(val) {
 // ============================
 
 setAppState(load());
+ensureRoster();
+
+// Flush any pending op-batch when leaving the app or backgrounding
+window.addEventListener("beforeunload", () => { try { flushCommit(); } catch (_) {} });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") { try { flushCommit(); } catch (_) {} } });
 
 const appTitleInput = document.getElementById("appTitleInput");
 if (appTitleInput) {

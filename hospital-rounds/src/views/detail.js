@@ -8,6 +8,7 @@ import { qrcodegen } from "../libs/qrcodegen.js";
 import { isTagsEnabled, makePatientTagPicker } from "../features/tags.js";
 import { isRoomEnabled, makeRoomInput } from "../features/room.js";
 import { isNonAdminTerminal } from "../features/admin.js";
+import { recordOp } from "../features/roster.js";
 
 // ============================
 // QR generation helpers
@@ -363,8 +364,13 @@ export function initDetailEvents(renderHomeFn, syncMemoFn) {
 
   if (detailTitle) {
     detailTitle.addEventListener("input", () => {
-      if (!appState.patients[selectedNo - 1]) return;
-      appState.patients[selectedNo - 1].name = detailTitle.value;
+      const p = appState.patients[selectedNo - 1];
+      if (!p) return;
+      const next = detailTitle.value;
+      if (p.name !== next) {
+        p.name = next;
+        if (p.pid) recordOp({ type: "update", pid: p.pid, field: "name", value: next });
+      }
       markUpdated(selectedNo);
       scheduleSave();
       if (renderHomeFn) renderHomeFn();

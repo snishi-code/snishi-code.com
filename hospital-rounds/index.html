@@ -113,25 +113,17 @@
         <div class="cardHead">
           <div class="label">名簿</div>
           <div class="segRow" style="gap:6px;">
-            <button class="segBtn selected" id="adminModeQrBtn" type="button">QR出力</button>
-            <button class="segBtn" id="adminModePasteBtn" type="button">取込</button>
+            <button class="segBtn" id="adminModeDiffBtn" type="button">差分QR</button>
+            <button class="segBtn" id="adminModeFullBtn" type="button">フルダンプ</button>
+            <button class="segBtn selected" id="adminModePasteBtn" type="button">取込</button>
           </div>
         </div>
 
         <div id="adminPanelQrBody">
           <div class="cardBody">
-            <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
               <span class="qrHint" id="adminQrPageMeta"></span>
-              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-left:auto;">
-                <input type="checkbox" id="adminIncludeMemo" />
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                <span>メモ</span>
-              </label>
-              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-                <input type="checkbox" id="adminIncludeShared" />
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                <span>共有</span>
-              </label>
+              <span class="qrHint" id="adminQrStatus" style="margin-left:auto;"></span>
             </div>
             <div class="qrHint">
               <div class="mono" id="adminQrTextPreview" style="word-break:break-all;white-space:pre-wrap;font-size:11px;"></div>
@@ -345,6 +337,13 @@
             </button>
           </div>
           <div class="qrHint" style="margin-top:8px;">「管理端末」は名簿の編集・配布が可能（必須項目チェックあり）。「取込のみ」は編集制限なしで取込・出力が可能。</div>
+
+          <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px;">
+            <label style="display:block;margin-bottom:4px;">名簿パスフレーズ</label>
+            <input type="password" id="rosterPassphraseInput" class="settingsInp" autocomplete="off" placeholder="同じ病棟・チームで共有する文字列" />
+            <div class="qrHint" style="margin-top:6px;">名簿QRの暗号化に使用します。同じパスフレーズを設定した端末同士でしか名簿を取込めません。</div>
+            <div class="qrHint" style="margin-top:6px;">名簿ID: <span class="mono" id="rosterIdLabel" style="font-size:11px;">—</span></div>
+          </div>
         </div>
       </div>
 

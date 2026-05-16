@@ -26,6 +26,10 @@ export const DEFAULT_ADMIN_ENABLED = false;
 export const DEFAULT_ADMIN_TERMINAL = false;
 export const DEFAULT_ADMIN_IMPORT_ONLY = false;
 
+// Roster diff sync (admin feature)
+export const ROSTER_DIFF_WINDOW_DAYS = 30;
+export const DEFAULT_ROSTER_PASSPHRASE = "";
+
 export const DEFAULT_CLEAR_TARGETS = {
   memo: false,
   s: true,

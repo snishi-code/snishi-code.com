@@ -6,6 +6,7 @@ import { isTagsEnabled, makePatientTagPicker, makeSharedTagFilterPicker, patient
 import { isRoomEnabled, makeRoomInput, formatPatientLabel } from "../features/room.js";
 import { isNonAdminTerminal } from "../features/admin.js";
 import { isSharedQrActive, isPatientSelected, toggleSharedQrPatient } from "../features/qr-shared.js";
+import { recordOp } from "../features/roster.js";
 import { statusClass } from "./home.js";
 
 let _editMode = false;
@@ -64,7 +65,12 @@ export function renderSharedScreen(renderHomeFn, opts, navigateToPatientFn) {
       numInp.value = String(appState.patients[i - 1]?.name ?? "");
       bindLongPressAndDrag(numInp, () => appState.patients.indexOf(p), onPatientDrop, openActionMenu);
       numInp.addEventListener("input", () => {
-        appState.patients[i - 1].name = String(numInp.value ?? "");
+        const next = String(numInp.value ?? "");
+        const cur = appState.patients[i - 1];
+        if (cur.name !== next) {
+          cur.name = next;
+          if (cur.pid) recordOp({ type: "update", pid: cur.pid, field: "name", value: next });
+        }
         markUpdated(appState.patients.indexOf(p) + 1);
         scheduleSave();
         if (renderHomeFn) renderHomeFn();

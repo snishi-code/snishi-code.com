@@ -2,12 +2,19 @@
 
 import { qrcodegen } from "../libs/qrcodegen.js";
 import { utf8ByteLength } from "../payload.js";
-import { isAdminEnabled, isAdminTerminal, isAdminImportOnly, buildAdminPages, parseAdminText, applyAdminImport } from "./admin.js";
+import { settings } from "../store.js";
+import {
+  isAdminEnabled, isAdminTerminal, isAdminImportOnly,
+  buildFullPages, buildDiffPages,
+  parseRosterPages, decodeRosterPayload, applyFullPayload, applyDiffPayload,
+} from "./admin.js";
+import { flushCommit } from "./roster.js";
 
 let _pages = [];
 let _pageIndex = 0;
+let _mode = "qr-diff"; // "qr-full" | "qr-diff" | "paste"
 let _onApplied = null;
-let _mode = "qr"; // "qr" | "paste"
+let _qrSource = ""; // "full" or "diff" - which is currently rendered
 
 export function setAdminAppliedHandler(fn) { _onApplied = fn; }
 
@@ -53,35 +60,59 @@ function renderPage() {
   const nextBtn = document.getElementById("adminQrNextBtn");
   if (!_pages.length) {
     if (meta) meta.textContent = "";
-    if (preview) preview.textContent = "（名簿データなし）";
+    if (preview) preview.textContent = "（パスフレーズを入力してください）";
     if (prevBtn) prevBtn.disabled = true;
     if (nextBtn) nextBtn.disabled = true;
+    const canvas = document.getElementById("adminQrCanvas");
+    if (canvas) { canvas.width = 1; canvas.height = 1; canvas.style.width = "0"; }
     return;
   }
   const i = Math.max(0, Math.min(_pageIndex, _pages.length - 1));
   _pageIndex = i;
   const text = _pages[i];
   const bytes = utf8ByteLength(text);
-  if (meta) meta.textContent = `(${i + 1}/${_pages.length}) ${bytes} bytes`;
+  const label = _qrSource === "full" ? "FULL" : "DIFF";
+  if (meta) meta.textContent = `[${label}] (${i + 1}/${_pages.length}) ${bytes} bytes`;
   if (prevBtn) prevBtn.disabled = (i === 0);
   if (nextBtn) nextBtn.disabled = (i === _pages.length - 1);
   if (preview) preview.textContent = text;
   drawCanvas(text);
 }
 
-function regenerate() {
-  const memo = !!document.getElementById("adminIncludeMemo")?.checked;
-  const shared = !!document.getElementById("adminIncludeShared")?.checked;
-  _pages = buildAdminPages(memo, shared);
-  _pageIndex = 0;
-  renderPage();
+async function regenerate() {
+  const status = document.getElementById("adminQrStatus");
+  const passphrase = settings.rosterPassphrase || "";
+  if (!passphrase) {
+    _pages = [];
+    if (status) status.textContent = "⚠ 設定でパスフレーズを設定してください。";
+    renderPage();
+    return;
+  }
+  if (status) status.textContent = "";
+  try {
+    if (_mode === "qr-full") {
+      flushCommit();
+      const r = await buildFullPages(passphrase);
+      _pages = r.pages;
+      _qrSource = "full";
+    } else if (_mode === "qr-diff") {
+      flushCommit();
+      const r = await buildDiffPages(passphrase);
+      _pages = r.pages;
+      _qrSource = "diff";
+      if (status) status.textContent = `直近${30}日の差分: ${r.count}件のコミット`;
+    }
+    _pageIndex = 0;
+    renderPage();
+  } catch (e) {
+    if (status) status.textContent = "エラー: " + (e.message || e);
+  }
 }
 
 function isPanelActive() {
   const wrap = document.getElementById("adminPanelWrap");
   return !!(wrap && wrap.classList.contains("active"));
 }
-
 export function isAdminPanelActive() { return isPanelActive(); }
 
 export function closeAdminPanel() {
@@ -92,26 +123,25 @@ export function closeAdminPanel() {
 function applyModeUI() {
   const qrBody = document.getElementById("adminPanelQrBody");
   const pasteBody = document.getElementById("adminPanelPasteBody");
-  const qrBtn = document.getElementById("adminModeQrBtn");
+  const fullBtn = document.getElementById("adminModeFullBtn");
+  const diffBtn = document.getElementById("adminModeDiffBtn");
   const pasteBtn = document.getElementById("adminModePasteBtn");
-  const showQr = _mode === "qr";
+  const showQr = _mode === "qr-full" || _mode === "qr-diff";
   if (qrBody) qrBody.style.display = showQr ? "" : "none";
   if (pasteBody) pasteBody.style.display = showQr ? "none" : "";
-  if (qrBtn) qrBtn.classList.toggle("selected", showQr);
-  if (pasteBtn) pasteBtn.classList.toggle("selected", !showQr);
+  if (fullBtn) fullBtn.classList.toggle("selected", _mode === "qr-full");
+  if (diffBtn) diffBtn.classList.toggle("selected", _mode === "qr-diff");
+  if (pasteBtn) pasteBtn.classList.toggle("selected", _mode === "paste");
   if (showQr) regenerate();
 }
 
 function pickDefaultMode() {
-  if (isAdminTerminal()) return "qr";
+  if (isAdminTerminal() || isAdminImportOnly()) return "qr-diff";
   return "paste";
 }
 
 export function toggleAdminPanel() {
-  if (isPanelActive()) {
-    closeAdminPanel();
-    return;
-  }
+  if (isPanelActive()) { closeAdminPanel(); return; }
   if (!isAdminEnabled()) return;
   _mode = pickDefaultMode();
   const wrap = document.getElementById("adminPanelWrap");
@@ -127,51 +157,63 @@ export function refreshAdminAvailability() {
   if (!isAdminEnabled()) closeAdminPanel();
 }
 
+async function handleImport() {
+  const area = document.getElementById("adminImportArea");
+  const status = document.getElementById("adminImportStatus");
+  const text = area ? area.value : "";
+  const passphrase = settings.rosterPassphrase || "";
+  if (!passphrase) {
+    if (status) status.textContent = "⚠ 設定でパスフレーズを入力してから取り込んでください。";
+    return;
+  }
+  const parsed = parseRosterPages(text);
+  if (!parsed.ok) { if (status) status.textContent = "エラー: " + parsed.error; return; }
+  const decoded = await decodeRosterPayload(parsed, passphrase);
+  if (!decoded.ok) { if (status) status.textContent = "エラー: " + decoded.error; return; }
+  const body = decoded.body;
+  if (body.kind === "full") {
+    const msg = `名簿フルダンプを取込みます\n- 患者: ${body.base?.patients?.length || 0} 名\n- タグ: ${body.base?.tags?.length || 0} 件\n\n現在のローカル名簿は新しい名簿で置換されます（SOAP・メモ・共有はpid一致で保持）。よろしいですか？`;
+    if (!confirm(msg)) return;
+    applyFullPayload(body);
+    if (status) status.textContent = "フルダンプ取込完了。";
+    closeAdminPanel();
+    if (_onApplied) _onApplied();
+  } else if (body.kind === "diff") {
+    const result = applyDiffPayload(body);
+    if (!result.ok) { if (status) status.textContent = "エラー: " + result.error; return; }
+    if (status) status.textContent = `差分取込完了（適用 ${result.applied} 件）`;
+    closeAdminPanel();
+    if (_onApplied) _onApplied();
+  } else {
+    if (status) status.textContent = "未知のペイロード種別: " + body.kind;
+  }
+}
+
 export function initAdminUI() {
   refreshAdminAvailability();
 
   const btn = document.getElementById("sharedAdminBtn");
   if (btn) btn.addEventListener("click", toggleAdminPanel);
 
-  const qrModeBtn = document.getElementById("adminModeQrBtn");
-  const pasteModeBtn = document.getElementById("adminModePasteBtn");
-  if (qrModeBtn) qrModeBtn.addEventListener("click", () => { _mode = "qr"; applyModeUI(); });
-  if (pasteModeBtn) pasteModeBtn.addEventListener("click", () => { _mode = "paste"; applyModeUI(); });
+  const fullBtn = document.getElementById("adminModeFullBtn");
+  const diffBtn = document.getElementById("adminModeDiffBtn");
+  const pasteBtn = document.getElementById("adminModePasteBtn");
+  if (fullBtn) fullBtn.addEventListener("click", () => { _mode = "qr-full"; applyModeUI(); });
+  if (diffBtn) diffBtn.addEventListener("click", () => { _mode = "qr-diff"; applyModeUI(); });
+  if (pasteBtn) pasteBtn.addEventListener("click", () => { _mode = "paste"; applyModeUI(); });
 
   const prev = document.getElementById("adminQrPrevBtn");
   const next = document.getElementById("adminQrNextBtn");
   if (prev) prev.addEventListener("click", () => { if (_pageIndex > 0) { _pageIndex--; renderPage(); } });
   if (next) next.addEventListener("click", () => { if (_pageIndex < _pages.length - 1) { _pageIndex++; renderPage(); } });
 
-  const incMemo = document.getElementById("adminIncludeMemo");
-  const incShared = document.getElementById("adminIncludeShared");
-  if (incMemo) incMemo.addEventListener("change", regenerate);
-  if (incShared) incShared.addEventListener("change", regenerate);
-
   const applyBtn = document.getElementById("adminImportApplyBtn");
   const clearBtn = document.getElementById("adminImportClearBtn");
-  const area = document.getElementById("adminImportArea");
-  const status = document.getElementById("adminImportStatus");
-
   if (clearBtn) clearBtn.addEventListener("click", () => {
+    const area = document.getElementById("adminImportArea");
+    const status = document.getElementById("adminImportStatus");
     if (area) area.value = "";
     if (status) status.textContent = "";
   });
-
-  if (applyBtn) applyBtn.addEventListener("click", () => {
-    const text = area ? area.value : "";
-    const parsed = parseAdminText(text);
-    if (!parsed.ok) {
-      if (status) status.textContent = "エラー: " + parsed.error;
-      return;
-    }
-    const data = parsed.data;
-    const msg = `取込内容を反映します:\n- タグ: ${data.tags.length} 件\n- O項目: ${data.oRules.length} 件\n- 患者: ${data.patients.length} 件\n\nよろしいですか？`;
-    if (!confirm(msg)) return;
-    applyAdminImport(data);
-    if (area) area.value = "";
-    if (status) status.textContent = "取込完了。";
-    closeAdminPanel();
-    if (_onApplied) _onApplied();
-  });
+  if (applyBtn) applyBtn.addEventListener("click", handleImport);
 }

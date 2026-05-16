@@ -2,6 +2,7 @@
 
 import { appState, settings, makeDefaultPatient, scheduleSave, ensurePatientsHaveAllOKeys } from "../store.js";
 import { isNonAdminTerminal } from "./admin.js";
+import { recordOp } from "./roster.js";
 
 // Callback registered by main.js to re-render the current view after data changes
 let _onDataChange = null;
@@ -199,6 +200,7 @@ function endCustomDrag(onDrop) {
 export function onPatientDrop(fromIdx, toIdx) {
   const item = appState.patients.splice(fromIdx, 1)[0];
   appState.patients.splice(toIdx, 0, item);
+  if (item && item.pid) recordOp({ type: "move", pid: item.pid, to: toIdx });
   finishDataChange();
 }
 
@@ -229,7 +231,9 @@ export function closeActionMenu() {
 export function insertPatients(atIdx, count) {
   const newItems = [];
   for (let i = 0; i < count; i++) {
-    newItems.push(makeDefaultPatient());
+    const p = makeDefaultPatient();
+    newItems.push(p);
+    recordOp({ type: "add", at: atIdx + i, patient: { pid: p.pid, name: "", room: "", tags: [] } });
   }
   appState.patients.splice(atIdx, 0, ...newItems);
   finishDataChange();
@@ -258,9 +262,13 @@ export function initActionMenu() {
   if (deleteBtn) deleteBtn.addEventListener("click", () => {
     if (targetActionIdx < 0) return;
     if (!confirm("この患者データを削除します。よろしいですか？")) return;
+    const victim = appState.patients[targetActionIdx];
+    if (victim && victim.pid) recordOp({ type: "delete", pid: victim.pid });
     appState.patients.splice(targetActionIdx, 1);
     if (appState.patients.length === 0) {
-      appState.patients.push(makeDefaultPatient());
+      const p = makeDefaultPatient();
+      recordOp({ type: "add", at: 0, patient: { pid: p.pid, name: "", room: "", tags: [] } });
+      appState.patients.push(p);
     }
     finishDataChange();
     closeActionMenu();

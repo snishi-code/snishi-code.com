@@ -1,6 +1,7 @@
 "use strict";
 
 import { appState, settings, markUpdated, scheduleSave, saveNow } from "../store.js";
+import { recordOp } from "./roster.js";
 
 export function isRoomEnabled() {
   return !!settings.roomEnabled;
@@ -26,8 +27,12 @@ export function makeRoomInput(patientIndex, onChange) {
   inp.addEventListener("input", () => {
     const cleaned = sanitizeRoomInput(inp.value);
     if (cleaned !== inp.value) inp.value = cleaned;
-    if (!appState.patients[patientIndex]) return;
-    appState.patients[patientIndex].room = cleaned;
+    const p = appState.patients[patientIndex];
+    if (!p) return;
+    if (p.room !== cleaned) {
+      p.room = cleaned;
+      if (p.pid) recordOp({ type: "update", pid: p.pid, field: "room", value: cleaned });
+    }
     markUpdated(patientIndex + 1);
     scheduleSave();
     if (onChange) onChange();
@@ -41,8 +46,10 @@ export function formatPatientLabel(p, fallback) {
   return room ? `${room} ${name}` : name;
 }
 
-// Sort patients by room number ascending; empty rooms go last
+// Sort patients by room number ascending; empty rooms go last.
+// Records corresponding `move` ops so other terminals can replay the reorder.
 export function sortPatientsByRoom() {
+  const before = appState.patients.slice();
   appState.patients.sort((a, b) => {
     const ar = String(a.room ?? "").trim();
     const br = String(b.room ?? "").trim();
@@ -56,5 +63,12 @@ export function sortPatientsByRoom() {
     if (br) return 1;
     return 0;
   });
+  // Record moves only for positions that changed
+  for (let i = 0; i < appState.patients.length; i++) {
+    const p = appState.patients[i];
+    if (before[i] !== p && p.pid) {
+      recordOp({ type: "move", pid: p.pid, to: i });
+    }
+  }
   saveNow();
 }
