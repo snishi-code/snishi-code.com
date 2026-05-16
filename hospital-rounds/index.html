@@ -94,6 +94,38 @@
           </button>
         </div>
       </div>
+      <div class="card qrWrap" id="sharedQrWrap">
+        <div class="cardHead">
+          <div class="label">共有QR</div>
+          <div class="qrHint"><span class="mono" id="sharedQrPageMeta"></span></div>
+        </div>
+        <div class="cardBody">
+          <div id="sharedQrDoctorFilter" style="display:none;margin-bottom:10px;">
+            <label style="display:block;margin-bottom:4px;">主治医</label>
+            <select id="sharedQrDoctorSelect" class="settingsInp"></select>
+          </div>
+          <div class="qrHint">
+            <div class="mono" id="sharedQrTextPreview" style="margin-top:6px;word-break:break-all;white-space:pre-wrap"></div>
+          </div>
+        </div>
+        <div
+          style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border-top:1px solid var(--line);background:#fafafa;flex-wrap:wrap">
+          <div class="qrHint">複数QRの場合は順番に読み取ってください。</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="secondary" id="sharedQrPrevBtn" type="button" title="前" aria-label="前">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button class="secondary" id="sharedQrNextBtn" type="button" title="次" aria-label="次">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <canvas id="sharedQrCanvas" width="800" height="800"></canvas>
+        <div class="cardBody">
+          <div class="qrHint" style="margin-bottom:8px;">含める患者をタップで選択</div>
+          <div class="grid" id="sharedQrPatientGrid"></div>
+        </div>
+      </div>
       <div class="memoScroll" id="sharedListHost"></div>
       <div class="card" id="sharedPasteCard" style="margin-top: 14px;">
         <div class="cardHead" id="sharedPasteToggle" style="cursor:pointer;user-select:none;">
@@ -108,39 +140,7 @@
       </div>
     </section>
 
-    <!-- Shared QR view -->
-    <section class="view" id="sharedQrView" aria-label="共有QR表示">
-      <div class="detailTop noprint">
-        <div class="detailTitle">共有QR</div>
-        <div class="detailTopActions">
-          <button class="iconBtn" id="sharedQrCloseBtn" type="button" title="閉じる" aria-label="閉じる">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-      </div>
-      <div class="card" style="margin-top: 14px;">
-        <div class="cardHead">
-          <div class="label">QRコード</div>
-          <div class="qrHint"><span class="mono" id="sharedQrPageMeta"></span></div>
-        </div>
-        <div class="cardBody" style="text-align:center;">
-          <div class="qrHint" style="margin-bottom:8px">
-            複数QRの場合は順番に読み取ってください。
-            <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
-              <button class="secondary" id="sharedQrPrevBtn" type="button" title="前" aria-label="前">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-              </button>
-              <button class="secondary" id="sharedQrNextBtn" type="button" title="次" aria-label="次">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-              </button>
-            </div>
-          </div>
-          <canvas id="sharedQrCanvas" width="800" height="800"></canvas>
-        </div>
-      </div>
-    </section>
-
-    <!-- Docs QR view -->
+<!-- Docs QR view -->
     <section class="view" id="docsQrView" aria-label="説明書QR">
       <div class="detailTop noprint">
         <div class="detailTitle">説明書</div>
@@ -240,19 +240,46 @@
 
       <div class="card">
         <div class="cardHead">
-          <div class="label">クリア対象</div>
+          <div class="label" title="クリア対象" aria-label="クリア対象" style="display:flex;align-items:center;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
           <div class="qrHint">クリアボタンで消去する項目</div>
         </div>
         <div class="cardBody" id="clearTargetsBody"></div>
+      </div>
+
+      <div class="card" id="doctorCard">
+        <div class="cardHead">
+          <div class="label" title="主治医" aria-label="主治医" style="display:flex;align-items:center;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <button class="iconBtn" id="doctorEnableBtn" type="button" title="有効/無効切替" aria-label="有効/無効切替">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="doctorToggleIcon"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/></svg>
+          </button>
+        </div>
+        <div class="cardBody" id="doctorBody">
+          <div id="doctorList"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button class="iconBtn" id="addDoctorBtn" type="button" title="追加" aria-label="追加">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <button class="iconBtn" id="resetDoctorsBtn" type="button" title="初期化" aria-label="初期化">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.46"/></svg>
+            </button>
+          </div>
+        </div>
       </div>
     </section>
 
     <!-- Detail view -->
     <section class="view" id="detailView" aria-label="詳細入力画面">
       <div class="detailTop noprint">
-        <input type="text" class="detailTitle" id="detailTitle"
-          style="border:none; background:transparent; outline:none; margin:0; padding:2px; width:100%; max-width:200px; color:inherit; font-family:inherit;"
-          value="—" />
+        <div class="nameDoctorRow" style="flex:1;max-width:340px;">
+          <input type="text" class="detailTitle" id="detailTitle"
+            style="border:none; background:transparent; outline:none; margin:0; padding:2px; width:100%; max-width:200px; color:inherit; font-family:inherit;"
+            value="—" />
+          <span id="detailDoctorSlot"></span>
+        </div>
         <div class="detailTopActions">
           <button class="iconBtn" id="clearBtn" type="button" title="クリア" aria-label="クリア">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>

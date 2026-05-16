@@ -5,6 +5,7 @@ import { STATUS } from "../constants.js";
 import { buildTabPayload } from "../payload.js";
 import { utf8ByteLength } from "../payload.js";
 import { qrcodegen } from "../libs/qrcodegen.js";
+import { isDoctorEnabled, makeDoctorSelect } from "../features/doctor.js";
 
 // ============================
 // QR generation helpers
@@ -250,6 +251,14 @@ export function renderDetail(syncDetailMemoDisplay) {
   if (detailTitle) detailTitle.value = displayName;
   if (syncDetailMemoDisplay) syncDetailMemoDisplay();
   setSelectedStatusButtons(p.status);
+
+  const detailDoctorSlot = document.getElementById("detailDoctorSlot");
+  if (detailDoctorSlot) {
+    detailDoctorSlot.textContent = "";
+    if (isDoctorEnabled()) {
+      detailDoctorSlot.appendChild(makeDoctorSelect(selectedNo - 1));
+    }
+  }
 
   if (sText) sText.value = p.s;
   if (aText) aText.value = p.a.text;

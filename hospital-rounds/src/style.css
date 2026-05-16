@@ -692,6 +692,65 @@
       }
     }
 
+    /* Clear targets chip-style layout */
+    .clearTargets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      align-items: center;
+    }
+
+    .clearTargets > div {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Doctor card disabled state */
+    #doctorCard.disabled #doctorBody {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    #doctorCard.disabled .cardHead {
+      opacity: 0.7;
+    }
+
+    .doctorToggleOn .doctorToggleBg {
+      fill: var(--status-green-bd);
+    }
+
+    /* Patient name + doctor select row */
+    .nameDoctorRow {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .nameDoctorRow .doctorSelect {
+      flex: 0 1 110px;
+      min-width: 80px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 6px;
+      background: #fff;
+      font-size: 13px;
+      outline: none;
+    }
+
+    /* Shared QR inline patient grid (smaller buttons) */
+    #sharedQrPatientGrid .patientBtn {
+      min-height: 48px;
+      font-size: 15px;
+    }
+
+    #sharedQrPatientGrid .patientBtn.unselected {
+      opacity: 0.4;
+      filter: grayscale(0.5);
+    }
+
     .iconBtn {
       border: 1px solid transparent;
       background: transparent;

@@ -1,10 +1,23 @@
 "use strict";
 
 import { settings, saveSettings, ensurePatientsHaveAllOKeys } from "../store.js";
-import { DEFAULT_O_RULES, clone } from "../constants.js";
+import { DEFAULT_O_RULES, DEFAULT_DOCTORS, clone } from "../constants.js";
 
-const CLEAR_LABELS = { memo: "メモ", s: "S", o: "O（バイタル含む）", a: "A", p: "P", shared: "共有", statusYellow: "ステータス：黄（保留）", statusGreen: "ステータス：緑（済）", statusGray: "ステータス：灰（完了）", statusBlue: "ステータス：青（追記）" };
 const STATUS_SWATCHES = { statusYellow: "#fbbf24", statusGreen: "#34d399", statusGray: "#6b7280", statusBlue: "#2563eb" };
+
+const MEMO_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
+const SHARED_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`;
+const TRASH_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
+
+const CLEAR_KEY_ORDER = ["memo", "s", "o", "a", "p", "shared", "statusYellow", "statusGreen", "statusGray", "statusBlue"];
+
+const CLEAR_ITEM_TITLE = {
+  memo: "メモ", s: "S", o: "O", a: "A", p: "P", shared: "共有",
+  statusYellow: "ステータス：黄（保留）",
+  statusGreen: "ステータス：緑（済）",
+  statusGray: "ステータス：灰（完了）",
+  statusBlue: "ステータス：青（追記）",
+};
 
 function nextCustomRuleKey() {
   const used = new Set(settings.oRules.map(r => r.key));
@@ -13,6 +26,111 @@ function nextCustomRuleKey() {
     if (!used.has(k)) return k;
   }
   return "custom" + Math.floor(Math.random() * 1e9);
+}
+
+function buildClearTargetLabelContent(key) {
+  if (STATUS_SWATCHES[key]) {
+    const dot = document.createElement("span");
+    dot.style.cssText = `display:inline-block;width:16px;height:16px;border-radius:3px;background:${STATUS_SWATCHES[key]};flex-shrink:0;`;
+    return dot;
+  }
+  if (key === "memo" || key === "shared") {
+    const span = document.createElement("span");
+    span.style.cssText = "display:inline-flex;align-items:center;color:var(--text);";
+    span.innerHTML = key === "memo" ? MEMO_SVG : SHARED_SVG;
+    return span;
+  }
+  return document.createTextNode(CLEAR_ITEM_TITLE[key]);
+}
+
+function renderClearTargets() {
+  const body = document.getElementById("clearTargetsBody");
+  if (!body) return;
+  body.textContent = "";
+  body.className = "cardBody clearTargets";
+  for (const key of CLEAR_KEY_ORDER) {
+    const item = document.createElement("div");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.id = "clearTarget_" + key;
+    cb.checked = !!settings.clearTargets?.[key];
+    cb.addEventListener("change", () => {
+      settings.clearTargets[key] = cb.checked;
+      saveSettings();
+    });
+    const lbl = document.createElement("label");
+    lbl.htmlFor = "clearTarget_" + key;
+    lbl.style.cursor = "pointer";
+    lbl.style.display = "flex";
+    lbl.style.alignItems = "center";
+    lbl.title = CLEAR_ITEM_TITLE[key];
+    lbl.setAttribute("aria-label", CLEAR_ITEM_TITLE[key]);
+    lbl.appendChild(buildClearTargetLabelContent(key));
+    item.appendChild(cb);
+    item.appendChild(lbl);
+    body.appendChild(item);
+  }
+}
+
+function renderDoctorToggleIcon() {
+  const card = document.getElementById("doctorCard");
+  const icon = document.getElementById("doctorToggleIcon");
+  if (!card || !icon) return;
+  const on = !!settings.doctorEnabled;
+  card.classList.toggle("disabled", !on);
+  if (on) {
+    icon.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5" fill="${getComputedStyle(document.documentElement).getPropertyValue('--status-green-bg') || '#34d399'}" stroke="currentColor"/><circle cx="16" cy="12" r="3" fill="#ffffff" stroke="currentColor"/>`;
+  } else {
+    icon.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/>`;
+  }
+}
+
+function renderDoctorList() {
+  const host = document.getElementById("doctorList");
+  if (!host) return;
+  host.textContent = "";
+
+  if (!Array.isArray(settings.doctors)) settings.doctors = [];
+
+  const grid = document.createElement("div");
+  grid.className = "formGrid two";
+  grid.style.gap = "10px";
+
+  for (let idx = 0; idx < settings.doctors.length; idx++) {
+    const cell = document.createElement("div");
+    cell.style.cssText = "display:flex;gap:6px;align-items:center;";
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.className = "settingsInp";
+    inp.value = String(settings.doctors[idx] ?? "");
+    inp.placeholder = "氏名";
+    inp.addEventListener("input", () => {
+      settings.doctors[idx] = String(inp.value ?? "");
+      saveSettings();
+      if (_renderPatientUIFn) _renderPatientUIFn();
+    });
+    cell.appendChild(inp);
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "iconBtn";
+    del.title = "削除";
+    del.setAttribute("aria-label", "削除");
+    del.innerHTML = TRASH_SVG;
+    del.addEventListener("click", () => {
+      const ok = confirm("この主治医を削除します（患者データ側の既存値は残ります）。よろしいですか？");
+      if (!ok) return;
+      settings.doctors.splice(idx, 1);
+      saveSettings();
+      renderDoctorList();
+      if (_renderPatientUIFn) _renderPatientUIFn();
+    });
+    cell.appendChild(del);
+
+    grid.appendChild(cell);
+  }
+
+  host.appendChild(grid);
 }
 
 export function renderSettings() {
@@ -25,39 +143,9 @@ export function renderSettings() {
   if (setADefault) setADefault.value = String(settings?.defaults?.a ?? "");
   if (setPDefault) setPDefault.value = String(settings?.defaults?.p ?? "");
 
-  const clearTargetsBody = document.getElementById("clearTargetsBody");
-  if (clearTargetsBody) {
-    clearTargetsBody.textContent = "";
-    for (const key of Object.keys(CLEAR_LABELS)) {
-      const row = document.createElement("div");
-      row.style.cssText = "display:flex;align-items:center;gap:10px;padding:6px 0;";
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.id = "clearTarget_" + key;
-      cb.checked = !!settings.clearTargets?.[key];
-      cb.addEventListener("change", () => {
-        settings.clearTargets[key] = cb.checked;
-        saveSettings();
-      });
-      const lbl = document.createElement("label");
-      lbl.htmlFor = "clearTarget_" + key;
-      lbl.style.cursor = "pointer";
-      lbl.style.display = "flex";
-      lbl.style.alignItems = "center";
-      lbl.style.gap = "6px";
-      if (STATUS_SWATCHES[key]) {
-        const dot = document.createElement("span");
-        dot.style.cssText = `display:inline-block;width:16px;height:16px;border-radius:3px;background:${STATUS_SWATCHES[key]};flex-shrink:0;`;
-        dot.title = CLEAR_LABELS[key];
-        lbl.appendChild(dot);
-      } else {
-        lbl.appendChild(document.createTextNode(CLEAR_LABELS[key]));
-      }
-      row.appendChild(cb);
-      row.appendChild(lbl);
-      clearTargetsBody.appendChild(row);
-    }
-  }
+  renderClearTargets();
+  renderDoctorToggleIcon();
+  renderDoctorList();
 
   if (!setORules) return;
   setORules.textContent = "";
@@ -117,7 +205,7 @@ export function renderSettings() {
     del.className = "iconBtn";
     del.title = "削除";
     del.setAttribute("aria-label", "削除");
-    del.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
+    del.innerHTML = TRASH_SVG;
     del.addEventListener("click", () => {
       const ok = confirm("このO項目を削除します（患者データ側の既存値は残ります）。よろしいですか？");
       if (!ok) return;
@@ -140,16 +228,21 @@ export function renderSettings() {
 // Callbacks wired by main.js to avoid circular deps
 let _renderDetailFn = null;
 let _renderQrFn = null;
+let _renderPatientUIFn = null;
 
-export function initSettingsView(renderDetailFn, renderQrFn) {
+export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) {
   _renderDetailFn = renderDetailFn;
   _renderQrFn = renderQrFn;
+  _renderPatientUIFn = renderPatientUIFn;
 
   const setSDefault = document.getElementById("setSDefault");
   const setADefault = document.getElementById("setADefault");
   const setPDefault = document.getElementById("setPDefault");
   const addORuleBtn = document.getElementById("addORuleBtn");
   const resetORulesBtn = document.getElementById("resetORulesBtn");
+  const addDoctorBtn = document.getElementById("addDoctorBtn");
+  const resetDoctorsBtn = document.getElementById("resetDoctorsBtn");
+  const doctorEnableBtn = document.getElementById("doctorEnableBtn");
 
   if (setSDefault) setSDefault.addEventListener("input", () => {
     settings.defaults.s = String(setSDefault.value ?? "");
@@ -191,5 +284,29 @@ export function initSettingsView(renderDetailFn, renderQrFn) {
     renderSettings();
     if (_renderDetailFn) _renderDetailFn();
     if (_renderQrFn) _renderQrFn();
+  });
+
+  if (doctorEnableBtn) doctorEnableBtn.addEventListener("click", () => {
+    settings.doctorEnabled = !settings.doctorEnabled;
+    saveSettings();
+    renderDoctorToggleIcon();
+    if (_renderPatientUIFn) _renderPatientUIFn();
+  });
+
+  if (addDoctorBtn) addDoctorBtn.addEventListener("click", () => {
+    if (!Array.isArray(settings.doctors)) settings.doctors = [];
+    settings.doctors.push("");
+    saveSettings();
+    renderDoctorList();
+    if (_renderPatientUIFn) _renderPatientUIFn();
+  });
+
+  if (resetDoctorsBtn) resetDoctorsBtn.addEventListener("click", () => {
+    const ok = confirm("主治医一覧を初期状態に戻します。よろしいですか？");
+    if (!ok) return;
+    settings.doctors = clone(DEFAULT_DOCTORS);
+    saveSettings();
+    renderDoctorList();
+    if (_renderPatientUIFn) _renderPatientUIFn();
   });
 }

@@ -1,6 +1,6 @@
 "use strict";
 
-import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, clone } from "./constants.js";
+import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_DOCTORS, DEFAULT_DOCTORS_ENABLED, clone } from "./constants.js";
 
 // ============================
 // Settings
@@ -16,6 +16,8 @@ export function defaultSettings() {
     },
     oRules: clone(DEFAULT_O_RULES),
     clearTargets: clone(DEFAULT_CLEAR_TARGETS),
+    doctorEnabled: DEFAULT_DOCTORS_ENABLED,
+    doctors: clone(DEFAULT_DOCTORS),
   };
 }
 
@@ -64,6 +66,10 @@ export function loadSettings() {
         statusGray:   typeof ct.statusGray   === "boolean" ? ct.statusGray   : DEFAULT_CLEAR_TARGETS.statusGray,
         statusBlue:   typeof ct.statusBlue   === "boolean" ? ct.statusBlue   : DEFAULT_CLEAR_TARGETS.statusBlue,
       };
+    }
+    if (raw && typeof raw.doctorEnabled === "boolean") out.doctorEnabled = raw.doctorEnabled;
+    if (raw && Array.isArray(raw.doctors)) {
+      out.doctors = raw.doctors.filter(d => typeof d === "string").map(d => String(d));
     }
     return out;
   } catch (e) {
@@ -118,6 +124,7 @@ export function makeDefaultPatient() {
   return {
     status: STATUS.NONE,
     name: "",
+    doctor: "",
     s: "",
     memo: "",
     shared: "",
@@ -178,6 +185,7 @@ export function normalizeLoaded(raw) {
     out.patients[i] = {
       status: (r && typeof r.status === "string" && [STATUS.NONE, STATUS.YELLOW, STATUS.GREEN, STATUS.GRAY].includes(r.status)) ? r.status : d.status,
       name: (r && typeof r.name === "string") ? r.name : d.name,
+      doctor: (r && typeof r.doctor === "string") ? r.doctor : d.doctor,
       s: (r && typeof r.s === "string") ? r.s : d.s,
       memo: (r && typeof r.memo === "string") ? r.memo : d.memo,
       shared: (r && typeof r.shared === "string") ? r.shared : d.shared,

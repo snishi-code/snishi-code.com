@@ -2,6 +2,7 @@
 
 import { appState, selectedNo, markUpdated, scheduleSave } from "../store.js";
 import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
+import { isDoctorEnabled, makeDoctorSelect } from "../features/doctor.js";
 import { statusClass } from "./home.js";
 
 let _editMode = false;
@@ -22,6 +23,8 @@ export function renderSharedScreen(renderHomeFn, opts, navigateToPatientFn) {
     row.className = "memoRow";
 
     if (_editMode) {
+      const nameWrap = document.createElement("div");
+      nameWrap.className = "nameDoctorRow";
       const numInp = document.createElement("input");
       numInp.type = "text";
       numInp.className = "memoNoInp";
@@ -34,7 +37,11 @@ export function renderSharedScreen(renderHomeFn, opts, navigateToPatientFn) {
         scheduleSave();
         if (renderHomeFn) renderHomeFn();
       });
-      row.appendChild(numInp);
+      nameWrap.appendChild(numInp);
+      if (isDoctorEnabled()) {
+        nameWrap.appendChild(makeDoctorSelect(i - 1));
+      }
+      row.appendChild(nameWrap);
     } else {
       const numBtn = document.createElement("button");
       numBtn.type = "button";

@@ -20,7 +20,7 @@ import { renderSettings, initSettingsView } from "./views/settings-view.js";
 import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./features/navigation.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initImportExport } from "./features/import-export.js";
-import { initSharedQr, initDocsQr, renderDocsQr } from "./features/qr-shared.js";
+import { initSharedQr, initDocsQr, renderDocsQr, refreshSharedQrIfActive } from "./features/qr-shared.js";
 
 // ============================
 // Wrappers that capture current context
@@ -95,7 +95,15 @@ setDataChangeHandler(() => {
 // Settings wiring
 // ============================
 
-initSettingsView(doRenderDetail, renderQrIfNeeded);
+function refreshPatientUI() {
+  const viewId = document.querySelector(".view.active")?.id;
+  if (viewId === "memoView") doRenderMemo();
+  else if (viewId === "sharedView") doRenderShared();
+  else if (viewId === "detailView") doRenderDetail();
+  refreshSharedQrIfActive();
+}
+
+initSettingsView(doRenderDetail, renderQrIfNeeded, refreshPatientUI);
 
 // ============================
 // Detail event bindings
