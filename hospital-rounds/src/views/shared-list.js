@@ -2,6 +2,7 @@
 
 import { appState, selectedNo, markUpdated, scheduleSave } from "../store.js";
 import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
+import { statusClass } from "./home.js";
 
 let _editMode = false;
 
@@ -37,7 +38,7 @@ export function renderSharedScreen(renderHomeFn, opts, navigateToPatientFn) {
     } else {
       const numBtn = document.createElement("button");
       numBtn.type = "button";
-      numBtn.className = "memoNoBtn secondary";
+      numBtn.className = "memoNoBtn secondary " + statusClass(p.status);
       const displayName = p?.name ? p.name : String(i);
       numBtn.textContent = displayName;
       numBtn.title = displayName;

@@ -751,6 +751,25 @@
       transform: scale(0.97);
     }
 
+    .memoRow .memoNoBtn.status-yellow {
+      background: var(--status-yellow-bg);
+      border-color: var(--status-yellow-bd);
+    }
+    .memoRow .memoNoBtn.status-green {
+      background: var(--status-green-bg);
+      border-color: var(--status-green-bd);
+    }
+    .memoRow .memoNoBtn.status-gray {
+      background: var(--status-gray-bg);
+      border-color: var(--status-gray-bd);
+      color: var(--status-gray-text);
+    }
+    .memoRow .memoNoBtn.status-blue {
+      background: var(--status-blue-bg);
+      border-color: var(--status-blue-bd);
+      color: var(--status-blue-text);
+    }
+
     @media print {
       .memoRow .memoNoBtn {
         background: transparent !important;

@@ -38,7 +38,7 @@
         <button class="danger" id="resetBtn">全消去</button>
       </div>
       <div class="qrHint">
-        白：未 / 黄：保留 / 緑：済 / 灰：完了 / 青：共有<br />
+        白：未 / 黄：保留 / 緑：済 / 灰：完了 / 青：追記<br />
       </div>
       <div class="grid" id="homeGrid"></div>
     </section>
@@ -179,6 +179,14 @@
           <textarea id="setPDefault" placeholder="例) 現行加療継続" style="min-height:90px"></textarea>
         </div>
       </div>
+
+      <div class="card">
+        <div class="cardHead">
+          <div class="label">クリア対象</div>
+          <div class="qrHint">クリアボタンで消去する項目</div>
+        </div>
+        <div class="cardBody" id="clearTargetsBody"></div>
+      </div>
     </section>
 
     <!-- Detail view -->
@@ -188,6 +196,7 @@
           style="border:none; background:transparent; outline:none; margin:0; padding:2px; width:100%; max-width:200px; color:inherit; font-family:inherit;"
           value="—" />
         <div class="detailTopActions">
+          <button class="secondary" id="clearBtn" type="button">クリア</button>
           <div class="statusPick" aria-label="ステータス選択">
             <button class="statusBtn yellow" id="topStatusYellowBtn" type="button" title="保留（黄）" aria-label="保留（黄）"></button>
             <button class="statusBtn green" id="topStatusGreenBtn" type="button" title="済（緑）" aria-label="済（緑）"></button>
@@ -297,7 +306,8 @@
       </div>
 
       <div class="card">
-        <div class="cardBody">
+        <div class="cardBody" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <button class="secondary" id="clearBtnBottom" type="button">クリア</button>
           <div class="statusPick" aria-label="ステータス選択">
             <button class="statusBtn yellow" id="statusYellowBtn" type="button" title="保留（黄）"
               aria-label="保留（黄）"></button>

@@ -3,6 +3,8 @@
 import { settings, saveSettings, ensurePatientsHaveAllOKeys } from "../store.js";
 import { DEFAULT_O_RULES, clone } from "../constants.js";
 
+const CLEAR_LABELS = { memo: "メモ", s: "S", o: "O（バイタル含む）", a: "A", p: "P", shared: "共有" };
+
 function nextCustomRuleKey() {
   const used = new Set(settings.oRules.map(r => r.key));
   for (let i = 1; i < 9999; i++) {
@@ -21,6 +23,30 @@ export function renderSettings() {
   if (setSDefault) setSDefault.value = String(settings?.defaults?.s ?? "");
   if (setADefault) setADefault.value = String(settings?.defaults?.a ?? "");
   if (setPDefault) setPDefault.value = String(settings?.defaults?.p ?? "");
+
+  const clearTargetsBody = document.getElementById("clearTargetsBody");
+  if (clearTargetsBody) {
+    clearTargetsBody.textContent = "";
+    for (const key of Object.keys(CLEAR_LABELS)) {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;align-items:center;gap:10px;padding:6px 0;";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.id = "clearTarget_" + key;
+      cb.checked = !!settings.clearTargets?.[key];
+      cb.addEventListener("change", () => {
+        settings.clearTargets[key] = cb.checked;
+        saveSettings();
+      });
+      const lbl = document.createElement("label");
+      lbl.htmlFor = "clearTarget_" + key;
+      lbl.textContent = CLEAR_LABELS[key];
+      lbl.style.cursor = "pointer";
+      row.appendChild(cb);
+      row.appendChild(lbl);
+      clearTargetsBody.appendChild(row);
+    }
+  }
 
   if (!setORules) return;
   setORules.textContent = "";

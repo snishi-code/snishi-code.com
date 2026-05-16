@@ -1,6 +1,6 @@
 "use strict";
 
-import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, clone } from "./constants.js";
+import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, clone } from "./constants.js";
 
 // ============================
 // Settings
@@ -15,6 +15,7 @@ export function defaultSettings() {
       p: "現行加療継続",
     },
     oRules: clone(DEFAULT_O_RULES),
+    clearTargets: clone(DEFAULT_CLEAR_TARGETS),
   };
 }
 
@@ -48,6 +49,17 @@ export function loadSettings() {
         });
       }
       if (cleaned.length) out.oRules = cleaned;
+    }
+    if (raw && raw.clearTargets && typeof raw.clearTargets === "object") {
+      const ct = raw.clearTargets;
+      out.clearTargets = {
+        memo:   typeof ct.memo   === "boolean" ? ct.memo   : DEFAULT_CLEAR_TARGETS.memo,
+        s:      typeof ct.s      === "boolean" ? ct.s      : DEFAULT_CLEAR_TARGETS.s,
+        o:      typeof ct.o      === "boolean" ? ct.o      : DEFAULT_CLEAR_TARGETS.o,
+        a:      typeof ct.a      === "boolean" ? ct.a      : DEFAULT_CLEAR_TARGETS.a,
+        p:      typeof ct.p      === "boolean" ? ct.p      : DEFAULT_CLEAR_TARGETS.p,
+        shared: typeof ct.shared === "boolean" ? ct.shared : DEFAULT_CLEAR_TARGETS.shared,
+      };
     }
     return out;
   } catch (e) {

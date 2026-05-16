@@ -287,6 +287,26 @@ export function renderDetail(syncDetailMemoDisplay) {
 // Detail event bindings
 // ============================
 
+function doClear(renderHomeFn, syncMemoFn) {
+  const p = appState.patients[selectedNo - 1];
+  const ct = settings.clearTargets;
+  if (ct.memo) p.memo = "";
+  if (ct.s) p.s = "";
+  if (ct.o) {
+    p.o = makeEmptyOByRules();
+    p.oFree = "";
+    p.vitals = { spo2: "", spo2_memo: "", rr: "", bp_sys: "", bp_dia: "", pr: "", bt: "" };
+  }
+  if (ct.a) p.a = { text: "" };
+  if (ct.p) p.p = { text: "" };
+  if (ct.shared) p.shared = "";
+  markUpdated(selectedNo);
+  scheduleSave();
+  renderDetail(syncMemoFn);
+  if (renderHomeFn) renderHomeFn();
+  renderQrIfNeeded();
+}
+
 export function initDetailEvents(renderHomeFn, syncMemoFn) {
   const detailTitle = document.getElementById("detailTitle");
   const detailMemoText = document.getElementById("detailMemoText");
@@ -376,14 +396,24 @@ export function initDetailEvents(renderHomeFn, syncMemoFn) {
     scheduleSave();
     renderQrIfNeeded();
   });
+
+  const clearBtn = document.getElementById("clearBtn");
+  const clearBtnBottom = document.getElementById("clearBtnBottom");
+  const onClear = () => {
+    if (!confirm("対象項目をクリアします。よろしいですか？")) return;
+    doClear(renderHomeFn, syncMemoFn);
+  };
+  if (clearBtn) clearBtn.addEventListener("click", onClear);
+  if (clearBtnBottom) clearBtnBottom.addEventListener("click", onClear);
 }
 
 export function initStatusButtons(renderHomeFn) {
   const setStatus = (status) => {
     const p = appState.patients[selectedNo - 1];
-    p.status = status;
+    const next = p.status === status ? STATUS.NONE : status;
+    p.status = next;
     markUpdated(selectedNo);
-    setSelectedStatusButtons(status);
+    setSelectedStatusButtons(next);
     scheduleSave();
     if (renderHomeFn) renderHomeFn();
     renderQrIfNeeded();
