@@ -3,7 +3,8 @@
 import { settings, saveSettings, ensurePatientsHaveAllOKeys } from "../store.js";
 import { DEFAULT_O_RULES, clone } from "../constants.js";
 
-const CLEAR_LABELS = { memo: "メモ", s: "S", o: "O（バイタル含む）", a: "A", p: "P", shared: "共有" };
+const CLEAR_LABELS = { memo: "メモ", s: "S", o: "O（バイタル含む）", a: "A", p: "P", shared: "共有", statusYellow: "ステータス：黄（保留）", statusGreen: "ステータス：緑（済）", statusGray: "ステータス：灰（完了）", statusBlue: "ステータス：青（追記）" };
+const STATUS_SWATCHES = { statusYellow: "#fbbf24", statusGreen: "#34d399", statusGray: "#6b7280", statusBlue: "#2563eb" };
 
 function nextCustomRuleKey() {
   const used = new Set(settings.oRules.map(r => r.key));
@@ -40,8 +41,16 @@ export function renderSettings() {
       });
       const lbl = document.createElement("label");
       lbl.htmlFor = "clearTarget_" + key;
-      lbl.textContent = CLEAR_LABELS[key];
       lbl.style.cursor = "pointer";
+      lbl.style.display = "flex";
+      lbl.style.alignItems = "center";
+      lbl.style.gap = "6px";
+      if (STATUS_SWATCHES[key]) {
+        const dot = document.createElement("span");
+        dot.style.cssText = `display:inline-block;width:12px;height:12px;border-radius:3px;background:${STATUS_SWATCHES[key]};flex-shrink:0;`;
+        lbl.appendChild(dot);
+      }
+      lbl.appendChild(document.createTextNode(CLEAR_LABELS[key]));
       row.appendChild(cb);
       row.appendChild(lbl);
       clearTargetsBody.appendChild(row);

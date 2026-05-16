@@ -92,6 +92,13 @@ function renderDocsQrCanvas() {
   }
 }
 
+export function showDocsQr() {
+  const wrap = document.getElementById("docsQrWrap");
+  if (!wrap) return;
+  wrap.classList.add("active");
+  renderDocsQrCanvas();
+}
+
 export function initDocsQr() {
   const btn = document.getElementById("settingsHelpBtn");
   if (!btn) return;
@@ -118,7 +125,7 @@ export function initSharedQr() {
       const min = String(d.getMinutes()).padStart(2, "0");
       const header = `${titleSafe}_${yyyy}_${mm}${dd}_${hh}${min}`;
 
-      const MAX_BYTES = 1500;
+      const MAX_BYTES = 800;
       const items = [];
       for (let i = 0; i < appState.patients.length; i++) {
         const p = appState.patients[i];

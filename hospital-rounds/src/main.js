@@ -2,12 +2,12 @@
 
 import "./style.css";
 
-import { STORAGE_KEY } from "./constants.js";
+import { STORAGE_KEY, STATUS } from "./constants.js";
 import {
   appState, settings, selectedNo,
   setAppState, setSelectedNo,
   load, saveNow, scheduleSave, saveSettings,
-  normalizeLoaded, ensurePatientsHaveAllOKeys,
+  normalizeLoaded, ensurePatientsHaveAllOKeys, makeEmptyOByRules,
 } from "./store.js";
 
 import { renderHome, updateCountChip } from "./views/home.js";
@@ -20,7 +20,7 @@ import { renderSettings, initSettingsView } from "./views/settings-view.js";
 import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./features/navigation.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initImportExport } from "./features/import-export.js";
-import { initSharedQr, initDocsQr } from "./features/qr-shared.js";
+import { initSharedQr, initDocsQr, showDocsQr } from "./features/qr-shared.js";
 
 // ============================
 // Wrappers that capture current context
@@ -142,22 +142,25 @@ function navToHome() {
 const headerMemoBtn = document.getElementById("headerMemoBtn");
 const headerSharedBtn = document.getElementById("headerSharedBtn");
 const headerHomeBtn = document.getElementById("headerHomeBtn");
-const homeMemoBtn = document.getElementById("homeMemoBtn");
-const homeSharedBtn = document.getElementById("homeSharedBtn");
-const homeSettingsBtn = document.getElementById("homeSettingsBtn");
+const headerSettingsBtn = document.getElementById("headerSettingsBtn");
+const headerHelpBtn = document.getElementById("headerHelpBtn");
 
-if (headerMemoBtn) headerMemoBtn.addEventListener("click", navToMemo);
-if (headerSharedBtn) headerSharedBtn.addEventListener("click", navToShared);
-if (headerHomeBtn) headerHomeBtn.addEventListener("click", navToHome);
-if (homeMemoBtn) homeMemoBtn.addEventListener("click", navToMemo);
-if (homeSharedBtn) homeSharedBtn.addEventListener("click", navToShared);
-if (homeSettingsBtn) homeSettingsBtn.addEventListener("click", () => {
+function navToSettings() {
   setMemoEditMode(false);
   setSharedEditMode(false);
   updateMemoEditBtn();
   updateSharedEditBtn();
   renderSettings();
   showView("settings");
+}
+
+if (headerMemoBtn) headerMemoBtn.addEventListener("click", navToMemo);
+if (headerSharedBtn) headerSharedBtn.addEventListener("click", navToShared);
+if (headerHomeBtn) headerHomeBtn.addEventListener("click", navToHome);
+if (headerSettingsBtn) headerSettingsBtn.addEventListener("click", navToSettings);
+if (headerHelpBtn) headerHelpBtn.addEventListener("click", () => {
+  navToSettings();
+  showDocsQr();
 });
 
 const memoEditBtn = document.getElementById("memoEditBtn");
@@ -269,6 +272,36 @@ if (resetBtn) {
     doRenderHome();
     doRenderDetail();
     showView("home");
+  });
+}
+
+const clearAllBtn = document.getElementById("clearAllBtn");
+if (clearAllBtn) {
+  clearAllBtn.addEventListener("click", () => {
+    const ok = confirm("全患者の対象項目をクリアします。よろしいですか？");
+    if (!ok) return;
+    const ct = settings.clearTargets;
+    const now = Date.now();
+    for (const p of appState.patients) {
+      if (ct.memo) p.memo = "";
+      if (ct.s) p.s = "";
+      if (ct.o) {
+        p.o = makeEmptyOByRules();
+        p.oFree = "";
+        p.vitals = { spo2: "", spo2_memo: "", rr: "", bp_sys: "", bp_dia: "", pr: "", bt: "" };
+      }
+      if (ct.a) p.a = { text: "" };
+      if (ct.p) p.p = { text: "" };
+      if (ct.shared) p.shared = "";
+      if (p.status === STATUS.YELLOW && ct.statusYellow) p.status = STATUS.NONE;
+      else if (p.status === STATUS.GREEN && ct.statusGreen) p.status = STATUS.NONE;
+      else if (p.status === STATUS.GRAY && ct.statusGray) p.status = STATUS.NONE;
+      else if (p.status === STATUS.BLUE && ct.statusBlue) p.status = STATUS.NONE;
+      p.updatedAt = now;
+    }
+    saveNow();
+    doRenderHome();
+    doRenderDetail();
   });
 }
 

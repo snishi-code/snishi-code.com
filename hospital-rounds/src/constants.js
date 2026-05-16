@@ -26,6 +26,10 @@ export const DEFAULT_CLEAR_TARGETS = {
   a: true,
   p: false,
   shared: false,
+  statusYellow: true,
+  statusGreen: true,
+  statusGray: true,
+  statusBlue: false,
 };
 
 export function clone(obj) { return JSON.parse(JSON.stringify(obj)); }

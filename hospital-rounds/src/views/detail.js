@@ -10,12 +10,16 @@ import { qrcodegen } from "../libs/qrcodegen.js";
 // QR generation helpers
 // ============================
 
+const MAX_BYTES_PER_QR = 800;
+
 function splitTextToFitQr(raw, ecl) {
   const s = String(raw ?? "");
-  try {
-    qrcodegen.QrCode.encodeText(s, ecl);
-    return [s];
-  } catch (_) { }
+  if (utf8ByteLength(s) <= MAX_BYTES_PER_QR) {
+    try {
+      qrcodegen.QrCode.encodeText(s, ecl);
+      return [s];
+    } catch (_) { }
+  }
 
   const cps = Array.from(s);
   const pages = [];
@@ -27,6 +31,7 @@ function splitTextToFitQr(raw, ecl) {
     while (lo <= hi) {
       const mid = Math.floor((lo + hi) / 2);
       const chunk = cps.slice(pos, mid).join("");
+      if (utf8ByteLength(chunk) > MAX_BYTES_PER_QR) { hi = mid - 1; continue; }
       try {
         qrcodegen.QrCode.encodeText(chunk, ecl);
         best = mid;
@@ -300,6 +305,10 @@ function doClear(renderHomeFn, syncMemoFn) {
   if (ct.a) p.a = { text: "" };
   if (ct.p) p.p = { text: "" };
   if (ct.shared) p.shared = "";
+  if (p.status === STATUS.YELLOW && ct.statusYellow) p.status = STATUS.NONE;
+  else if (p.status === STATUS.GREEN && ct.statusGreen) p.status = STATUS.NONE;
+  else if (p.status === STATUS.GRAY && ct.statusGray) p.status = STATUS.NONE;
+  else if (p.status === STATUS.BLUE && ct.statusBlue) p.status = STATUS.NONE;
   markUpdated(selectedNo);
   scheduleSave();
   renderDetail(syncMemoFn);
