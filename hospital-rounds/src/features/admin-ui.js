@@ -2,11 +2,12 @@
 
 import { qrcodegen } from "../libs/qrcodegen.js";
 import { utf8ByteLength } from "../payload.js";
-import { isAdminEnabled, isAdminTerminal, isNonAdminTerminal, buildAdminPages, parseAdminText, applyAdminImport } from "./admin.js";
+import { isAdminEnabled, isAdminTerminal, isAdminImportOnly, buildAdminPages, parseAdminText, applyAdminImport } from "./admin.js";
 
 let _pages = [];
 let _pageIndex = 0;
 let _onApplied = null;
+let _mode = "qr"; // "qr" | "paste"
 
 export function setAdminAppliedHandler(fn) { _onApplied = fn; }
 
@@ -76,54 +77,51 @@ function regenerate() {
   renderPage();
 }
 
-function isQrCardActive() {
-  const wrap = document.getElementById("adminQrWrap");
+function isPanelActive() {
+  const wrap = document.getElementById("adminPanelWrap");
   return !!(wrap && wrap.classList.contains("active"));
 }
 
-function isImportCardActive() {
-  const wrap = document.getElementById("adminImportWrap");
-  return !!(wrap && wrap.classList.contains("active"));
-}
-
-export function isAdminPanelActive() {
-  return isQrCardActive() || isImportCardActive();
-}
+export function isAdminPanelActive() { return isPanelActive(); }
 
 export function closeAdminPanel() {
-  const qr = document.getElementById("adminQrWrap");
-  const imp = document.getElementById("adminImportWrap");
-  if (qr) qr.classList.remove("active");
-  if (imp) imp.classList.remove("active");
+  const wrap = document.getElementById("adminPanelWrap");
+  if (wrap) wrap.classList.remove("active");
 }
 
-function openForAdminTerminal() {
-  const qr = document.getElementById("adminQrWrap");
-  if (!qr) return;
-  qr.classList.add("active");
-  regenerate();
+function applyModeUI() {
+  const qrBody = document.getElementById("adminPanelQrBody");
+  const pasteBody = document.getElementById("adminPanelPasteBody");
+  const qrBtn = document.getElementById("adminModeQrBtn");
+  const pasteBtn = document.getElementById("adminModePasteBtn");
+  const showQr = _mode === "qr";
+  if (qrBody) qrBody.style.display = showQr ? "" : "none";
+  if (pasteBody) pasteBody.style.display = showQr ? "none" : "";
+  if (qrBtn) qrBtn.classList.toggle("selected", showQr);
+  if (pasteBtn) pasteBtn.classList.toggle("selected", !showQr);
+  if (showQr) regenerate();
 }
 
-function openForNonAdmin() {
-  const imp = document.getElementById("adminImportWrap");
-  if (!imp) return;
-  imp.classList.add("active");
-  const status = document.getElementById("adminImportStatus");
-  if (status) status.textContent = "";
+function pickDefaultMode() {
+  if (isAdminTerminal()) return "qr";
+  return "paste";
 }
 
 export function toggleAdminPanel() {
-  if (isAdminPanelActive()) {
+  if (isPanelActive()) {
     closeAdminPanel();
     return;
   }
   if (!isAdminEnabled()) return;
-  if (isAdminTerminal()) openForAdminTerminal();
-  else openForNonAdmin();
+  _mode = pickDefaultMode();
+  const wrap = document.getElementById("adminPanelWrap");
+  if (wrap) wrap.classList.add("active");
+  applyModeUI();
+  const status = document.getElementById("adminImportStatus");
+  if (status) status.textContent = "";
 }
 
 export function refreshAdminAvailability() {
-  // Show/hide the shared-screen admin icon based on adminEnabled
   const btn = document.getElementById("sharedAdminBtn");
   if (btn) btn.style.display = isAdminEnabled() ? "" : "none";
   if (!isAdminEnabled()) closeAdminPanel();
@@ -134,6 +132,11 @@ export function initAdminUI() {
 
   const btn = document.getElementById("sharedAdminBtn");
   if (btn) btn.addEventListener("click", toggleAdminPanel);
+
+  const qrModeBtn = document.getElementById("adminModeQrBtn");
+  const pasteModeBtn = document.getElementById("adminModePasteBtn");
+  if (qrModeBtn) qrModeBtn.addEventListener("click", () => { _mode = "qr"; applyModeUI(); });
+  if (pasteModeBtn) pasteModeBtn.addEventListener("click", () => { _mode = "paste"; applyModeUI(); });
 
   const prev = document.getElementById("adminQrPrevBtn");
   const next = document.getElementById("adminQrNextBtn");

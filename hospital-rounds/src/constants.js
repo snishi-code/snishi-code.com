@@ -24,6 +24,7 @@ export const DEFAULT_TAGS_ENABLED = false;
 export const DEFAULT_ROOM_ENABLED = false;
 export const DEFAULT_ADMIN_ENABLED = false;
 export const DEFAULT_ADMIN_TERMINAL = false;
+export const DEFAULT_ADMIN_IMPORT_ONLY = false;
 
 export const DEFAULT_CLEAR_TARGETS = {
   memo: false,
