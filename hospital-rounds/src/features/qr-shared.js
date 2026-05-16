@@ -3,7 +3,7 @@
 import { appState, settings } from "../store.js";
 import { qrcodegen } from "../libs/qrcodegen.js";
 import { utf8ByteLength } from "../payload.js";
-import { isDoctorEnabled, getDoctors } from "./doctor.js";
+import { isTagsEnabled, getAllTags, makeTagPicker } from "./tags.js";
 
 let _onSelectionChange = null;
 export function setSharedQrSelectionChangeHandler(fn) { _onSelectionChange = fn; }
@@ -15,7 +15,7 @@ export function setSharedQrSelectionChangeHandler(fn) { _onSelectionChange = fn;
 let sharedQrPages = [];
 let sharedQrPageIndex = 0;
 let sharedQrSelected = new Set();
-let sharedQrDoctorFilter = "";
+let sharedQrTagFilter = [];
 
 const MAX_BYTES = 800;
 
@@ -155,6 +155,12 @@ export function toggleSharedQrPatient(no) {
   if (_onSelectionChange) _onSelectionChange();
 }
 
+function patientHasAllTags(p, tags) {
+  if (!tags.length) return true;
+  const pt = Array.isArray(p.tags) ? p.tags : [];
+  return tags.every(t => pt.includes(t));
+}
+
 function selectDefault() {
   sharedQrSelected = new Set();
   for (let i = 0; i < appState.patients.length; i++) {
@@ -163,16 +169,16 @@ function selectDefault() {
   }
 }
 
-function applyDoctorFilter(doctor) {
-  sharedQrDoctorFilter = doctor || "";
-  if (!sharedQrDoctorFilter) {
+function applyTagFilter(tags) {
+  sharedQrTagFilter = Array.isArray(tags) ? tags.slice() : [];
+  if (!sharedQrTagFilter.length) {
     selectDefault();
     return;
   }
   sharedQrSelected = new Set();
   for (let i = 0; i < appState.patients.length; i++) {
     const p = appState.patients[i];
-    if (p.doctor === sharedQrDoctorFilter) sharedQrSelected.add(i + 1);
+    if (patientHasAllTags(p, sharedQrTagFilter)) sharedQrSelected.add(i + 1);
   }
 }
 
@@ -182,33 +188,34 @@ function regenerateAndRender() {
   renderQrPage();
 }
 
-function populateDoctorOptions() {
-  const filterWrap = document.getElementById("sharedQrDoctorFilter");
-  const sel = document.getElementById("sharedQrDoctorSelect");
-  if (!filterWrap || !sel) return;
-  const enabled = isDoctorEnabled();
+function populateTagFilter() {
+  const filterWrap = document.getElementById("sharedQrTagFilter");
+  const slot = document.getElementById("sharedQrTagPickerSlot");
+  if (!filterWrap || !slot) return;
+  const enabled = isTagsEnabled();
   filterWrap.style.display = enabled ? "" : "none";
   if (!enabled) return;
-  sel.textContent = "";
-  const blank = document.createElement("option");
-  blank.value = "";
-  blank.textContent = "—（全員）";
-  sel.appendChild(blank);
-  for (const d of getDoctors()) {
-    const opt = document.createElement("option");
-    opt.value = d;
-    opt.textContent = d;
-    sel.appendChild(opt);
-  }
-  sel.value = sharedQrDoctorFilter || "";
+  slot.textContent = "";
+  const picker = makeTagPicker({
+    getSelected: () => sharedQrTagFilter.slice(),
+    setSelected: (tags) => { sharedQrTagFilter = tags.slice(); },
+    allTags: getAllTags,
+    onChange: () => {
+      applyTagFilter(sharedQrTagFilter);
+      regenerateAndRender();
+      if (_onSelectionChange) _onSelectionChange();
+    },
+    fillWidth: true,
+  });
+  slot.appendChild(picker);
 }
 
 function openSharedQr() {
   const wrap = document.getElementById("sharedQrWrap");
   if (!wrap) return;
   selectDefault();
-  sharedQrDoctorFilter = "";
-  populateDoctorOptions();
+  sharedQrTagFilter = [];
+  populateTagFilter();
   wrap.classList.add("active");
   regenerateAndRender();
   if (_onSelectionChange) _onSelectionChange();
@@ -228,7 +235,7 @@ export function isSharedQrActive() {
 
 export function refreshSharedQrIfActive() {
   if (!isSharedQrActive()) return;
-  populateDoctorOptions();
+  populateTagFilter();
   regenerateAndRender();
   if (_onSelectionChange) _onSelectionChange();
 }
@@ -304,10 +311,4 @@ export function initSharedQr() {
     if (sharedQrPageIndex < sharedQrPages.length - 1) { sharedQrPageIndex++; renderQrPage(); }
   });
 
-  const sel = document.getElementById("sharedQrDoctorSelect");
-  if (sel) sel.addEventListener("change", () => {
-    applyDoctorFilter(sel.value);
-    regenerateAndRender();
-    if (_onSelectionChange) _onSelectionChange();
-  });
 }

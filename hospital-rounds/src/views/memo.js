@@ -3,7 +3,7 @@
 import { appState, selectedNo, markUpdated, scheduleSave } from "../store.js";
 import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
 import { syncDetailMemoDisplay } from "../features/navigation.js";
-import { isDoctorEnabled, makeDoctorSelect } from "../features/doctor.js";
+import { isTagsEnabled, makePatientTagPicker } from "../features/tags.js";
 import { statusClass } from "./home.js";
 
 let _editMode = false;
@@ -39,8 +39,8 @@ export function renderMemoScreen(renderHomeFn, opts, navigateToPatientFn) {
         if (renderHomeFn) renderHomeFn();
       });
       nameWrap.appendChild(numInp);
-      if (isDoctorEnabled()) {
-        nameWrap.appendChild(makeDoctorSelect(i - 1));
+      if (isTagsEnabled()) {
+        nameWrap.appendChild(makePatientTagPicker(i - 1));
       }
       row.appendChild(nameWrap);
     } else {

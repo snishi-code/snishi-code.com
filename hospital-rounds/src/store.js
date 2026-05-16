@@ -1,6 +1,6 @@
 "use strict";
 
-import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_DOCTORS, DEFAULT_DOCTORS_ENABLED, clone } from "./constants.js";
+import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS, DEFAULT_TAGS_ENABLED, clone } from "./constants.js";
 
 // ============================
 // Settings
@@ -16,8 +16,8 @@ export function defaultSettings() {
     },
     oRules: clone(DEFAULT_O_RULES),
     clearTargets: clone(DEFAULT_CLEAR_TARGETS),
-    doctorEnabled: DEFAULT_DOCTORS_ENABLED,
-    doctors: clone(DEFAULT_DOCTORS),
+    tagsEnabled: DEFAULT_TAGS_ENABLED,
+    tags: clone(DEFAULT_TAGS),
   };
 }
 
@@ -67,9 +67,12 @@ export function loadSettings() {
         statusBlue:   typeof ct.statusBlue   === "boolean" ? ct.statusBlue   : DEFAULT_CLEAR_TARGETS.statusBlue,
       };
     }
-    if (raw && typeof raw.doctorEnabled === "boolean") out.doctorEnabled = raw.doctorEnabled;
-    if (raw && Array.isArray(raw.doctors)) {
-      out.doctors = raw.doctors.filter(d => typeof d === "string").map(d => String(d));
+    if (raw && typeof raw.tagsEnabled === "boolean") out.tagsEnabled = raw.tagsEnabled;
+    else if (raw && typeof raw.doctorEnabled === "boolean") out.tagsEnabled = raw.doctorEnabled;
+    if (raw && Array.isArray(raw.tags)) {
+      out.tags = raw.tags.filter(d => typeof d === "string").map(d => String(d));
+    } else if (raw && Array.isArray(raw.doctors)) {
+      out.tags = raw.doctors.filter(d => typeof d === "string").map(d => String(d));
     }
     return out;
   } catch (e) {
@@ -124,7 +127,7 @@ export function makeDefaultPatient() {
   return {
     status: STATUS.NONE,
     name: "",
-    doctor: "",
+    tags: [],
     s: "",
     memo: "",
     shared: "",
@@ -185,7 +188,9 @@ export function normalizeLoaded(raw) {
     out.patients[i] = {
       status: (r && typeof r.status === "string" && [STATUS.NONE, STATUS.YELLOW, STATUS.GREEN, STATUS.GRAY].includes(r.status)) ? r.status : d.status,
       name: (r && typeof r.name === "string") ? r.name : d.name,
-      doctor: (r && typeof r.doctor === "string") ? r.doctor : d.doctor,
+      tags: (r && Array.isArray(r.tags))
+        ? r.tags.filter(t => typeof t === "string" && t.trim()).map(t => String(t))
+        : (r && typeof r.doctor === "string" && r.doctor.trim()) ? [r.doctor.trim()] : [],
       s: (r && typeof r.s === "string") ? r.s : d.s,
       memo: (r && typeof r.memo === "string") ? r.memo : d.memo,
       shared: (r && typeof r.shared === "string") ? r.shared : d.shared,

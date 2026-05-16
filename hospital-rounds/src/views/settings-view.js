@@ -1,7 +1,7 @@
 "use strict";
 
 import { settings, saveSettings, ensurePatientsHaveAllOKeys } from "../store.js";
-import { DEFAULT_O_RULES, DEFAULT_DOCTORS, clone } from "../constants.js";
+import { DEFAULT_O_RULES, DEFAULT_TAGS, clone } from "../constants.js";
 
 const STATUS_SWATCHES = { statusYellow: "#fbbf24", statusGreen: "#34d399", statusGray: "#6b7280", statusBlue: "#2563eb" };
 
@@ -72,11 +72,11 @@ function renderClearTargets() {
   }
 }
 
-function renderDoctorToggleIcon() {
-  const card = document.getElementById("doctorCard");
-  const icon = document.getElementById("doctorToggleIcon");
+function renderTagsToggleIcon() {
+  const card = document.getElementById("tagsCard");
+  const icon = document.getElementById("tagsToggleIcon");
   if (!card || !icon) return;
-  const on = !!settings.doctorEnabled;
+  const on = !!settings.tagsEnabled;
   card.classList.toggle("disabled", !on);
   if (on) {
     icon.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5" fill="${getComputedStyle(document.documentElement).getPropertyValue('--status-green-bg') || '#34d399'}" stroke="currentColor"/><circle cx="16" cy="12" r="3" fill="#ffffff" stroke="currentColor"/>`;
@@ -85,27 +85,27 @@ function renderDoctorToggleIcon() {
   }
 }
 
-function renderDoctorList() {
-  const host = document.getElementById("doctorList");
+function renderTagsList() {
+  const host = document.getElementById("tagsList");
   if (!host) return;
   host.textContent = "";
 
-  if (!Array.isArray(settings.doctors)) settings.doctors = [];
+  if (!Array.isArray(settings.tags)) settings.tags = [];
 
   const grid = document.createElement("div");
   grid.className = "formGrid two";
   grid.style.gap = "10px";
 
-  for (let idx = 0; idx < settings.doctors.length; idx++) {
+  for (let idx = 0; idx < settings.tags.length; idx++) {
     const cell = document.createElement("div");
     cell.style.cssText = "display:flex;gap:6px;align-items:center;";
     const inp = document.createElement("input");
     inp.type = "text";
     inp.className = "settingsInp";
-    inp.value = String(settings.doctors[idx] ?? "");
-    inp.placeholder = "氏名";
+    inp.value = String(settings.tags[idx] ?? "");
+    inp.placeholder = "タグ名";
     inp.addEventListener("input", () => {
-      settings.doctors[idx] = String(inp.value ?? "");
+      settings.tags[idx] = String(inp.value ?? "");
       saveSettings();
       if (_renderPatientUIFn) _renderPatientUIFn();
     });
@@ -118,11 +118,11 @@ function renderDoctorList() {
     del.setAttribute("aria-label", "削除");
     del.innerHTML = TRASH_SVG;
     del.addEventListener("click", () => {
-      const ok = confirm("この主治医を削除します（患者データ側の既存値は残ります）。よろしいですか？");
+      const ok = confirm("このタグを削除します（患者データ側の既存値は残ります）。よろしいですか？");
       if (!ok) return;
-      settings.doctors.splice(idx, 1);
+      settings.tags.splice(idx, 1);
       saveSettings();
-      renderDoctorList();
+      renderTagsList();
       if (_renderPatientUIFn) _renderPatientUIFn();
     });
     cell.appendChild(del);
@@ -144,8 +144,8 @@ export function renderSettings() {
   if (setPDefault) setPDefault.value = String(settings?.defaults?.p ?? "");
 
   renderClearTargets();
-  renderDoctorToggleIcon();
-  renderDoctorList();
+  renderTagsToggleIcon();
+  renderTagsList();
 
   if (!setORules) return;
   setORules.textContent = "";
@@ -240,9 +240,9 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
   const setPDefault = document.getElementById("setPDefault");
   const addORuleBtn = document.getElementById("addORuleBtn");
   const resetORulesBtn = document.getElementById("resetORulesBtn");
-  const addDoctorBtn = document.getElementById("addDoctorBtn");
-  const resetDoctorsBtn = document.getElementById("resetDoctorsBtn");
-  const doctorEnableBtn = document.getElementById("doctorEnableBtn");
+  const addTagBtn = document.getElementById("addTagBtn");
+  const resetTagsBtn = document.getElementById("resetTagsBtn");
+  const tagsEnableBtn = document.getElementById("tagsEnableBtn");
 
   if (setSDefault) setSDefault.addEventListener("input", () => {
     settings.defaults.s = String(setSDefault.value ?? "");
@@ -286,27 +286,27 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
     if (_renderQrFn) _renderQrFn();
   });
 
-  if (doctorEnableBtn) doctorEnableBtn.addEventListener("click", () => {
-    settings.doctorEnabled = !settings.doctorEnabled;
+  if (tagsEnableBtn) tagsEnableBtn.addEventListener("click", () => {
+    settings.tagsEnabled = !settings.tagsEnabled;
     saveSettings();
-    renderDoctorToggleIcon();
+    renderTagsToggleIcon();
     if (_renderPatientUIFn) _renderPatientUIFn();
   });
 
-  if (addDoctorBtn) addDoctorBtn.addEventListener("click", () => {
-    if (!Array.isArray(settings.doctors)) settings.doctors = [];
-    settings.doctors.push("");
+  if (addTagBtn) addTagBtn.addEventListener("click", () => {
+    if (!Array.isArray(settings.tags)) settings.tags = [];
+    settings.tags.push("");
     saveSettings();
-    renderDoctorList();
+    renderTagsList();
     if (_renderPatientUIFn) _renderPatientUIFn();
   });
 
-  if (resetDoctorsBtn) resetDoctorsBtn.addEventListener("click", () => {
-    const ok = confirm("主治医一覧を初期状態に戻します。よろしいですか？");
+  if (resetTagsBtn) resetTagsBtn.addEventListener("click", () => {
+    const ok = confirm("タグ一覧を初期状態に戻します。よろしいですか？");
     if (!ok) return;
-    settings.doctors = clone(DEFAULT_DOCTORS);
+    settings.tags = clone(DEFAULT_TAGS);
     saveSettings();
-    renderDoctorList();
+    renderTagsList();
     if (_renderPatientUIFn) _renderPatientUIFn();
   });
 }
