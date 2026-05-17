@@ -1,9 +1,11 @@
 "use strict";
 
 import { settings, appState, saveSettings, ensurePatientsHaveAllOKeys } from "../store.js";
-import { DEFAULT_O_RULES, DEFAULT_TAGS, clone } from "../constants.js";
+import { DEFAULT_O_RULES, DEFAULT_TAGS, clone, STATUS } from "../constants.js";
 import { canEditORule, canDeleteORule, isAdminEnabled, isAdminTerminal, isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
+import { addNewTag, renameTagAt, deleteTagAt, moveTag, setLinkedYellowTag, isTagStatusLinkEnabled } from "../features/tags.js";
+import { bindLongPressAndDrag } from "../features/drag.js";
 
 const STATUS_SWATCHES = { statusYellow: "#fbbf24", statusGreen: "#34d399", statusGray: "#6b7280", statusBlue: "#2563eb" };
 
@@ -121,6 +123,12 @@ function renderRoomToggleIcon() {
   }
 }
 
+function renderTagStatusLinkToggleIcon() {
+  const icon = document.getElementById("tagStatusLinkToggleIcon");
+  if (!icon) return;
+  renderToggleIcon(icon, !!settings.tagStatusLinkEnabled);
+}
+
 function renderTagsToggleIcon() {
   const card = document.getElementById("tagsCard");
   const icon = document.getElementById("tagsToggleIcon");
@@ -134,6 +142,111 @@ function renderTagsToggleIcon() {
   }
 }
 
+// ============================
+// Tag list (chip-based UI with tap-to-edit, long-press to delete/drag)
+// ============================
+
+let _draftTagIndex = -1; // index of empty draft tag being added
+
+function makeTagChip(idx) {
+  const name = settings.tags[idx] || "";
+  const wrap = document.createElement("div");
+  wrap.className = "tagSettingChip";
+  if (settings.tagStatusLinkEnabled && settings.tagLinkedToYellow === name) {
+    wrap.classList.add("linked-yellow");
+  }
+  const labelBtn = document.createElement("button");
+  labelBtn.type = "button";
+  labelBtn.className = "tagSettingChipLabel";
+  labelBtn.textContent = name || "（未入力）";
+  wrap.appendChild(labelBtn);
+
+  bindLongPressAndDrag(
+    labelBtn,
+    () => idx,
+    (fromIdx, toIdx) => { moveTag(fromIdx, toIdx); renderTagsList(); if (_renderPatientUIFn) _renderPatientUIFn(); },
+    () => {
+      if (confirm(`タグ「${name}」を削除します。よろしいですか？\n（このタグが付いている患者のタグも一緒に外れます）`)) {
+        deleteTagAt(idx);
+        renderTagsList();
+        if (_renderPatientUIFn) _renderPatientUIFn();
+      }
+    },
+    () => openInlineTagEditor(wrap, idx)
+  );
+
+  if (settings.tagStatusLinkEnabled) {
+    const linkBtn = document.createElement("button");
+    linkBtn.type = "button";
+    linkBtn.className = "tagSettingChipLink";
+    const isLinked = settings.tagLinkedToYellow === name;
+    linkBtn.title = isLinked ? "黄ステータス連携 ON" : "黄ステータスに連携";
+    linkBtn.innerHTML = isLinked
+      ? `<span class="linkDot linkOn" style="background:#fbbf24;border-color:#b45309;"></span>`
+      : `<span class="linkDot"></span>`;
+    linkBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (settings.tagLinkedToYellow === name) {
+        setLinkedYellowTag("");
+      } else {
+        setLinkedYellowTag(name);
+      }
+      renderTagsList();
+      if (_renderPatientUIFn) _renderPatientUIFn();
+    });
+    wrap.appendChild(linkBtn);
+  }
+  return wrap;
+}
+
+function openInlineTagEditor(chipWrap, idx) {
+  chipWrap.textContent = "";
+  chipWrap.classList.add("editing");
+  const inp = document.createElement("input");
+  inp.type = "text";
+  inp.className = "tagSettingInput";
+  inp.value = settings.tags[idx] || "";
+  inp.placeholder = "タグ名";
+  let done = false;
+  const finalize = (commit) => {
+    if (done) return;
+    done = true;
+    const next = String(inp.value || "").trim();
+    if (commit && next) {
+      const old = settings.tags[idx] || "";
+      if (!old) {
+        // New tag: rename empty entry to new name
+        if (settings.tags.includes(next)) {
+          alert("同じ名前のタグが既にあります");
+          settings.tags.splice(idx, 1);
+        } else {
+          settings.tags[idx] = next;
+          saveSettings();
+          recordOp({ type: "tag.add", name: next });
+        }
+      } else if (next !== old) {
+        if (!renameTagAt(idx, next)) {
+          alert("同じ名前のタグが既にあります");
+        }
+      }
+    } else if (!settings.tags[idx]) {
+      // Empty entry left blank → remove
+      settings.tags.splice(idx, 1);
+      saveSettings();
+    }
+    _draftTagIndex = -1;
+    renderTagsList();
+    if (_renderPatientUIFn) _renderPatientUIFn();
+  };
+  inp.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); finalize(true); }
+    else if (e.key === "Escape") { e.preventDefault(); finalize(false); }
+  });
+  inp.addEventListener("blur", () => finalize(true));
+  chipWrap.appendChild(inp);
+  setTimeout(() => { inp.focus(); inp.select(); }, 0);
+}
+
 function renderTagsList() {
   const host = document.getElementById("tagsList");
   if (!host) return;
@@ -141,58 +254,30 @@ function renderTagsList() {
 
   if (!Array.isArray(settings.tags)) settings.tags = [];
 
-  const grid = document.createElement("div");
-  grid.className = "formGrid two";
-  grid.style.gap = "10px";
+  const wrap = document.createElement("div");
+  wrap.className = "tagSettingList";
 
   for (let idx = 0; idx < settings.tags.length; idx++) {
-    const cell = document.createElement("div");
-    cell.style.cssText = "display:flex;gap:6px;align-items:center;";
-    const inp = document.createElement("input");
-    inp.type = "text";
-    inp.className = "settingsInp";
-    inp.value = String(settings.tags[idx] ?? "");
-    inp.placeholder = "タグ名";
-    let prev = String(settings.tags[idx] ?? "");
-    inp.addEventListener("input", () => {
-      const next = String(inp.value ?? "");
-      const oldVal = prev;
-      settings.tags[idx] = next;
-      // Record tag.rename / tag.add / tag.remove
-      if (oldVal && oldVal !== next) {
-        if (next.trim()) recordOp({ type: "tag.rename", from: oldVal, to: next });
-        else recordOp({ type: "tag.remove", name: oldVal });
-      } else if (!oldVal && next.trim()) {
-        recordOp({ type: "tag.add", name: next });
-      }
-      prev = next;
-      saveSettings();
-      if (_renderPatientUIFn) _renderPatientUIFn();
-    });
-    cell.appendChild(inp);
-
-    const del = document.createElement("button");
-    del.type = "button";
-    del.className = "iconBtn";
-    del.title = "削除";
-    del.setAttribute("aria-label", "削除");
-    del.innerHTML = TRASH_SVG;
-    del.addEventListener("click", () => {
-      const ok = confirm("このタグを削除します（患者データ側の既存値は残ります）。よろしいですか？");
-      if (!ok) return;
-      const oldName = settings.tags[idx];
-      settings.tags.splice(idx, 1);
-      if (oldName) recordOp({ type: "tag.remove", name: oldName });
-      saveSettings();
-      renderTagsList();
-      if (_renderPatientUIFn) _renderPatientUIFn();
-    });
-    cell.appendChild(del);
-
-    grid.appendChild(cell);
+    const chip = makeTagChip(idx);
+    wrap.appendChild(chip);
+    if (idx === _draftTagIndex) openInlineTagEditor(chip, idx);
   }
 
-  host.appendChild(grid);
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "tagSettingAdd";
+  addBtn.title = "追加";
+  addBtn.setAttribute("aria-label", "追加");
+  addBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+  addBtn.addEventListener("click", () => {
+    if (!Array.isArray(settings.tags)) settings.tags = [];
+    settings.tags.push("");
+    _draftTagIndex = settings.tags.length - 1;
+    renderTagsList();
+  });
+  wrap.appendChild(addBtn);
+
+  host.appendChild(wrap);
 }
 
 export function renderSettings() {
@@ -210,6 +295,7 @@ export function renderSettings() {
   renderAdminExtras();
   renderRoomToggleIcon();
   renderTagsToggleIcon();
+  renderTagStatusLinkToggleIcon();
   renderTagsList();
 
   if (!setORules) return;
@@ -457,6 +543,35 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
     if (!Array.isArray(settings.tags)) settings.tags = [];
     settings.tags.push("");
     saveSettings();
+    renderTagsList();
+    if (_renderPatientUIFn) _renderPatientUIFn();
+  });
+
+  const tagStatusLinkEnableBtn = document.getElementById("tagStatusLinkEnableBtn");
+  if (tagStatusLinkEnableBtn) tagStatusLinkEnableBtn.addEventListener("click", () => {
+    if (!settings.tagsEnabled) { alert("先にタグ機能をONにしてください"); return; }
+    if (settings.tagStatusLinkEnabled) {
+      if (!confirm("黄ステータス連携をオフにします。連携中のタグは解除され、対象患者のステータスは元に戻ります。よろしいですか？")) return;
+      // Unlink: restore status on patients with the linked tag
+      const linked = settings.tagLinkedToYellow;
+      if (linked) {
+        for (const p of appState.patients) {
+          if (Array.isArray(p.tags) && p.tags.includes(linked)) {
+            if (p.status === STATUS.YELLOW && p.prevStatus) {
+              p.status = p.prevStatus;
+              p.prevStatus = null;
+            }
+          }
+        }
+      }
+      settings.tagStatusLinkEnabled = false;
+      settings.tagLinkedToYellow = "";
+    } else {
+      if (!confirm("⚠ 黄ステータス連携を有効にします。\n\n選択したタグが付いた患者は自動で黄ステータスになり、ステータス変更ができなくなります。タグを外すと元に戻りません（黄のまま）。\n\nよろしいですか？")) return;
+      settings.tagStatusLinkEnabled = true;
+    }
+    saveSettings();
+    renderTagStatusLinkToggleIcon();
     renderTagsList();
     if (_renderPatientUIFn) _renderPatientUIFn();
   });

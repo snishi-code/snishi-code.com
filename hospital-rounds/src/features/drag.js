@@ -128,6 +128,8 @@ function startCustomDrag(sourceEl, sourceIdx, clientX, clientY) {
   if (viewId === "homeView") query = ".patientBtn";
   else if (viewId === "memoView") query = "#memoView .memoRow";
   else if (viewId === "sharedView") query = "#sharedView .memoRow";
+  else if (viewId === "settingsView" && sourceEl.closest(".tagSettingList"))
+    query = ".tagSettingList .tagSettingChip";
 
   if (query) {
     document.querySelectorAll(query).forEach((el, i) => {

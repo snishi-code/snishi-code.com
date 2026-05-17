@@ -899,6 +899,123 @@
       font-size: 12px;
     }
 
+    /* AND/OR mode toggle inside filter popup */
+    .tagPickerModeRow {
+      display: flex;
+      gap: 4px;
+      padding: 4px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 4px;
+      background: #fafafa;
+      border-radius: 6px 6px 0 0;
+    }
+    .tagPickerModeBtn {
+      flex: 1;
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+    .tagPickerModeBtn.selected {
+      border-color: var(--focus);
+      background: #eff6ff;
+      color: var(--focus);
+    }
+
+    /* Settings tag chip list */
+    .tagSettingList {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .tagSettingChip {
+      display: inline-flex;
+      align-items: stretch;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #eff6ff;
+      overflow: hidden;
+      transition: border-color .15s;
+    }
+    .tagSettingChip.editing {
+      padding: 2px 4px;
+      border-color: rgba(37,99,235,0.6);
+      background: #fff;
+    }
+    .tagSettingChip.linked-yellow {
+      border-color: #b45309;
+      background: #fef3c7;
+    }
+    .tagSettingChipLabel {
+      border: none;
+      background: transparent;
+      color: #1e40af;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 10px;
+      cursor: pointer;
+      touch-action: none;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .tagSettingChip.linked-yellow .tagSettingChipLabel {
+      color: #92400e;
+    }
+    .tagSettingChipLink {
+      border: none;
+      border-left: 1px solid rgba(0,0,0,0.08);
+      background: transparent;
+      cursor: pointer;
+      padding: 6px 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .linkDot {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: transparent;
+      border: 2px solid #d1d5db;
+    }
+    .linkDot.linkOn {
+      border-color: #b45309;
+    }
+    .tagSettingInput {
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 4px 8px;
+      width: 120px;
+    }
+    .tagSettingAdd {
+      border: 1px dashed var(--line);
+      background: #fff;
+      color: var(--muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+    }
+    .tagSettingAdd:hover {
+      border-color: var(--focus);
+      color: var(--focus);
+    }
+
     /* Shared list patient button - unselected state during QR mode */
     .memoRow .memoNoBtn.unselected {
       opacity: 0.4;
