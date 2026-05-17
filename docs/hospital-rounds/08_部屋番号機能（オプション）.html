@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>部屋番号機能（オプション） — 回診 説明書</title>
+  <title>部屋番号機能 — 回診 説明書</title>
   <link rel="stylesheet" href="/shared.css">
   <style>
 .docs-wrap { max-width: 800px; margin: 0 auto; padding: 24px 16px 64px; }
@@ -13,9 +13,6 @@
 .docs-body h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 24px; padding-bottom: 12px; border-bottom: 2px solid var(--border); }
 .docs-body h2 { font-size: 1.2rem; font-weight: 700; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
 .docs-body h3 { font-size: 1rem; font-weight: 700; margin: 24px 0 8px; color: var(--blue); }
-.docs-body h4 { font-size: .95rem; font-weight: 700; margin: 18px 0 6px; color: var(--text); }
-.docs-body h5 { font-size: .9rem; font-weight: 700; margin: 14px 0 6px; color: var(--text); }
-.docs-body h6 { font-size: .9rem; font-weight: 700; margin: 12px 0 6px; color: var(--muted); }
 .docs-body p { margin: 0 0 14px; line-height: 1.75; }
 .docs-body ul { margin: 0 0 14px 20px; }
 .docs-body ol { margin: 0 0 14px 20px; }
@@ -45,31 +42,7 @@
 .docs-toc .toc-num { font-size: .75rem; color: var(--muted); width: 20px; }
 .docs-toc .toc-title { font-weight: 600; }
 .docs-toc .toc-arrow { margin-left: auto; color: var(--muted); }
-
-.docs-embedded header, .docs-embedded footer { display: none !important; }
-.docs-embedded main { padding-top: 0 !important; }
-.docs-embedded .docs-wrap { padding-top: 12px !important; }
-.docs-embedded .docs-breadcrumb { margin-bottom: 16px !important; }
-/* Neutralised external link in embedded mode (replaces <a>) */
-.docs-extlink-text { color: inherit; }
 </style>
-  <script>
-    if (window !== window.parent) {
-      document.documentElement.classList.add('docs-embedded');
-      document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('a[href]').forEach(function(a) {
-          var href = a.getAttribute('href') || '';
-          var external = /^https?:\/\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
-          if (!external) return;
-          // Replace anchor with plain span to fully disable navigation
-          var span = document.createElement('span');
-          span.className = 'docs-extlink-text';
-          span.innerHTML = a.innerHTML;
-          a.parentNode.replaceChild(span, a);
-        });
-      });
-    }
-  </script>
 </head>
 <body>
   <header>
@@ -85,47 +58,54 @@
   <main>
     <div class="docs-wrap">
       <div class="docs-breadcrumb">
-        <a href="/medical/">医療用ツール</a> › <a href="/docs/hospital-rounds/">回診 説明書</a> › 部屋番号機能（オプション）
+        <a href="/medical/">医療用ツール</a> › <a href="/docs/hospital-rounds/">回診 説明書</a> › 部屋番号機能
       </div>
       <article class="docs-body">
         <h1>部屋番号機能</h1>
 <p>部屋番号機能は、患者ごとに <strong>部屋番号（数字）</strong> を登録し、患者ボタンに反映したり、部屋番号順に並べ替えたりできる機能です。</p>
 <hr>
 <h2>有効化</h2>
-<p class="img-block"><img src="images/08_部屋番号機能（オプション）-1778944574426.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="images/08_部屋番号機能（オプション）-1779024239920.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
 <p>部屋番号機能は <strong>デフォルトでオフ</strong> です。</p>
 <ol><li>ヘッダーの ⚙ <strong>設定</strong> を開く</li><li><strong>部屋番号</strong> カード（# アイコン）の右上にあるトグルをタップ</li><li>トグルが緑になればオン</li></ol>
 <p>設定はオン／オフの切り替えだけで、登録項目はありません。オンにすると各画面で部屋番号の入力欄や表示が出現します。</p>
 <hr>
 <h2>部屋番号の入力</h2>
 <h3>患者画面</h3>
-<p class="img-block"><img src="images/08_部屋番号機能（オプション）-1778944597424.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
-<p>部屋番号機能オン時、患者名の <strong>左に部屋番号の入力フォーム</strong> が現れます。</p>
+<p class="img-block"><img src="images/08_部屋番号機能（オプション）-1779024268692.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>患者名の <strong>左に部屋番号の入力フォーム</strong> が現れます。</p>
 <ul><li>数字のみ入力できます（英字や記号は自動で除去されます）</li><li>最大6桁</li><li>空欄も可</li></ul>
 <h3>メモ画面・共有画面（編集モード）</h3>
-<p class="img-block"><img src="images/08_部屋番号機能（オプション）-1778944624692.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="images/08_部屋番号機能（オプション）-1779024301269.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
 <p>編集アイコン（鉛筆）をタップして編集モードに入ると、各行の患者名の左に部屋番号入力欄が現れます。</p>
 <hr>
 <h2>患者ボタンの表示</h2>
-<p class="img-block"><img src="images/08_部屋番号機能（オプション）-1778944652058.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
-<p>部屋番号機能オン時、各画面の <strong>患者ボタン</strong> の表記が変わります：</p>
+<p class="img-block"><img src="images/08_部屋番号機能（オプション）-1779024321842.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>部屋番号機能オン時、各画面の <strong>患者ボタン</strong> の表記が変わります。</p>
 <ul><li><strong>部屋番号が入力されている場合</strong>：<code>部屋番号 患者名</code> の形式（例：<code>301 田中太郎</code>）</li><li><strong>部屋番号が空欄の場合</strong>：従来通り患者名のみ（先頭にスペースは入りません）</li><li><strong>患者名が空欄の場合</strong>：部屋番号 + 元の位置番号（例：<code>301 5</code>）</li></ul>
 <p>ホーム画面の患者ボタン、メモ・共有一覧の患者ボタン、いずれも同じルールで表示されます。</p>
 <hr>
 <h2>部屋番号順への並び替え</h2>
-<p class="img-block"><img src="images/08_部屋番号機能（オプション）-1778944686361.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
-<p>部屋番号機能オン時、以下の画面に <strong>ソートアイコン</strong> が出現します：</p>
-<ul><li><strong>ホーム画面</strong>：保存アイコンの右（タグフィルターの右）</li><li><strong>メモ画面</strong>：編集アイコンの右</li><li><strong>共有画面</strong>：編集アイコンの右</li></ul>
-<p class="img-block"><img src="images/08_部屋番号機能（オプション）-1778944699345.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="images/08_部屋番号機能（オプション）-1779024388309.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>部屋番号機能オン時、以下の画面に <strong>ソートボタン</strong> が出現します。保存ボタン（タグ機能 ON 時はタグボタン）の右に表示されます。</p>
+<ul><li><strong>ホーム画面</strong></li><li><strong>メモ画面</strong></li><li><strong>共有画面</strong></li></ul>
+<p class="img-block"><img src="images/08_部屋番号機能（オプション）-1779024505646.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
 <p>タップすると確認ダイアログが出て、<code>OK</code> を選ぶと <strong>全患者を部屋番号の昇順</strong> に並び替えます。</p>
 <h3>並び替えのルール</h3>
 <ul><li>部屋番号がある患者を昇順に並べる（数値として比較）</li><li>部屋番号が <strong>空欄の患者は末尾</strong> にまとめられる</li><li>並び替え後も、現在開いている患者の選択は維持されます</li></ul>
-<blockquote><p>⚠️ <strong>データそのものの並び順が変わります</strong>。元に戻すには、手動で並び替え直すかドラッグ操作で順序を入れ替えてください（取込・保存で元状態を保管しておくと安心です）。</p></blockquote>
+<h3>元の並び順に戻す</h3>
+<p class="img-block"><img src="images/08_部屋番号機能（オプション）-1779024543546.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="images/08_部屋番号機能（オプション）-1779024558633.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>ソートボタンが青色に表示されている間はもう1度タップすることで元の並び順に戻すことができます。</p>
+<p class="img-block"><img src="images/08_部屋番号機能（オプション）-1779024672059.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="images/08_部屋番号機能（オプション）-1779024695888.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>メモ・共有画面などに移動してもその状態は維持されますが、SOAP の入力などの編集を行うと元に戻すことはできなくなります。</p>
+<blockquote><p>⚠️ <strong>データそのものの並び順が変わります</strong>。誤って状態が保存されてしまった場合は、手動で並び替え直す必要があります。元状態を保存しておくと安心です。</p></blockquote>
 <hr>
 <h2>データの扱い</h2>
-<ul><li>データの保存／取込（<a href="05_データの取込・保存.html">データの取込・保存</a>）に含まれます</li><li>機能オフ時も部屋番号データは消去されません。再度オンにすればそのまま表示されます</li></ul>
+<ul><li>データのエクスポート／取込（<a href="05_データの取込・保存.html">05_データの取込・保存</a>）に含まれます</li><li>機能オフ時も部屋番号データは消去されません。再度オンにすればそのまま表示されます</li></ul>
       </article>
-      <nav class="docs-page-nav"><a class="prev" href="07_管理機能（ベータ）.html">管理機能（ベータ）</a><a class="next" href="09_タグ機能（オプション）.html">タグ機能（オプション）</a></nav>
+      <nav class="docs-page-nav"><a class="prev" href="07_管理機能（ベータ）.html">管理機能（ベータ）</a><a class="next" href="09_タグ機能（オプション）.html">タグ機能</a></nav>
     </div>
   </main>
   <footer>

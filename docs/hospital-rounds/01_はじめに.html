@@ -13,9 +13,6 @@
 .docs-body h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 24px; padding-bottom: 12px; border-bottom: 2px solid var(--border); }
 .docs-body h2 { font-size: 1.2rem; font-weight: 700; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
 .docs-body h3 { font-size: 1rem; font-weight: 700; margin: 24px 0 8px; color: var(--blue); }
-.docs-body h4 { font-size: .95rem; font-weight: 700; margin: 18px 0 6px; color: var(--text); }
-.docs-body h5 { font-size: .9rem; font-weight: 700; margin: 14px 0 6px; color: var(--text); }
-.docs-body h6 { font-size: .9rem; font-weight: 700; margin: 12px 0 6px; color: var(--muted); }
 .docs-body p { margin: 0 0 14px; line-height: 1.75; }
 .docs-body ul { margin: 0 0 14px 20px; }
 .docs-body ol { margin: 0 0 14px 20px; }
@@ -45,31 +42,7 @@
 .docs-toc .toc-num { font-size: .75rem; color: var(--muted); width: 20px; }
 .docs-toc .toc-title { font-weight: 600; }
 .docs-toc .toc-arrow { margin-left: auto; color: var(--muted); }
-
-.docs-embedded header, .docs-embedded footer { display: none !important; }
-.docs-embedded main { padding-top: 0 !important; }
-.docs-embedded .docs-wrap { padding-top: 12px !important; }
-.docs-embedded .docs-breadcrumb { margin-bottom: 16px !important; }
-/* Neutralised external link in embedded mode (replaces <a>) */
-.docs-extlink-text { color: inherit; }
 </style>
-  <script>
-    if (window !== window.parent) {
-      document.documentElement.classList.add('docs-embedded');
-      document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('a[href]').forEach(function(a) {
-          var href = a.getAttribute('href') || '';
-          var external = /^https?:\/\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
-          if (!external) return;
-          // Replace anchor with plain span to fully disable navigation
-          var span = document.createElement('span');
-          span.className = 'docs-extlink-text';
-          span.innerHTML = a.innerHTML;
-          a.parentNode.replaceChild(span, a);
-        });
-      });
-    }
-  </script>
 </head>
 <body>
   <header>
@@ -90,29 +63,49 @@
       <article class="docs-body">
         <h1>回診アプリ — はじめに</h1>
 <h2>このアプリについて</h2>
-<p>回診時の患者情報（SOAP形式）をスマートフォンやタブレットで手軽に記録・管理するためのアプリです。</p>
-<p>モバイル電子カルテのような高度なものではなく、名簿やメモ帳を置き換えるアプリです QRコードなどを利用し、純粋な事務作業を削減できるようにしています ブラウザで実際に触ってみて気に入ったら使用を検討してみてください</p>
-<ul><li>インターネット接続不要（完全オフライン動作）</li><li>外部へデータを送信する機能は実装していません。ソースコードは <a href="https://github.com/snishi-code/snishi-code.com" target="_blank" rel="noopener">GitHub</a> で公開しています</li></ul>
-<p><strong>QRコードリーダーを使った転記：</strong> スマートフォンのデフォルトカメラアプリでQRを読み取るとテキストとしてコピーできます。また、PCに接続したQRコードリーダー（バーコードリーダー）があれば、電子カルテの転記したい欄にカーソルを置いた状態で読み取ることで、キーボード入力と同じ動作でそのまま貼り付けられます。リーダーの接続可否は施設のシステム担当者にご確認ください。</p>
+<p>回診時の患者情報をスマホやタブレットで手軽に記録・管理するためのアプリです。 モバイル電子カルテのような高度なものではなく、名簿やメモ帳を置き換えることを目的としています。 医師向けを想定していますが、カスタマイズ次第ではコメディカルの方も使用可能です。</p>
+<h3>何が便利になるか？</h3>
+<p>こんな時間がなくなります。</p>
+<ul><li>患者名簿を印刷し、電子カルテを見ながら手書きでメモする</li><li>この患者さんって何がプロブレムだっけ？今日って検査予定だったっけ？と思い電子カルテに戻る</li><li>電子カルテでコピペしたり、紙にメモした内容を見ながら再度打ち込む</li><li>せっかくとった所見を忘れて再度取りに行く</li></ul>
+<p>こんなリスクがなくなります。</p>
+<ul><li>上級医に報告する時、誰について何を報告しないといけなかったか忘れて微妙な雰囲気になる</li><li>患者名簿を紛失する</li></ul>
+<p>ブラウザ上で動作するため、実際の使用を試すことができます。実際に使用する際はホーム画面にアプリを追加しての使用を推奨します。</p>
+<blockquote><p>このアプリは <strong>PWA（Progressive Web App）</strong> という形式で作られています。  アプリストアからインストールする必要はなく、ブラウザで開いたページをそのままホーム画面に追加するだけで、普通のアプリのように使えます。Wi-Fi 不要でオフラインでも動作します。  ブラウザと異なり入力したデータも保持されますが注意も必要です。  <strong>Word で作業中にこまめに上書き保存するのと同じ感覚で、上矢印アイコン（出力）から JSON ファイルとして定期的に保存しておくことを推奨します。</strong>  → 詳細は <a href="05_データの取込・保存.html">05_データの取込・保存</a> を参照</p></blockquote>
+<h3>スマホに個人情報を入力して大丈夫？</h3>
+<p>本アプリは最初のインストール後はインターネット接続不要（完全オフライン動作）を前提として作成しています。</p>
+<p>外部へデータを送信する機能は実装していません。ソースコードは <a href="https://github.com/snishi-code/snishi-code.com" target="_blank" rel="noopener">GitHub</a> で公開しています。</p>
+<p>もちろん、アプリがオフライン動作するとしても、ネット回線がある個人のスマホで使うのは、それが個人情報になる場合はアウトです。個人端末で使用する場合は、部屋番号と検査予定のみなど、個人情報に当たらないものだけを入力して下さい。論文を書くときに個人情報に配慮するのと同様です。</p>
+<p>本アプリを最大限使用するためには、病院管理のオフライン動作端末と QR コードリーダーが必要です。責任者やシステム担当者の許可を得て下さい。</p>
+<hr>
 <h2>ご利用にあたっての注意</h2>
 <ul><li>本アプリは個人が開発したものです。<strong>利用は自己責任でお願いします</strong></li><li>動作の正確性・安全性について、開発者は一切の責任を負いません</li><li>医療機関での導入にあたっては、施設のセキュリティ担当者・情報管理部門の承認を得た上でご使用ください</li></ul>
-<h2>PWAとは？</h2>
-<p>このアプリは <strong>PWA（Progressive Web App）</strong> という形式で作られています。</p>
-<p>アプリストアからインストールする必要はなく、ブラウザで開いたページをそのままホーム画面に追加するだけで、普通のアプリのように使えます。Wi-Fi不要でオフラインでも動作します。</p>
+<hr>
 <h2>対応環境</h2>
-<div class="table-wrap"><table><thead><tr><th>端末</th><th>ブラウザ</th></tr></thead><tbody><tr><td>Android</td><td>Chrome（動作確認済み）</td></tr><tr><td>Mac / PC</td><td>Chrome（動作確認済み）</td></tr><tr><td>iPhone / iPad</td><td>Safari（確認予定）</td></tr></tbody></table></div>
-<p>ホーム画面に追加することでアプリとしてインストールできます。</p>
+<div class="table-wrap"><table><thead><tr><th>OS</th><th>動作確認端末</th><th>ブラウザ</th></tr></thead><tbody><tr><td>Android</td><td>Galaxy S24</td><td>Chrome</td></tr><tr><td>Android</td><td>Galaxy tab A11+</td><td>Chrome</td></tr><tr><td>Mac</td><td>MacBook Air M5</td><td>Chrome</td></tr><tr><td>iPad</td><td>iPad A16</td><td>Chrome, Safari</td></tr><tr><td>iPhone</td><td>（確認予定）</td><td>Chrome, Safari</td></tr></tbody></table></div>
+<hr>
+<h2>インストール方法</h2>
+<h3>Android（Chrome）</h3>
+<p class="img-block"><img src="images/01_はじめに-1779019371473.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>はじめてアプリを起動した時にポップアップが出ます。</p>
+<p class="img-block"><img src="images/01_はじめに-1779019317468.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>もし出ない場合はメニューから「ホーム画面に追加」を選択して下さい。</p>
+<p class="img-block"><img src="images/01_はじめに-1779019436849.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>「ショートカットを作成」を押すと通常の Web リンクとなります。アプリのようにオフラインで動作させたい場合は「インストール」を選択して下さい。</p>
+<p class="img-block"><img src="images/01_はじめに-1779019474563.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>再度ポップアップが出るので「インストール」を選択すると数秒でインストールされます。端末の設定によりますがホーム画面かアプリ一覧にアイコンが表示されているはずです。</p>
+<h3>iPad（Safari）</h3>
+<p class="img-block"><img src="images/01_はじめに-1779019592187.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>iPad では Android のようにポップアップは出ません。上部のシェアボタンから「ホーム画面に追加」を選択してください。</p>
+<p class="img-block"><img src="images/01_はじめに-1779019615780.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>「Web アプリとして開く」が ON になっているのを確認して追加してください。Android のように表示は出ませんが数秒でインストールが完了しホーム画面に追加されているはずです。</p>
+<p class="img-block"><img src="images/01_はじめに-1779019641426.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>iPad の場合は機内モードなどでアプリを起動するとポップアップが表示されます。OK をタップしてそのままオフラインで使用することを推奨します。</p>
+<blockquote><p>PWA はオンラインになった瞬間、Web 上の最新版を確認して自動でアプリが更新されます。 データが入力されたままだとデータが破損するリスクがあるため、もしオンラインにする場合は先にデータを保存してください（<a href="05_データの取込・保存.html">05_データの取込・保存</a>）。  以前のバージョンに戻したい場合は <a href="https://github.com/snishi-code/snishi-code.com" target="_blank" rel="noopener">GitHub</a> から任意のバージョンに戻せます。システム担当者に確認してください。</p></blockquote>
+<hr>
 <h2>画面構成</h2>
-<div class="table-wrap"><table><thead><tr><th>画面</th><th>概要</th></tr></thead><tbody><tr><td>ホーム</td><td>患者一覧。ステータスの色で進捗を確認</td></tr><tr><td>患者</td><td>SOAPやメモを入力</td></tr><tr><td>メモ</td><td>全患者のメモを表示・編集</td></tr><tr><td>共有</td><td>他端末とデータ共有</td></tr><tr><td>一覧</td><td>全患者の情報を確認。設定画面から</td></tr><tr><td>設定</td><td>カスタマイズ・機能の追加</td></tr></tbody></table></div>
-<h2>ヘッダーボタンについて</h2>
-<p>各画面のヘッダーには右から以下のアイコンボタンが表示されます。</p>
-<div class="table-wrap"><table><thead><tr><th>アイコン</th><th>機能</th></tr></thead><tbody><tr><td>ホーム</td><td>ホーム画面へ移動</td></tr><tr><td>シェア</td><td>共有画面へ移動</td></tr><tr><td>メモ</td><td>メモ画面へ移動</td></tr><tr><td>ギア</td><td>設定画面へ移動</td></tr><tr><td>クエスチョン</td><td>本説明書へのリンクQRを表示</td></tr></tbody></table></div>
-<h2>データの保存について</h2>
-<p>入力内容はリアルタイムでブラウザ内に自動保存されます。</p>
-<p>ただし、これはブラウザ内部の保存であり、以下の場合にデータが失われます：</p>
-<ul><li>ブラウザの履歴・キャッシュを削除した</li><li>端末を初期化した</li><li>別のブラウザで開いた（ブラウザをまたいでデータは共有されません）</li></ul>
-<p><strong>Wordで作業中にこまめに上書き保存するのと同じ感覚で、上矢印アイコン（保存）からJSONファイルとして定期的に保存しておくことを推奨します。</strong></p>
-<p>→ 詳細は <a href="05_データの取込・保存.html">05_データの取込・保存</a> を参照</p>
+<p class="img-block"><img src="images/01_はじめに-1779020389587.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>ヘッダーには左から以下のボタンが並んでいます。</p>
+<div class="table-wrap"><table><thead><tr><th>画面</th><th>概要</th></tr></thead><tbody><tr><td>説明書</td><td>本説明書と同じものをオフラインで確認可能</td></tr><tr><td>設定</td><td>カスタマイズ・機能の追加（<a href="06_設定.html">06_設定</a>）</td></tr><tr><td>メモ</td><td>全患者のメモを表示・編集（<a href="04_メモ・共有.html">04_メモ・共有</a>）</td></tr><tr><td>共有</td><td>他端末とデータ共有（<a href="04_メモ・共有.html">04_メモ・共有</a>）</td></tr><tr><td>ホーム</td><td>基本の画面（<a href="02_ホーム.html">02_ホーム</a>）</td></tr></tbody></table></div>
       </article>
       <nav class="docs-page-nav"><span></span><a class="next" href="02_ホーム.html">ホーム</a></nav>
     </div>

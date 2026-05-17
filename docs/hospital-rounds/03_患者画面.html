@@ -13,9 +13,6 @@
 .docs-body h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 24px; padding-bottom: 12px; border-bottom: 2px solid var(--border); }
 .docs-body h2 { font-size: 1.2rem; font-weight: 700; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
 .docs-body h3 { font-size: 1rem; font-weight: 700; margin: 24px 0 8px; color: var(--blue); }
-.docs-body h4 { font-size: .95rem; font-weight: 700; margin: 18px 0 6px; color: var(--text); }
-.docs-body h5 { font-size: .9rem; font-weight: 700; margin: 14px 0 6px; color: var(--text); }
-.docs-body h6 { font-size: .9rem; font-weight: 700; margin: 12px 0 6px; color: var(--muted); }
 .docs-body p { margin: 0 0 14px; line-height: 1.75; }
 .docs-body ul { margin: 0 0 14px 20px; }
 .docs-body ol { margin: 0 0 14px 20px; }
@@ -45,31 +42,7 @@
 .docs-toc .toc-num { font-size: .75rem; color: var(--muted); width: 20px; }
 .docs-toc .toc-title { font-weight: 600; }
 .docs-toc .toc-arrow { margin-left: auto; color: var(--muted); }
-
-.docs-embedded header, .docs-embedded footer { display: none !important; }
-.docs-embedded main { padding-top: 0 !important; }
-.docs-embedded .docs-wrap { padding-top: 12px !important; }
-.docs-embedded .docs-breadcrumb { margin-bottom: 16px !important; }
-/* Neutralised external link in embedded mode (replaces <a>) */
-.docs-extlink-text { color: inherit; }
 </style>
-  <script>
-    if (window !== window.parent) {
-      document.documentElement.classList.add('docs-embedded');
-      document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('a[href]').forEach(function(a) {
-          var href = a.getAttribute('href') || '';
-          var external = /^https?:\/\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
-          if (!external) return;
-          // Replace anchor with plain span to fully disable navigation
-          var span = document.createElement('span');
-          span.className = 'docs-extlink-text';
-          span.innerHTML = a.innerHTML;
-          a.parentNode.replaceChild(span, a);
-        });
-      });
-    }
-  </script>
 </head>
 <body>
   <header>
@@ -90,46 +63,56 @@
       <article class="docs-body">
         <h1>患者画面</h1>
 <h2>概要</h2>
-<p>患者名の入力と、SOAP形式での回診メモを記録する画面です。ホーム画面で患者マスをタップすると開きます。</p>
+<p>患者名の入力と、回診メモを入力する画面です。ホーム画面で患者ボタンをタップすると開きます。</p>
+<hr>
 <h2>患者名</h2>
-<p class="img-block"><img src="images/03_患者画面-1778941372423.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
-<p class="img-block"><img src="images/03_患者画面-1778941382907.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
-<p>画面上部の入力欄に患者名を入力します。名前を入れると、ホーム画面の患者マスにも名前が表示されます。空欄の場合は番号が表示されます。</p>
-<h2>ステータスボタン</h2>
+<p class="img-block"><img src="images/03_患者画面-1779021540511.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="images/03_患者画面-1779021564597.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>画面上部の入力欄に患者名を入力します。ホーム画面の患者ボタンにも名前が表示されます。空欄の場合は番号が表示されます。</p>
+<hr>
+<h2>クリア・ステータスボタン</h2>
+<p class="img-block"><img src="images/03_患者画面-1779021620195.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
 <p>画面上部と下部に同じボタンがあります。</p>
-<div class="table-wrap"><table><thead><tr><th>ボタン</th><th>ステータス</th></tr></thead><tbody><tr><td>黄</td><td>保留</td></tr><tr><td>緑</td><td>回診済（QRコードが表示されます）</td></tr><tr><td>灰</td><td>完了</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>ボタン</th><th>ステータス</th></tr></thead><tbody><tr><td>バツ印</td><td>クリア</td></tr><tr><td>黄</td><td>保留</td></tr><tr><td>緑</td><td>回診済（QRコードが表示されます）</td></tr><tr><td>灰</td><td>完了</td></tr></tbody></table></div>
 <p>現在選択中のボタンは強調表示されます。同じボタンをもう一度タップすると白（未回診）に戻ります。</p>
-<h2>クリアボタン</h2>
-<p>ステータスボタンの左に✕丸アイコン（クリア）があります（上部・下部の両方）。設定で指定した項目の入力内容を一括で消去します。デフォルトではS・O・Aがクリア対象です（→ ホーム画面の一括クリアと同じ仕組みです <a href="02_ホーム.html">02_ホーム</a>）。</p>
+<p>ステータスボタンの左にバツ印（クリア）があります。設定で指定した項目の入力内容を一括で消去します。デフォルトでは S・O・ステータス（黄・緑・灰）がクリア対象です。</p>
 <p>→ クリア対象のカスタマイズは <a href="06_設定.html">06_設定</a> を参照</p>
+<hr>
 <h2>メモ</h2>
-<p class="img-block"><img src="images/03_患者画面-1778941598659.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
-<p>SOAPとは別に使える自由メモ欄です。カードの見出しはノートアイコンで表示されます。QRコードを生成した際に、SOAP内容の先頭に表示されます。プロブレムリストなどカルテの冒頭に毎回記載するような情報を入れておくと便利です。</p>
+<p class="img-block"><img src="images/03_患者画面-1779021802517.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>自由メモ欄です。カードの見出しはノートアイコンで表示されます。QR コードを生成した際に先頭に表示されます。プロブレムリストなどカルテの冒頭に毎回記載するような情報を入れておくと便利です。</p>
+<hr>
 <h2>S</h2>
 <p>デフォルトでは空欄のまま出力されます。定型文を使いたい場合は設定で変更できます。</p>
+<hr>
 <h2>O</h2>
 <h3>バイタルサイン</h3>
-<div class="table-wrap"><table><thead><tr><th>項目</th><th>単位</th></tr></thead><tbody><tr><td>SpO2</td><td>％（メモ欄あり：例「RA」「カニューレ2L」など）</td></tr><tr><td>呼吸数</td><td>回</td></tr><tr><td>血圧</td><td>収縮期 / 拡張期（mmHg）</td></tr><tr><td>脈拍</td><td>回</td></tr><tr><td>体温</td><td>℃</td></tr></tbody></table></div>
-<p>すべて空欄の場合は「Vital：安定」と出力されます。バイタル項目のカスタマイズは現時点では非対応です。</p>
+<div class="table-wrap"><table><thead><tr><th>項目</th><th>単位</th></tr></thead><tbody><tr><td>SpO2</td><td>％（メモ欄あり：例「RA」「カニューレ2L」など）</td></tr><tr><td>RR</td><td>なし</td></tr><tr><td>BP</td><td>収縮期 / 拡張期（mmHg）</td></tr><tr><td>R</td><td>なし</td></tr><tr><td>BT</td><td>℃</td></tr></tbody></table></div>
+<p>すべて空欄の場合は「Vital 安定」と出力されます。バイタル項目のカスタマイズは現時点では非対応です。</p>
 <h3>身体所見</h3>
-<p>設定でカスタマイズ可能な所見項目です。初期設定では以下の4項目があります。</p>
-<div class="table-wrap"><table><thead><tr><th>項目</th><th>「正常」ボタンを押した場合の出力</th></tr></thead><tbody><tr><td>General</td><td>良好</td></tr><tr><td>肺音</td><td>明らかなラ音なし</td></tr><tr><td>腸音</td><td>正常</td></tr><tr><td>腹部</td><td>平坦軟、圧痛なし</td></tr></tbody></table></div>
-<ul><li>「正常」ボタンをタップするとオン／オフが切り替わります</li><li>テキストを入力すると「正常」ボタンは自動でオフになります</li><li>テキスト欄には異常所見を入力してください（正常の場合はボタンのみ）</li><li>確認・評価していない項目は何も選択せずに空欄のままでかまいません</li></ul>
+<p class="img-block"><img src="images/03_患者画面-1779022030396.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>設定でカスタマイズ可能な所見項目です。初期設定では以下の6項目があります。</p>
+<div class="table-wrap"><table><thead><tr><th>項目</th><th>チェックボタンを押した場合の出力</th></tr></thead><tbody><tr><td>General</td><td>良好</td></tr><tr><td>肺音</td><td>明らかなラ音なし</td></tr><tr><td>腸音</td><td>正常</td></tr><tr><td>腹部</td><td>平坦軟、圧痛なし</td></tr><tr><td>食事</td><td>摂取良好</td></tr><tr><td>排泄</td><td>尿・便ともに特記なし</td></tr></tbody></table></div>
+<ul><li>チェックボタンをタップするとオン／オフが切り替わります</li><li>テキストを入力するとチェックボタンは自動でオフになります</li><li>テキスト欄には異常所見を入力してください（正常の場合はボタンのみ）</li><li>確認・評価していない項目は何も選択せずに空欄のままでかまいません</li></ul>
 <h3>O（フリーテキスト）</h3>
 <p>上記の項目に当てはまらない所見を自由に記入できます。</p>
+<hr>
 <h2>A</h2>
 <p>空欄の場合はデフォルト文言（初期値：「著変なし」）が出力されます。</p>
+<hr>
 <h2>P</h2>
 <p>空欄の場合はデフォルト文言（初期値：「現行加療継続」）が出力されます。</p>
+<hr>
 <h2>共有</h2>
 <p>他端末（他の医師・看護師等）に引き継ぐ情報を入力します。カードの見出しはシェアアイコンで表示されます。鎮痛薬の処方希望など、これまで口頭やメモ書きで渡していたような情報の受け渡しを想定しています。</p>
 <p>→ 詳細は <a href="04_メモ・共有.html">04_メモ・共有</a> を参照</p>
+<hr>
 <h2>QRコード（ステータスが緑のとき）</h2>
-<p class="img-block"><img src="images/03_患者画面-1778941664039.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
-<p class="img-block"><img src="images/03_患者画面-1778941681559.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
-<p>ステータスを「緑」にすると、QRコードが自動生成されます。</p>
-<p>QRコードの上にテキストプレビューが表示されます。QRコードにはこのテキストと同じ内容が格納されています。</p>
-<ul><li>データ量が多い場合は複数QRに分割されます（左右矢印ボタンで切り替え）</li><li>QRコードリーダーを電子カルテに接続することで、読み取ったテキストをそのまま入力できます。カルテの転記したい欄にカーソルを置いた状態で読み取ってください（キーボードと同じ動作をします）</li><li>リーダーの電子カルテへの接続可否は施設のシステム担当者にご確認ください</li></ul>
+<p class="img-block"><img src="images/03_患者画面-1779022186132.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="images/03_患者画面-1779022196463.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>ステータスを「緑」にすると、QR コードが自動生成されます。</p>
+<p>QR コードの上にテキストプレビューが表示されます。QR コードにはこのテキストと同じ内容が格納されています。</p>
+<ul><li>データ量が多い場合は複数 QR に分割されます（左右矢印ボタンで切り替え）</li><li>QR コードリーダーを電子カルテに接続することで、読み取ったテキストをそのまま入力できます。カルテの転記したい欄にカーソルを置いた状態で読み取ってください（キーボードと同じ動作をします）</li><li>リーダーの電子カルテへの接続可否は施設のシステム担当者にご確認ください</li></ul>
       </article>
       <nav class="docs-page-nav"><a class="prev" href="02_ホーム.html">ホーム</a><a class="next" href="04_メモ・共有.html">メモ・共有</a></nav>
     </div>
