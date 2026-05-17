@@ -30,6 +30,23 @@ export const DEFAULT_ADMIN_IMPORT_ONLY = false;
 export const ROSTER_DIFF_WINDOW_DAYS = 30;
 export const DEFAULT_ROSTER_PASSPHRASE = "";
 
+// Tag filter modes
+export const TAG_FILTER_MODE_AND = "and";
+export const TAG_FILTER_MODE_OR = "or";
+export const DEFAULT_TAG_FILTER_MODE = TAG_FILTER_MODE_AND;
+
+// Virtual status tags exposed in filter pickers (not stored on patient.tags)
+export const STATUS_TAG_PREFIX = "__status:";
+
+// Tag→Status link feature (off by default; separate toggle from tagsEnabled)
+export const DEFAULT_TAG_STATUS_LINK_ENABLED = false;
+
+// Tag grouping (categorize tags into groups, off by default)
+export const DEFAULT_TAG_GROUPING_ENABLED = false;
+export const GROUP_MODE_SINGLE = "single";
+export const GROUP_MODE_MULTI = "multi";
+export const STATUS_GROUP_ID = "__status";
+
 export const DEFAULT_CLEAR_TARGETS = {
   memo: false,
   s: true,

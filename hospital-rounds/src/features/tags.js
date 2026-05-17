@@ -1,41 +1,146 @@
 "use strict";
 
-import { settings, appState, markUpdated, scheduleSave } from "../store.js";
+import { settings, appState, saveSettings, scheduleSave, markUpdated } from "../store.js";
+import { STATUS, STATUS_TAG_PREFIX, TAG_FILTER_MODE_AND, TAG_FILTER_MODE_OR, DEFAULT_TAG_FILTER_MODE, GROUP_MODE_SINGLE, GROUP_MODE_MULTI, STATUS_GROUP_ID } from "../constants.js";
 import { recordOp } from "./roster.js";
+
+function newGroupId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return "g_" + crypto.randomUUID().slice(0, 8);
+  return "g_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
 
 const TAG_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
 
-export function isTagsEnabled() {
-  return !!settings.tagsEnabled;
+const AND_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/><path d="M9 6.6 a6 6 0 0 1 0 10.8 a6 6 0 0 1 0 -10.8 z" fill="currentColor" stroke="none" transform="translate(3 0)"/></svg>`;
+const OR_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" fill-opacity="0.85" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/></svg>`;
+
+// Status virtual tags exposed in filter pickers
+const STATUS_TAG_DEFS = [
+  { value: STATUS_TAG_PREFIX + STATUS.NONE,   label: "白", color: "#ffffff", borderColor: "#9ca3af" },
+  { value: STATUS_TAG_PREFIX + STATUS.YELLOW, label: "黄", color: "#fbbf24" },
+  { value: STATUS_TAG_PREFIX + STATUS.GREEN,  label: "緑", color: "#34d399" },
+  { value: STATUS_TAG_PREFIX + STATUS.GRAY,   label: "灰", color: "#6b7280" },
+  { value: STATUS_TAG_PREFIX + STATUS.BLUE,   label: "青", color: "#bfdbfe", borderColor: "#2563eb" },
+];
+
+export function isStatusTag(value) {
+  return typeof value === "string" && value.startsWith(STATUS_TAG_PREFIX);
 }
 
+export function getStatusFromTag(value) {
+  return isStatusTag(value) ? value.slice(STATUS_TAG_PREFIX.length) : "";
+}
+
+// ============================
+// Public API
+// ============================
+
+export function isTagsEnabled() { return !!settings.tagsEnabled; }
+export function isTagStatusLinkEnabled() { return !!settings.tagStatusLinkEnabled; }
+
+// User-defined tags only (no virtual status tags)
 export function getAllTags() {
   return Array.isArray(settings.tags)
     ? settings.tags.filter(d => typeof d === "string" && d.trim()).map(d => d.trim())
     : [];
 }
 
-// ============================
-// Shared tag filter (home/memo/shared)
-// ============================
-
-let _sharedTagFilter = [];
-
-export function getSharedTagFilter() { return _sharedTagFilter.slice(); }
-export function setSharedTagFilter(tags) { _sharedTagFilter = tags.slice(); }
-export function patientMatchesSharedFilter(p) {
-  if (!_sharedTagFilter.length) return true;
-  const pt = Array.isArray(p.tags) ? p.tags : [];
-  return _sharedTagFilter.every(t => pt.includes(t));
+// For filter pickers: user tags + virtual status tags
+export function getAllFilterEntries() {
+  const userTags = getAllTags().map(t => ({ value: t, label: t }));
+  return [...userTags, ...STATUS_TAG_DEFS];
 }
 
-export function makeSharedTagFilterPicker(onChange) {
-  return makeTagPicker({
-    getSelected: getSharedTagFilter,
-    setSelected: setSharedTagFilter,
-    allTags: getAllTags,
-    onChange,
-  });
+export function getStatusTagDefs() { return STATUS_TAG_DEFS.slice(); }
+
+// ============================
+// Tag grouping
+// ============================
+
+export function isTagGroupingEnabled() { return !!settings.tagGroupingEnabled; }
+
+// Virtual group always present for status colors
+const STATUS_GROUP = { id: STATUS_GROUP_ID, name: "色", mode: GROUP_MODE_SINGLE, virtual: true };
+
+export function getAllGroups() {
+  const userGroups = Array.isArray(settings.tagGroups) ? settings.tagGroups.slice() : [];
+  return [STATUS_GROUP, ...userGroups];
+}
+
+export function getUserGroups() {
+  return Array.isArray(settings.tagGroups) ? settings.tagGroups.slice() : [];
+}
+
+export function getGroupById(groupId) {
+  if (groupId === STATUS_GROUP_ID) return STATUS_GROUP;
+  return getUserGroups().find(g => g.id === groupId) || null;
+}
+
+export function getGroupForTag(tagName) {
+  if (isStatusTag(tagName)) return STATUS_GROUP_ID;
+  if (!settings.tagGroupAssign) return "";
+  return settings.tagGroupAssign[tagName] || "";
+}
+
+export function getTagsInGroup(groupId) {
+  if (groupId === STATUS_GROUP_ID) {
+    return STATUS_TAG_DEFS.map(d => d.value);
+  }
+  if (!settings.tagGroupAssign) return [];
+  return getAllTags().filter(t => settings.tagGroupAssign[t] === groupId);
+}
+
+export function getUnassignedTags() {
+  if (!settings.tagGroupAssign) return getAllTags();
+  return getAllTags().filter(t => !settings.tagGroupAssign[t]);
+}
+
+export function addGroup(name) {
+  const nm = String(name || "").trim();
+  if (!nm) return null;
+  if (!Array.isArray(settings.tagGroups)) settings.tagGroups = [];
+  if (settings.tagGroups.some(g => g.name === nm)) return null;
+  const g = { id: newGroupId(), name: nm, mode: GROUP_MODE_MULTI };
+  settings.tagGroups.push(g);
+  saveSettings();
+  return g;
+}
+
+export function renameGroup(groupId, newName) {
+  const nm = String(newName || "").trim();
+  if (!nm) return false;
+  const g = getUserGroups().find(x => x.id === groupId);
+  if (!g) return false;
+  if (settings.tagGroups.some(x => x.id !== groupId && x.name === nm)) return false;
+  g.name = nm;
+  saveSettings();
+  return true;
+}
+
+export function setGroupMode(groupId, mode) {
+  const g = getUserGroups().find(x => x.id === groupId);
+  if (!g) return;
+  g.mode = (mode === GROUP_MODE_SINGLE) ? GROUP_MODE_SINGLE : GROUP_MODE_MULTI;
+  saveSettings();
+}
+
+export function deleteGroup(groupId) {
+  if (!Array.isArray(settings.tagGroups)) return;
+  settings.tagGroups = settings.tagGroups.filter(g => g.id !== groupId);
+  // Unassign tags that were in this group
+  if (settings.tagGroupAssign) {
+    for (const [t, gid] of Object.entries(settings.tagGroupAssign)) {
+      if (gid === groupId) delete settings.tagGroupAssign[t];
+    }
+  }
+  saveSettings();
+}
+
+export function setTagGroup(tagName, groupId) {
+  if (!settings.tagGroupAssign) settings.tagGroupAssign = {};
+  if (groupId) settings.tagGroupAssign[tagName] = groupId;
+  else delete settings.tagGroupAssign[tagName];
+  saveSettings();
 }
 
 export function getPatientTags(patientIndex) {
@@ -44,10 +149,140 @@ export function getPatientTags(patientIndex) {
   return Array.isArray(p.tags) ? p.tags.slice() : [];
 }
 
+// Add/remove a tag at the settings level (idempotent, no duplicates).
+// Returns true if added, false if duplicate or invalid.
+export function addNewTag(name) {
+  const t = String(name || "").trim();
+  if (!t) return false;
+  if (!Array.isArray(settings.tags)) settings.tags = [];
+  if (settings.tags.includes(t)) return false;
+  settings.tags.push(t);
+  saveSettings();
+  recordOp({ type: "tag.add", name: t });
+  return true;
+}
+
+export function renameTagAt(idx, newName) {
+  if (!Array.isArray(settings.tags) || idx < 0 || idx >= settings.tags.length) return false;
+  const oldName = settings.tags[idx];
+  const next = String(newName || "").trim();
+  if (!next) return false;
+  if (oldName === next) return true;
+  if (settings.tags.includes(next)) return false; // duplicate
+  settings.tags[idx] = next;
+  // Sync to all patients
+  for (const p of appState.patients) {
+    if (Array.isArray(p.tags)) {
+      p.tags = p.tags.map(t => t === oldName ? next : t);
+    }
+  }
+  // Sync to link target if applicable
+  if (settings.tagLinkedToYellow === oldName) settings.tagLinkedToYellow = next;
+  saveSettings();
+  scheduleSave();
+  recordOp({ type: "tag.rename", from: oldName, to: next });
+  return true;
+}
+
+export function deleteTagAt(idx) {
+  if (!Array.isArray(settings.tags) || idx < 0 || idx >= settings.tags.length) return;
+  const name = settings.tags[idx];
+  settings.tags.splice(idx, 1);
+  // Remove tag from all patients; if linked, also restore status where appropriate
+  const wasLinked = settings.tagLinkedToYellow === name;
+  for (const p of appState.patients) {
+    if (Array.isArray(p.tags) && p.tags.includes(name)) {
+      p.tags = p.tags.filter(t => t !== name);
+      if (wasLinked && p.status === STATUS.YELLOW && p.prevStatus) {
+        p.status = p.prevStatus;
+        p.prevStatus = null;
+      }
+    }
+  }
+  if (wasLinked) settings.tagLinkedToYellow = "";
+  saveSettings();
+  scheduleSave();
+  recordOp({ type: "tag.remove", name });
+}
+
+export function moveTag(fromIdx, toIdx) {
+  if (!Array.isArray(settings.tags)) return;
+  if (fromIdx === toIdx) return;
+  if (fromIdx < 0 || fromIdx >= settings.tags.length) return;
+  if (toIdx < 0 || toIdx >= settings.tags.length) return;
+  const [t] = settings.tags.splice(fromIdx, 1);
+  settings.tags.splice(toIdx, 0, t);
+  saveSettings();
+  // Tag order change doesn't need its own op type; recipients use admin sync if needed.
+}
+
+// ============================
+// Tag → Yellow status link
+// ============================
+
+export function setLinkedYellowTag(name) {
+  // Setting a new link: unlink the old first (restore those patients)
+  const old = settings.tagLinkedToYellow;
+  if (old && old !== name) {
+    for (const p of appState.patients) {
+      if (Array.isArray(p.tags) && p.tags.includes(old)) {
+        if (p.status === STATUS.YELLOW && p.prevStatus) {
+          p.status = p.prevStatus;
+          p.prevStatus = null;
+        }
+      }
+    }
+  }
+  settings.tagLinkedToYellow = String(name || "");
+  // Activate the new link: set patients having the new tag to yellow (save prevStatus)
+  const linked = settings.tagLinkedToYellow;
+  if (linked) {
+    for (const p of appState.patients) {
+      if (Array.isArray(p.tags) && p.tags.includes(linked) && p.status !== STATUS.YELLOW) {
+        p.prevStatus = p.status;
+        p.status = STATUS.YELLOW;
+      }
+    }
+  }
+  saveSettings();
+  scheduleSave();
+}
+
+// Is the given patient currently locked to YELLOW by an active link?
+export function isPatientStatusLockedByLink(p) {
+  if (!isTagStatusLinkEnabled()) return false;
+  const linked = settings.tagLinkedToYellow;
+  if (!linked) return false;
+  return Array.isArray(p?.tags) && p.tags.includes(linked);
+}
+
+// When a patient's tags are changing, apply link-induced status effects.
+// Returns the (possibly mutated) tags + adjusts patient.status / prevStatus in place.
+export function applyTagLinkOnPatientChange(patientIndex, newTags) {
+  const p = appState.patients[patientIndex];
+  if (!p) return newTags;
+  if (!isTagStatusLinkEnabled()) return newTags;
+  const linked = settings.tagLinkedToYellow;
+  if (!linked) return newTags;
+  const oldTags = Array.isArray(p.tags) ? p.tags : [];
+  const hadLinked = oldTags.includes(linked);
+  const hasLinked = newTags.includes(linked);
+  if (!hadLinked && hasLinked) {
+    // tag added → save prev status, force yellow
+    if (p.status !== STATUS.YELLOW) p.prevStatus = p.status;
+    p.status = STATUS.YELLOW;
+  } else if (hadLinked && !hasLinked) {
+    // tag removed: status stays yellow per spec; clear prevStatus
+    p.prevStatus = null;
+  }
+  return newTags;
+}
+
 function setPatientTags(patientIndex, tags) {
   const p = appState.patients[patientIndex];
   if (!p) return;
-  const next = tags.slice();
+  let next = tags.slice();
+  next = applyTagLinkOnPatientChange(patientIndex, next);
   p.tags = next;
   if (p.pid) recordOp({ type: "update", pid: p.pid, field: "tags", value: next });
   markUpdated(patientIndex + 1);
@@ -55,44 +290,157 @@ function setPatientTags(patientIndex, tags) {
 }
 
 // ============================
+// Shared tag filter (cross-screen)
+// ============================
+
+let _sharedTagFilter = []; // entries from getAllFilterEntries() values (incl. status tags)
+let _sharedFilterMode = DEFAULT_TAG_FILTER_MODE;
+
+export function getSharedTagFilter() { return _sharedTagFilter.slice(); }
+export function setSharedTagFilter(tags) { _sharedTagFilter = tags.slice(); }
+export function getSharedFilterMode() { return _sharedFilterMode; }
+export function setSharedFilterMode(mode) {
+  _sharedFilterMode = (mode === TAG_FILTER_MODE_OR) ? TAG_FILTER_MODE_OR : TAG_FILTER_MODE_AND;
+}
+
+function patientFilterValues(p) {
+  const out = Array.isArray(p.tags) ? p.tags.slice() : [];
+  out.push(STATUS_TAG_PREFIX + (p.status || STATUS.NONE));
+  return out;
+}
+
+export function patientMatchesSharedFilter(p) {
+  if (!_sharedTagFilter.length) return true;
+  const have = new Set(patientFilterValues(p));
+
+  // When grouping is enabled, evaluate per-group AND (intra-group OR).
+  if (isTagGroupingEnabled()) {
+    // Bucket selected filter values by group id ("" = unassigned)
+    const buckets = new Map();
+    for (const v of _sharedTagFilter) {
+      const gid = getGroupForTag(v) || "";
+      if (!buckets.has(gid)) buckets.set(gid, []);
+      buckets.get(gid).push(v);
+    }
+    for (const [gid, selected] of buckets.entries()) {
+      // Within a group: any one selected match is enough (OR semantics)
+      const ok = selected.some(t => have.has(t));
+      if (!ok) return false;
+    }
+    return true;
+  }
+
+  if (_sharedFilterMode === TAG_FILTER_MODE_OR) {
+    return _sharedTagFilter.some(t => have.has(t));
+  }
+  return _sharedTagFilter.every(t => have.has(t));
+}
+
+// ============================
 // Generic multi-select dropdown
 // ============================
 
 let _openPopup = null;
-
 function closeOpenPopup() {
   if (_openPopup) {
     _openPopup.style.display = "none";
     _openPopup = null;
   }
 }
-
 document.addEventListener("click", (e) => {
   if (!_openPopup) return;
   const wrap = _openPopup.closest(".tagPicker");
   if (wrap && !wrap.contains(e.target)) closeOpenPopup();
 });
 
-function buildTagSummary(selected) {
-  if (!selected || !selected.length) {
-    return `<span class="tagPickerIcon">${TAG_SVG}</span>`;
-  }
-  const safe = selected.map(t => `<span class="tagChip">${escapeHtml(t)}</span>`).join("");
-  return `<span class="tagPickerIcon">${TAG_SVG}</span>${safe}`;
-}
-
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" })[c]);
 }
 
+function buildChipsHtml(selected, entriesIndex) {
+  if (!selected || !selected.length) {
+    return `<span class="tagPickerIcon">${TAG_SVG}</span>`;
+  }
+  const safe = selected.map(v => {
+    const e = entriesIndex.get(v) || { label: v };
+    if (e.color) {
+      return `<span class="tagChip" style="background:${e.color};border-color:${e.borderColor || e.color};color:${e.color === '#ffffff' ? '#111' : '#fff'};">${escapeHtml(e.label)}</span>`;
+    }
+    return `<span class="tagChip">${escapeHtml(e.label)}</span>`;
+  }).join("");
+  return `<span class="tagPickerIcon">${TAG_SVG}</span>${safe}`;
+}
+
+function entriesToIndex(entries) {
+  const m = new Map();
+  for (const e of entries) m.set(e.value, e);
+  return m;
+}
+
+// ============================
+// Grouped picker (when tagGroupingEnabled)
+// ============================
+
+function buildGroupSection(group, entries, getSelected, setSelected, onChange, refreshTrigger) {
+  const sec = document.createElement("div");
+  sec.className = "tagPickerSection";
+  if (group.name) {
+    const h = document.createElement("div");
+    h.className = "tagPickerSectionHead";
+    h.innerHTML = `<span>${escapeHtml(group.name)}</span><span class="tagPickerSectionMode">${
+      group.mode === GROUP_MODE_SINGLE ? "・単選択" : ""
+    }</span>`;
+    sec.appendChild(h);
+  }
+  const current = new Set(getSelected());
+  for (const e of entries) {
+    const row = document.createElement("label");
+    row.className = "tagPickerOpt";
+    const cb = document.createElement("input");
+    cb.type = (group.mode === GROUP_MODE_SINGLE) ? "radio" : "checkbox";
+    cb.name = "g_" + group.id;
+    cb.checked = current.has(e.value);
+    cb.addEventListener("change", () => {
+      const next = new Set(getSelected());
+      if (group.mode === GROUP_MODE_SINGLE) {
+        // Remove other entries in this group
+        for (const x of entries) next.delete(x.value);
+        if (cb.checked) next.add(e.value);
+      } else {
+        if (cb.checked) next.add(e.value);
+        else next.delete(e.value);
+      }
+      setSelected(Array.from(next));
+      refreshTrigger();
+      if (onChange) onChange();
+    });
+    row.appendChild(cb);
+    if (e.color) {
+      const sw = document.createElement("span");
+      sw.style.cssText = `display:inline-block;width:18px;height:18px;border-radius:4px;background:${e.color};border:1px solid ${e.borderColor || "rgba(0,0,0,.2)"};flex-shrink:0;`;
+      sw.title = e.label;
+      row.appendChild(sw);
+    } else {
+      const txt = document.createElement("span");
+      txt.textContent = e.label;
+      row.appendChild(txt);
+    }
+    sec.appendChild(row);
+  }
+  return sec;
+}
+
+// opts: { getSelected, setSelected, entries: [{value,label,color?}], onChange, fillWidth, withModeToggle, includeStatus, forPatient }
 export function makeTagPicker(opts) {
   const {
     getSelected,
     setSelected,
-    allTags,
+    entries,
     onChange,
-    placeholder = "—",
     fillWidth = false,
+    withModeToggle = false,
+    grouped = false,           // group sections when true (forces grouping mode)
+    forPatient = false,        // patient picker: hide status group entirely
   } = opts;
 
   const wrap = document.createElement("div");
@@ -109,13 +457,75 @@ export function makeTagPicker(opts) {
 
   function refreshTrigger() {
     const selected = getSelected();
-    trigger.innerHTML = buildTagSummary(selected);
+    const list = (typeof entries === "function" ? entries() : entries) || [];
+    // When grouping is enabled, show only the tag icon (and a dot indicating selection)
+    if (grouped && isTagGroupingEnabled()) {
+      const hasAny = selected.length > 0;
+      trigger.innerHTML = `<span class="tagPickerIcon" style="color:${hasAny ? '#2563eb' : 'var(--muted)'};">${TAG_SVG}</span>`;
+      trigger.classList.toggle("hasSelected", hasAny);
+    } else {
+      trigger.innerHTML = buildChipsHtml(selected, entriesToIndex(list));
+    }
   }
 
   function refreshPopup() {
     popup.textContent = "";
-    const tags = (typeof allTags === "function" ? allTags() : allTags) || [];
-    if (!tags.length) {
+    // Mode toggle only when NOT in grouping mode (grouped mode has per-group rules)
+    if (withModeToggle && !(grouped && isTagGroupingEnabled())) {
+      const modeRow = document.createElement("div");
+      modeRow.className = "tagPickerModeRow";
+      const mkBtn = (mode, svg, title) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "tagPickerModeBtn" + (getSharedFilterMode() === mode ? " selected" : "");
+        b.innerHTML = svg;
+        b.title = title;
+        b.addEventListener("click", (e) => {
+          e.stopPropagation();
+          setSharedFilterMode(mode);
+          refreshPopup();
+          refreshTrigger();
+          if (onChange) onChange();
+        });
+        return b;
+      };
+      modeRow.appendChild(mkBtn(TAG_FILTER_MODE_AND, AND_SVG, "AND（すべて満たす）"));
+      modeRow.appendChild(mkBtn(TAG_FILTER_MODE_OR, OR_SVG, "OR（いずれか満たす）"));
+      popup.appendChild(modeRow);
+    }
+
+    // Grouped rendering
+    if (grouped && isTagGroupingEnabled()) {
+      const userGroups = getUserGroups();
+      const sectionsHost = document.createElement("div");
+
+      // Status group (filter only)
+      if (!forPatient) {
+        const statusEntries = STATUS_TAG_DEFS.map(d => ({
+          value: d.value, label: d.label, color: d.color, borderColor: d.borderColor,
+        }));
+        sectionsHost.appendChild(buildGroupSection(STATUS_GROUP, statusEntries, getSelected, setSelected, onChange, refreshTrigger));
+      }
+      // User groups
+      for (const g of userGroups) {
+        const members = getTagsInGroup(g.id);
+        if (!members.length) continue;
+        const groupEntries = members.map(t => ({ value: t, label: t }));
+        sectionsHost.appendChild(buildGroupSection(g, groupEntries, getSelected, setSelected, onChange, refreshTrigger));
+      }
+      // Unassigned tags
+      const unassigned = getUnassignedTags();
+      if (unassigned.length) {
+        const unGroup = { id: "__unassigned", name: "未分類", mode: GROUP_MODE_MULTI };
+        const unEntries = unassigned.map(t => ({ value: t, label: t }));
+        sectionsHost.appendChild(buildGroupSection(unGroup, unEntries, getSelected, setSelected, onChange, refreshTrigger));
+      }
+      popup.appendChild(sectionsHost);
+      return;
+    }
+
+    const list = (typeof entries === "function" ? entries() : entries) || [];
+    if (!list.length) {
       const empty = document.createElement("div");
       empty.className = "tagPickerEmpty";
       empty.textContent = "（タグ未登録）";
@@ -123,24 +533,33 @@ export function makeTagPicker(opts) {
       return;
     }
     const current = new Set(getSelected());
-    for (const tag of tags) {
+    for (const e of list) {
       const lbl = document.createElement("label");
       lbl.className = "tagPickerOpt";
       const cb = document.createElement("input");
       cb.type = "checkbox";
-      cb.checked = current.has(tag);
+      cb.checked = current.has(e.value);
       cb.addEventListener("change", () => {
         const next = new Set(getSelected());
-        if (cb.checked) next.add(tag);
-        else next.delete(tag);
+        if (cb.checked) next.add(e.value);
+        else next.delete(e.value);
         setSelected(Array.from(next));
         refreshTrigger();
         if (onChange) onChange();
       });
       lbl.appendChild(cb);
-      const txt = document.createElement("span");
-      txt.textContent = tag;
-      lbl.appendChild(txt);
+      if (e.color) {
+        // Status color: show only the color swatch (no text label, per spec)
+        const sw = document.createElement("span");
+        sw.style.cssText = `display:inline-block;width:18px;height:18px;border-radius:4px;background:${e.color};border:1px solid ${e.borderColor || "rgba(0,0,0,.2)"};flex-shrink:0;`;
+        sw.title = e.label;
+        sw.setAttribute("aria-label", e.label);
+        lbl.appendChild(sw);
+      } else {
+        const txt = document.createElement("span");
+        txt.textContent = e.label;
+        lbl.appendChild(txt);
+      }
       popup.appendChild(lbl);
     }
   }
@@ -162,15 +581,27 @@ export function makeTagPicker(opts) {
   return wrap;
 }
 
-// ============================
-// Patient tag picker (binds to patient.tags)
-// ============================
-
+// Patient tag picker: user-defined tags only (no status virtual tags)
 export function makePatientTagPicker(patientIndex, onChange) {
   return makeTagPicker({
     getSelected: () => getPatientTags(patientIndex),
     setSelected: (tags) => setPatientTags(patientIndex, tags),
-    allTags: getAllTags,
+    entries: () => getAllTags().map(t => ({ value: t, label: t })),
     onChange,
+    grouped: true,
+    forPatient: true,
+  });
+}
+
+// Shared filter picker: user tags + status virtual tags + AND/OR toggle (when not grouped)
+export function makeSharedTagFilterPicker(onChange) {
+  return makeTagPicker({
+    getSelected: getSharedTagFilter,
+    setSelected: setSharedTagFilter,
+    entries: getAllFilterEntries,
+    onChange,
+    withModeToggle: true,
+    grouped: true,
+    forPatient: false,
   });
 }

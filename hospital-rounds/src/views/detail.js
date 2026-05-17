@@ -5,7 +5,7 @@ import { STATUS } from "../constants.js";
 import { buildTabPayload } from "../payload.js";
 import { utf8ByteLength } from "../payload.js";
 import { qrcodegen } from "../libs/qrcodegen.js";
-import { isTagsEnabled, makePatientTagPicker } from "../features/tags.js";
+import { isTagsEnabled, makePatientTagPicker, isPatientStatusLockedByLink } from "../features/tags.js";
 import { isRoomEnabled, makeRoomInput } from "../features/room.js";
 import { isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
@@ -461,6 +461,10 @@ export function initDetailEvents(renderHomeFn, syncMemoFn) {
 export function initStatusButtons(renderHomeFn) {
   const setStatus = (status) => {
     const p = appState.patients[selectedNo - 1];
+    if (isPatientStatusLockedByLink(p)) {
+      alert("この患者は連携タグが付いているため、ステータスを変更できません。先にタグを外してください。");
+      return;
+    }
     const next = p.status === status ? STATUS.NONE : status;
     p.status = next;
     markUpdated(selectedNo);
