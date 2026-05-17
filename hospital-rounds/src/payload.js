@@ -47,22 +47,22 @@ function buildOOutput(p) {
 
   const vParts = [];
   if (hasSpo2) {
-    let s = `SpO2：${v.spo2}％`;
+    let s = `SpO2 ${v.spo2}%`;
     if (v.spo2_memo) s += ` (${v.spo2_memo})`;
     vParts.push(s);
   } else if (v.spo2_memo) {
-    vParts.push(`SpO2：${v.spo2_memo}`);
+    vParts.push(`SpO2 ${v.spo2_memo}`);
   }
-  if (hasRr) vParts.push(`RR：${v.rr}回`);
-  if (hasBpSys || hasBpDia) vParts.push(`BP：${v.bp_sys || ""}/${v.bp_dia || ""}mmHg`);
-  if (hasPr) vParts.push(`P：${v.pr}回`);
-  if (hasBt) vParts.push(`BT：${v.bt}℃`);
+  if (hasRr) vParts.push(`RR ${v.rr}`);
+  if (hasBpSys || hasBpDia) vParts.push(`BP ${v.bp_sys || ""}/${v.bp_dia || ""}mmHg`);
+  if (hasPr) vParts.push(`P ${v.pr}`);
+  if (hasBt) vParts.push(`BT ${v.bt}℃`);
 
   const parts = [];
   if (vParts.length > 0) {
-    parts.push(vParts.join(" "));
+    parts.push(vParts.join(", "));
   } else {
-    parts.push("Vital：安定");
+    parts.push("Vital 安定");
   }
 
   const map = oRuleMap();
