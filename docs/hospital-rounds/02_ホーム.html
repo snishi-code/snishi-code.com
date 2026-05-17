@@ -13,9 +13,6 @@
 .docs-body h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 24px; padding-bottom: 12px; border-bottom: 2px solid var(--border); }
 .docs-body h2 { font-size: 1.2rem; font-weight: 700; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
 .docs-body h3 { font-size: 1rem; font-weight: 700; margin: 24px 0 8px; color: var(--blue); }
-.docs-body h4 { font-size: .95rem; font-weight: 700; margin: 18px 0 6px; color: var(--text); }
-.docs-body h5 { font-size: .9rem; font-weight: 700; margin: 14px 0 6px; color: var(--text); }
-.docs-body h6 { font-size: .9rem; font-weight: 700; margin: 12px 0 6px; color: var(--muted); }
 .docs-body p { margin: 0 0 14px; line-height: 1.75; }
 .docs-body ul { margin: 0 0 14px 20px; }
 .docs-body ol { margin: 0 0 14px 20px; }
@@ -45,31 +42,7 @@
 .docs-toc .toc-num { font-size: .75rem; color: var(--muted); width: 20px; }
 .docs-toc .toc-title { font-weight: 600; }
 .docs-toc .toc-arrow { margin-left: auto; color: var(--muted); }
-
-.docs-embedded header, .docs-embedded footer { display: none !important; }
-.docs-embedded main { padding-top: 0 !important; }
-.docs-embedded .docs-wrap { padding-top: 12px !important; }
-.docs-embedded .docs-breadcrumb { margin-bottom: 16px !important; }
-/* Neutralised external link in embedded mode (replaces <a>) */
-.docs-extlink-text { color: inherit; }
 </style>
-  <script>
-    if (window !== window.parent) {
-      document.documentElement.classList.add('docs-embedded');
-      document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('a[href]').forEach(function(a) {
-          var href = a.getAttribute('href') || '';
-          var external = /^https?:\/\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
-          if (!external) return;
-          // Replace anchor with plain span to fully disable navigation
-          var span = document.createElement('span');
-          span.className = 'docs-extlink-text';
-          span.innerHTML = a.innerHTML;
-          a.parentNode.replaceChild(span, a);
-        });
-      });
-    }
-  </script>
 </head>
 <body>
   <header>
@@ -90,26 +63,35 @@
       <article class="docs-body">
         <h1>ホーム</h1>
 <h2>概要</h2>
-<p class="img-block"><img src="images/02_ホーム-1778940738905.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="images/02_ホーム-1779021052489.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
 <p>起動すると最初に表示される画面です。登録された患者がマス目（グリッド）状に並び、それぞれの色でステータスを一目で確認できます。</p>
+<hr>
 <h2>アプリタイトル</h2>
-<p>画面上部のタイトル（初期値：「回診」）は直接タップして編集できます。担当者名や病棟名を入れて使い分けることができます。同じ端末を複数人で共有する運用も可能です。患者数が多い場合は「201 テスト」のように患者名に部屋番号を併記する使い方が便利です（→ <a href="08_部屋番号機能（オプション）.html">08_部屋番号機能</a> を使うこともできます）。</p>
+<p>画面上部のタイトル（初期値：「回診」）は直接タップして編集できます。担当者名や病棟名を入れて使い分けることができます。同じ端末を複数人で共有する運用も可能です。</p>
+<p>患者数が多い場合は「201 テスト」のように患者名に部屋番号を併記する使い方が便利です。<a href="08_部屋番号機能（オプション）.html">部屋番号機能</a>を使うことも可能です。</p>
+<hr>
 <h2>ステータス</h2>
-<p>白・青以外は自由に使い方を工夫できます。以下は開発者が想定している一例です。<strong>緑を押すとQRコードが生成されます。</strong></p>
-<div class="table-wrap"><table><thead><tr><th>色</th><th>使用例</th><th>変更方法</th></tr></thead><tbody><tr><td>白</td><td>未回診</td><td>デフォルト</td></tr><tr><td>黄</td><td>保留（要確認・後で戻る）</td><td>患者画面から</td></tr><tr><td>緑</td><td>回診済（QRコード生成）</td><td>患者画面から</td></tr><tr><td>灰</td><td>完了</td><td>患者画面から</td></tr><tr><td>青</td><td>追記</td><td>データ取込時に自動（→ <a href="05_データの取込・保存.html">05_データの取込・保存</a>）</td></tr></tbody></table></div>
+<p>白・青以外は自由に使い方を工夫できます。以下は開発者が想定している一例です。</p>
+<div class="table-wrap"><table><thead><tr><th>色</th><th>使用例</th><th>変更方法</th></tr></thead><tbody><tr><td>白</td><td>未回診</td><td>デフォルト</td></tr><tr><td>黄</td><td>保留</td><td>患者画面から</td></tr><tr><td>緑</td><td>回診済</td><td>患者画面から</td></tr><tr><td>灰</td><td>完了</td><td>患者画面から</td></tr><tr><td>青</td><td>追記</td><td>データ取込時に自動（→ <a href="05_データの取込・保存.html">05_データの取込・保存</a>）</td></tr></tbody></table></div>
+<hr>
 <h2>ボタン説明</h2>
-<div class="table-wrap"><table><thead><tr><th>ボタン</th><th>機能</th></tr></thead><tbody><tr><td>全消去</td><td>設定などを含む全情報を削除。先にデータを保存しておくことを推奨します</td></tr><tr><td>バツ印（クリア）</td><td>患者の一部データを一括で削除。どのデータを削除するかは設定から指定できる（→ <a href="06_設定.html">06_設定</a>）。各患者画面からその患者のデータだけを削除することも可能。</td></tr><tr><td>下矢印（取込）</td><td>端末からJSONファイルを読み込む</td></tr><tr><td>上矢印（保存）</td><td>データをJSONファイルで保存。</td></tr></tbody></table></div>
-<h2>患者マスをタップ</h2>
-<p class="img-block"><img src="images/02_ホーム-1778941206162.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
-<p>タップすると該当患者の患者画面に移動します。</p>
+<p class="img-block"><img src="images/01_はじめに-1779020389587.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>左から以下のボタンが並んでいます。</p>
+<div class="table-wrap"><table><thead><tr><th>ボタン</th><th>機能</th></tr></thead><tbody><tr><td>赤バツ印（全消去）</td><td>設定などを含む全情報を削除。先にデータを保存しておくことを推奨します</td></tr><tr><td>バツ印（クリア）</td><td>患者の一部データを一括で削除。どのデータを削除するかは設定から指定できます。各患者画面からその患者のデータだけを削除することも可能。</td></tr><tr><td>下矢印（取込）</td><td>端末からデータを読み込む。</td></tr><tr><td>上矢印（保存）</td><td>端末にデータを保存。</td></tr></tbody></table></div>
+<hr>
+<h2>患者ボタンをタップ</h2>
+<p class="img-block"><img src="images/02_ホーム-1779021378251.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>タップすると該当患者の詳細入力画面に移動します。</p>
+<hr>
 <h2>長押し（患者の追加・削除）</h2>
-<p class="img-block"><img src="images/02_ホーム-1778941226021.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
-<p>患者マスを長押しすると操作メニューが表示されます。</p>
-<div class="table-wrap"><table><thead><tr><th>操作</th><th>内容</th></tr></thead><tbody><tr><td>1人追加（下へ）</td><td>選択した患者の下に新しい患者枠を1つ追加</td></tr><tr><td>5人追加（下へ）</td><td>選択した患者の下に新しい患者枠を5つ追加</td></tr><tr><td>削除</td><td>選択した患者を削除（確認あり）</td></tr></tbody></table></div>
+<p class="img-block"><img src="images/02_ホーム-1779021411548.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>患者ボタンを長押しして放すと操作メニューが表示されます。</p>
+<div class="table-wrap"><table><thead><tr><th>操作</th><th>内容</th></tr></thead><tbody><tr><td>1人追加（下へ）</td><td>選択した患者の下に新しい患者ボタンを1つ追加</td></tr><tr><td>5人追加（下へ）</td><td>選択した患者の下に新しい患者ボタンを5つ追加</td></tr><tr><td>削除</td><td>選択した患者を削除（確認あり）</td></tr></tbody></table></div>
+<hr>
 <h2>患者の並び替え</h2>
-<p class="img-block"><img src="images/02_ホーム-1778941250318.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
-<p class="img-block"><img src="images/02_ホーム-1778941263186.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
-<p>患者マスを長押しして少し動かすとドラッグ＆ドロップで並び替えができます。</p>
+<p class="img-block"><img src="images/02_ホーム-1779021477607.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="images/02_ホーム-1779021489239.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p>患者ボタンを長押しして動かすとドラッグ＆ドロップで並び替えができます。</p>
       </article>
       <nav class="docs-page-nav"><a class="prev" href="01_はじめに.html">はじめに</a><a class="next" href="03_患者画面.html">患者画面</a></nav>
     </div>

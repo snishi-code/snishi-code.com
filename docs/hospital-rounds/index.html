@@ -13,9 +13,6 @@
 .docs-body h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 24px; padding-bottom: 12px; border-bottom: 2px solid var(--border); }
 .docs-body h2 { font-size: 1.2rem; font-weight: 700; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
 .docs-body h3 { font-size: 1rem; font-weight: 700; margin: 24px 0 8px; color: var(--blue); }
-.docs-body h4 { font-size: .95rem; font-weight: 700; margin: 18px 0 6px; color: var(--text); }
-.docs-body h5 { font-size: .9rem; font-weight: 700; margin: 14px 0 6px; color: var(--text); }
-.docs-body h6 { font-size: .9rem; font-weight: 700; margin: 12px 0 6px; color: var(--muted); }
 .docs-body p { margin: 0 0 14px; line-height: 1.75; }
 .docs-body ul { margin: 0 0 14px 20px; }
 .docs-body ol { margin: 0 0 14px 20px; }
@@ -45,29 +42,7 @@
 .docs-toc .toc-num { font-size: .75rem; color: var(--muted); width: 20px; }
 .docs-toc .toc-title { font-weight: 600; }
 .docs-toc .toc-arrow { margin-left: auto; color: var(--muted); }
-
-.docs-embedded header, .docs-embedded footer { display: none !important; }
-.docs-embedded main { padding-top: 0 !important; }
-.docs-embedded .docs-wrap { padding-top: 12px !important; }
-.docs-embedded .docs-breadcrumb { margin-bottom: 16px !important; }
-.docs-extlink-text { color: inherit; }
 </style>
-  <script>
-    if (window !== window.parent) {
-      document.documentElement.classList.add('docs-embedded');
-      document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('a[href]').forEach(function(a) {
-          var href = a.getAttribute('href') || '';
-          var external = /^https?:\/\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
-          if (!external) return;
-          var span = document.createElement('span');
-          span.className = 'docs-extlink-text';
-          span.innerHTML = a.innerHTML;
-          a.parentNode.replaceChild(span, a);
-        });
-      });
-    }
-  </script>
 </head>
 <body>
   <header>
@@ -141,14 +116,21 @@
     <li>
       <a href="08_部屋番号機能（オプション）.html">
         <span class="toc-num">08</span>
-        <span class="toc-title">部屋番号機能（オプション）</span>
+        <span class="toc-title">部屋番号機能</span>
         <span class="toc-arrow">→</span>
       </a>
     </li>
     <li>
       <a href="09_タグ機能（オプション）.html">
         <span class="toc-num">09</span>
-        <span class="toc-title">タグ機能（オプション）</span>
+        <span class="toc-title">タグ機能</span>
+        <span class="toc-arrow">→</span>
+      </a>
+    </li>
+    <li>
+      <a href="10_タグ機能：カテゴライズ（オプション）.html">
+        <span class="toc-num">10</span>
+        <span class="toc-title">タグ機能：カテゴライズ</span>
         <span class="toc-arrow">→</span>
       </a>
     </li>

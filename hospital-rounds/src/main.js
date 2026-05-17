@@ -210,6 +210,17 @@ if (headerHelpBtn) headerHelpBtn.addEventListener("click", () => {
   showView("docs");
 });
 
+// Inline help buttons: open a specific docs page in the iframe.
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".helpLinkBtn");
+  if (!btn) return;
+  const page = btn.dataset.helpPage;
+  if (!page) return;
+  const iframe = document.getElementById("docsIframe");
+  if (iframe) iframe.src = `/docs/hospital-rounds/${encodeURIComponent(page)}.html`;
+  showView("docs");
+});
+
 const memoEditBtn = document.getElementById("memoEditBtn");
 if (memoEditBtn) memoEditBtn.addEventListener("click", () => {
   const nextActive = !getMemoEditMode();
