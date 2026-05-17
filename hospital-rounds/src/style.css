@@ -8,11 +8,13 @@
       --status-none-bg: #ffffff;
       --status-none-bd: #e5e7eb;
 
-      --status-yellow-bg: #fbbf24;
+      --status-yellow-bg: #f59e0b;
       --status-yellow-bd: #b45309;
+      --status-yellow-fg: #78350f;
 
-      --status-green-bg: #34d399;
-      --status-green-bd: #047857;
+      --status-green-bg: #14b8a6;
+      --status-green-bd: #0f766e;
+      --status-green-fg: #ffffff;
 
       --status-gray-bg: #6b7280;
       --status-gray-bd: #1f2937;
@@ -280,31 +282,39 @@
       min-width: 44px;
       min-height: 44px;
       border-radius: 50%;
-      font-size: 0;
-      line-height: 0;
       cursor: pointer;
       flex-shrink: 0;
       box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12);
+      /* Center the inner shape glyph */
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 0;
     }
+    .statusBtn > svg { display: block; }
 
     .statusBtn.yellow {
       background: var(--status-yellow-bg);
       border-color: var(--status-yellow-bd);
+      color: var(--status-yellow-fg);
     }
 
     .statusBtn.green {
       background: var(--status-green-bg);
       border-color: var(--status-green-bd);
+      color: var(--status-green-fg);
     }
 
     .statusBtn.gray {
       background: var(--status-gray-bg);
       border-color: var(--status-gray-bd);
+      color: var(--status-gray-text);
     }
 
     .statusBtn.blue {
       background: var(--status-blue-bg);
       border-color: var(--status-blue-bd);
+      color: var(--status-blue-text);
     }
 
     .statusBtn.selected {
