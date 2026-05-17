@@ -298,7 +298,7 @@ footer {
     if (window !== window.parent) {
       document.documentElement.classList.add('docs-embedded');
       document.addEventListener('DOMContentLoaded', function() {
-        // External links (snishi-code logo, breadcrumb, etc.) → render as plain text.
+        // External links (snishi-code logo, /medical/, etc.) → render as plain text.
         document.querySelectorAll('a[href]').forEach(function(a) {
           var href = a.getAttribute('href') || '';
           var external = /^https?:\/\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
@@ -309,17 +309,29 @@ footer {
           a.parentNode.replaceChild(span, a);
         });
       });
-      // Intra-docs navigation → ask the parent to swap the bundled HTML (no network).
+      // Intra-docs navigation → ask the parent to swap the bundled HTML
+      // (no network roundtrip — works fully offline). Registered in the capture
+      // phase so the link's default navigation never fires.
       document.addEventListener('click', function(e) {
-        var a = e.target.closest && e.target.closest('a[href]');
+        var t = e.target;
+        var a = (t && t.closest) ? t.closest('a[href]') : null;
         if (!a) return;
         var href = a.getAttribute('href') || '';
-        if (!/\.html(?:[#?]|$)/.test(href)) return;
         if (/^https?:\/\//.test(href)) return;
+        // Pull the bare file name. Accepts: foo.html | path/foo.html | /docs/hospital-rounds/[foo.html] | docs index path
+        var page = null;
+        if (/\.html(?:[#?]|$)/.test(href)) {
+          page = href.split('/').pop().split('#')[0].split('?')[0];
+        } else if (href === '/docs/hospital-rounds/' || href === '/docs/hospital-rounds') {
+          page = 'index.html';
+        } else if (href.indexOf('/docs/hospital-rounds/') === 0) {
+          page = href.split('/').pop() || 'index.html';
+        }
+        if (!page) return;
         e.preventDefault();
-        var page = href.split('/').pop().split('#')[0].split('?')[0];
+        e.stopPropagation();
         window.parent.postMessage({ type: 'docs-nav', page: page }, '*');
-      });
+      }, true);
     }
 </script>
 </head>
@@ -337,7 +349,7 @@ footer {
   <main>
     <div class="docs-wrap">
       <div class="docs-breadcrumb">
-        <a href="/medical/">医療用ツール</a> › <a href="/docs/hospital-rounds/">回診 説明書</a> › はじめに
+        <a href="/medical/">医療用ツール</a> › <a href="index.html">回診 説明書</a> › はじめに
       </div>
       <article class="docs-body">
         <h1>回診アプリ — はじめに</h1>
@@ -364,25 +376,25 @@ footer {
 <hr>
 <h2>インストール方法</h2>
 <h3>Android（Chrome）</h3>
-<p class="img-block"><img src="images/01_はじめに-1779019371473.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/01_はじめに-1779019371473.webp" class="doc-img" style="max-width:300px"></p>
 <p>はじめてアプリを起動した時にポップアップが出ます。</p>
-<p class="img-block"><img src="images/01_はじめに-1779019317468.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/01_はじめに-1779019317468.webp" class="doc-img" style="max-width:300px"></p>
 <p>もし出ない場合はメニューから「ホーム画面に追加」を選択して下さい。</p>
-<p class="img-block"><img src="images/01_はじめに-1779019436849.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/01_はじめに-1779019436849.webp" class="doc-img" style="max-width:300px"></p>
 <p>「ショートカットを作成」を押すと通常の Web リンクとなります。アプリのようにオフラインで動作させたい場合は「インストール」を選択して下さい。</p>
-<p class="img-block"><img src="images/01_はじめに-1779019474563.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/01_はじめに-1779019474563.webp" class="doc-img" style="max-width:300px"></p>
 <p>再度ポップアップが出るので「インストール」を選択すると数秒でインストールされます。端末の設定によりますがホーム画面かアプリ一覧にアイコンが表示されているはずです。</p>
 <h3>iPad（Safari）</h3>
-<p class="img-block"><img src="images/01_はじめに-1779019592187.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/01_はじめに-1779019592187.webp" class="doc-img" style="max-width:300px"></p>
 <p>iPad では Android のようにポップアップは出ません。上部のシェアボタンから「ホーム画面に追加」を選択してください。</p>
-<p class="img-block"><img src="images/01_はじめに-1779019615780.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/01_はじめに-1779019615780.webp" class="doc-img" style="max-width:300px"></p>
 <p>「Web アプリとして開く」が ON になっているのを確認して追加してください。Android のように表示は出ませんが数秒でインストールが完了しホーム画面に追加されているはずです。</p>
-<p class="img-block"><img src="images/01_はじめに-1779019641426.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/01_はじめに-1779019641426.webp" class="doc-img" style="max-width:300px"></p>
 <p>iPad の場合は機内モードなどでアプリを起動するとポップアップが表示されます。OK をタップしてそのままオフラインで使用することを推奨します。</p>
 <blockquote><p>PWA はオンラインになった瞬間、Web 上の最新版を確認して自動でアプリが更新されます。 データが入力されたままだとデータが破損するリスクがあるため、もしオンラインにする場合は先にデータを保存してください（<a href="05_データの取込・保存.html">05_データの取込・保存</a>）。  以前のバージョンに戻したい場合は <a href="https://github.com/snishi-code/snishi-code.com" target="_blank" rel="noopener">GitHub</a> から任意のバージョンに戻せます。システム担当者に確認してください。</p></blockquote>
 <hr>
 <h2>画面構成</h2>
-<p class="img-block"><img src="images/01_はじめに-1779020389587.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/01_はじめに-1779020389587.webp" class="doc-img" style="max-width:300px"></p>
 <p>ヘッダーには左から以下のボタンが並んでいます。</p>
 <div class="table-wrap"><table><thead><tr><th>画面</th><th>概要</th></tr></thead><tbody><tr><td>説明書</td><td>本説明書と同じものをオフラインで確認可能</td></tr><tr><td>設定</td><td>カスタマイズ・機能の追加（<a href="06_設定.html">06_設定</a>）</td></tr><tr><td>メモ</td><td>全患者のメモを表示・編集（<a href="04_メモ・共有.html">04_メモ・共有</a>）</td></tr><tr><td>共有</td><td>他端末とデータ共有（<a href="04_メモ・共有.html">04_メモ・共有</a>）</td></tr><tr><td>ホーム</td><td>基本の画面（<a href="02_ホーム.html">02_ホーム</a>）</td></tr></tbody></table></div>
       </article>

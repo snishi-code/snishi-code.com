@@ -23,12 +23,15 @@ PAGES = [
 
 # ── Inline transformations ─────────────────────────────────────────────────
 
+IMG_BASE = "/docs/hospital-rounds/images"
+
+
 def inline(text):
-    # Obsidian image: ![[name.webp|WxH]]
+    # Obsidian image: ![[name.webp|WxH]] → absolute path (works in iframe srcdoc too)
     text = re.sub(
         r'!\[\[([^\]|]+\.webp)(?:\|(\d+)x\d+)?\]\]',
         lambda m: (
-            f'<img src="images/{m.group(1)}" loading="lazy" class="doc-img"'
+            f'<img src="{IMG_BASE}/{m.group(1)}" class="doc-img"'
             + (f' style="max-width:{m.group(2)}px"' if m.group(2) else '')
             + '>'
         ),
@@ -37,7 +40,7 @@ def inline(text):
     # Standard image: ![alt](images/foo)
     text = re.sub(
         r'!\[([^\]]*)\]\(images/([^\)]+)\)',
-        lambda m: f'<img src="images/{m.group(2)}" alt="{htmllib.escape(m.group(1))}" loading="lazy" class="doc-img">',
+        lambda m: f'<img src="{IMG_BASE}/{m.group(2)}" alt="{htmllib.escape(m.group(1))}" class="doc-img">',
         text
     )
     # Link *.md → *.html
@@ -235,7 +238,7 @@ EMBED_SCRIPT = """
     if (window !== window.parent) {
       document.documentElement.classList.add('docs-embedded');
       document.addEventListener('DOMContentLoaded', function() {
-        // External links (snishi-code logo, breadcrumb, etc.) → render as plain text.
+        // External links (snishi-code logo, /medical/, etc.) → render as plain text.
         document.querySelectorAll('a[href]').forEach(function(a) {
           var href = a.getAttribute('href') || '';
           var external = /^https?:\\/\\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
@@ -246,17 +249,29 @@ EMBED_SCRIPT = """
           a.parentNode.replaceChild(span, a);
         });
       });
-      // Intra-docs navigation → ask the parent to swap the bundled HTML (no network).
+      // Intra-docs navigation → ask the parent to swap the bundled HTML
+      // (no network roundtrip — works fully offline). Registered in the capture
+      // phase so the link's default navigation never fires.
       document.addEventListener('click', function(e) {
-        var a = e.target.closest && e.target.closest('a[href]');
+        var t = e.target;
+        var a = (t && t.closest) ? t.closest('a[href]') : null;
         if (!a) return;
         var href = a.getAttribute('href') || '';
-        if (!/\\.html(?:[#?]|$)/.test(href)) return;
         if (/^https?:\\/\\//.test(href)) return;
+        // Pull the bare file name. Accepts: foo.html | path/foo.html | /docs/hospital-rounds/[foo.html] | docs index path
+        var page = null;
+        if (/\\.html(?:[#?]|$)/.test(href)) {
+          page = href.split('/').pop().split('#')[0].split('?')[0];
+        } else if (href === '/docs/hospital-rounds/' || href === '/docs/hospital-rounds') {
+          page = 'index.html';
+        } else if (href.indexOf('/docs/hospital-rounds/') === 0) {
+          page = href.split('/').pop() || 'index.html';
+        }
+        if (!page) return;
         e.preventDefault();
-        var page = href.split('/').pop().split('#')[0].split('?')[0];
+        e.stopPropagation();
         window.parent.postMessage({ type: 'docs-nav', page: page }, '*');
-      });
+      }, true);
     }
 """
 
@@ -294,7 +309,7 @@ def page_html(title, content_html, prev_page, next_page, shared_css, app_name="�
   <main>
     <div class="docs-wrap">
       <div class="docs-breadcrumb">
-        <a href="/medical/">医療用ツール</a> › <a href="/docs/hospital-rounds/">{app_name} 説明書</a> › {title}
+        <a href="/medical/">医療用ツール</a> › <a href="index.html">{app_name} 説明書</a> › {title}
       </div>
       <article class="docs-body">
         {content_html}

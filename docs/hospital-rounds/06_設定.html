@@ -298,7 +298,7 @@ footer {
     if (window !== window.parent) {
       document.documentElement.classList.add('docs-embedded');
       document.addEventListener('DOMContentLoaded', function() {
-        // External links (snishi-code logo, breadcrumb, etc.) → render as plain text.
+        // External links (snishi-code logo, /medical/, etc.) → render as plain text.
         document.querySelectorAll('a[href]').forEach(function(a) {
           var href = a.getAttribute('href') || '';
           var external = /^https?:\/\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
@@ -309,17 +309,29 @@ footer {
           a.parentNode.replaceChild(span, a);
         });
       });
-      // Intra-docs navigation → ask the parent to swap the bundled HTML (no network).
+      // Intra-docs navigation → ask the parent to swap the bundled HTML
+      // (no network roundtrip — works fully offline). Registered in the capture
+      // phase so the link's default navigation never fires.
       document.addEventListener('click', function(e) {
-        var a = e.target.closest && e.target.closest('a[href]');
+        var t = e.target;
+        var a = (t && t.closest) ? t.closest('a[href]') : null;
         if (!a) return;
         var href = a.getAttribute('href') || '';
-        if (!/\.html(?:[#?]|$)/.test(href)) return;
         if (/^https?:\/\//.test(href)) return;
+        // Pull the bare file name. Accepts: foo.html | path/foo.html | /docs/hospital-rounds/[foo.html] | docs index path
+        var page = null;
+        if (/\.html(?:[#?]|$)/.test(href)) {
+          page = href.split('/').pop().split('#')[0].split('?')[0];
+        } else if (href === '/docs/hospital-rounds/' || href === '/docs/hospital-rounds') {
+          page = 'index.html';
+        } else if (href.indexOf('/docs/hospital-rounds/') === 0) {
+          page = href.split('/').pop() || 'index.html';
+        }
+        if (!page) return;
         e.preventDefault();
-        var page = href.split('/').pop().split('#')[0].split('?')[0];
+        e.stopPropagation();
         window.parent.postMessage({ type: 'docs-nav', page: page }, '*');
-      });
+      }, true);
     }
 </script>
 </head>
@@ -337,15 +349,15 @@ footer {
   <main>
     <div class="docs-wrap">
       <div class="docs-breadcrumb">
-        <a href="/medical/">医療用ツール</a> › <a href="/docs/hospital-rounds/">回診 説明書</a> › 設定
+        <a href="/medical/">医療用ツール</a> › <a href="index.html">回診 説明書</a> › 設定
       </div>
       <article class="docs-body">
         <h1>設定</h1>
-<p class="img-block"><img src="images/06_設定-1779022896252.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/06_設定-1779022896252.webp" class="doc-img" style="max-width:300px"></p>
 <p>ホーム画面のギアアイコン（設定）から開きます。</p>
 <hr>
 <h2>一覧</h2>
-<p class="img-block"><img src="images/06_設定-1779023407112.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/06_設定-1779023407112.webp" class="doc-img" style="max-width:300px"></p>
 <p>右上の表ボタンをタップすると一覧画面に移動します。紙カルテ使用施設などは印刷したものをハサミでカットしてカルテに貼り付けることができます。</p>
 <p>本機能は今後改善予定です。</p>
 <hr>
@@ -357,16 +369,16 @@ footer {
 <p>身体所見（O）のチェックボタン項目を追加・編集・削除できます。</p>
 <h3>初期設定の項目</h3>
 <div class="table-wrap"><table><thead><tr><th>項目名</th><th>「正常」ボタン押下時の出力</th></tr></thead><tbody><tr><td>General</td><td>良好</td></tr><tr><td>肺音</td><td>明らかなラ音なし</td></tr><tr><td>腸音</td><td>正常</td></tr><tr><td>腹部</td><td>平坦軟、圧痛なし</td></tr><tr><td>食事</td><td>摂取良好</td></tr><tr><td>排泄</td><td>尿・便ともに特記なし</td></tr></tbody></table></div>
-<p class="img-block"><img src="images/06_設定-1779023005778.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/06_設定-1779023005778.webp" class="doc-img" style="max-width:300px"></p>
 <ul><li>＋アイコンをタップすると新しい項目を追加できます</li><li>各項目のゴミ箱アイコンをタップすると該当項目を削除できます（確認あり）</li><li>回転矢印アイコン（初期化）をタップすると初期設定の6項目に戻ります（確認あり）</li></ul>
 <hr>
 <h2>✕印（クリア対象のカスタマイズ）</h2>
-<p class="img-block"><img src="images/06_設定-1779023271623.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/06_設定-1779023271623.webp" class="doc-img" style="max-width:300px"></p>
 <p>詳細入力画面の✕丸アイコン（クリア）で消去する項目を選択します。赤く表示されている項目がクリアされます。タップすることでオン／オフを切り替えられます。</p>
 <div class="table-wrap"><table><thead><tr><th>項目</th><th>デフォルト</th></tr></thead><tbody><tr><td>メモ</td><td>OFF</td></tr><tr><td>S</td><td>ON</td></tr><tr><td>O（バイタル含む）</td><td>ON</td></tr><tr><td>A</td><td>OFF</td></tr><tr><td>P</td><td>OFF</td></tr><tr><td>共有</td><td>OFF</td></tr><tr><td>黄</td><td>ON</td></tr><tr><td>緑</td><td>ON</td></tr><tr><td>灰</td><td>ON</td></tr><tr><td>青</td><td>OFF</td></tr></tbody></table></div>
 <hr>
 <h2>デフォルトで無効の機能</h2>
-<p class="img-block"><img src="images/06_設定-1779023482608.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/06_設定-1779023482608.webp" class="doc-img" style="max-width:300px"></p>
 <p>上から順に以下の機能です。必要に応じて ON にして使ってください。</p>
 <ul><li><a href="07_管理機能（ベータ）.html">07_管理機能（ベータ）</a></li><li><a href="08_部屋番号機能（オプション）.html">08_部屋番号機能（オプション）</a></li><li><a href="09_タグ機能（オプション）.html">09_タグ機能（オプション）</a></li></ul>
       </article>

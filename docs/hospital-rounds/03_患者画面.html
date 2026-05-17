@@ -298,7 +298,7 @@ footer {
     if (window !== window.parent) {
       document.documentElement.classList.add('docs-embedded');
       document.addEventListener('DOMContentLoaded', function() {
-        // External links (snishi-code logo, breadcrumb, etc.) → render as plain text.
+        // External links (snishi-code logo, /medical/, etc.) → render as plain text.
         document.querySelectorAll('a[href]').forEach(function(a) {
           var href = a.getAttribute('href') || '';
           var external = /^https?:\/\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
@@ -309,17 +309,29 @@ footer {
           a.parentNode.replaceChild(span, a);
         });
       });
-      // Intra-docs navigation → ask the parent to swap the bundled HTML (no network).
+      // Intra-docs navigation → ask the parent to swap the bundled HTML
+      // (no network roundtrip — works fully offline). Registered in the capture
+      // phase so the link's default navigation never fires.
       document.addEventListener('click', function(e) {
-        var a = e.target.closest && e.target.closest('a[href]');
+        var t = e.target;
+        var a = (t && t.closest) ? t.closest('a[href]') : null;
         if (!a) return;
         var href = a.getAttribute('href') || '';
-        if (!/\.html(?:[#?]|$)/.test(href)) return;
         if (/^https?:\/\//.test(href)) return;
+        // Pull the bare file name. Accepts: foo.html | path/foo.html | /docs/hospital-rounds/[foo.html] | docs index path
+        var page = null;
+        if (/\.html(?:[#?]|$)/.test(href)) {
+          page = href.split('/').pop().split('#')[0].split('?')[0];
+        } else if (href === '/docs/hospital-rounds/' || href === '/docs/hospital-rounds') {
+          page = 'index.html';
+        } else if (href.indexOf('/docs/hospital-rounds/') === 0) {
+          page = href.split('/').pop() || 'index.html';
+        }
+        if (!page) return;
         e.preventDefault();
-        var page = href.split('/').pop().split('#')[0].split('?')[0];
+        e.stopPropagation();
         window.parent.postMessage({ type: 'docs-nav', page: page }, '*');
-      });
+      }, true);
     }
 </script>
 </head>
@@ -337,7 +349,7 @@ footer {
   <main>
     <div class="docs-wrap">
       <div class="docs-breadcrumb">
-        <a href="/medical/">医療用ツール</a> › <a href="/docs/hospital-rounds/">回診 説明書</a> › 患者画面
+        <a href="/medical/">医療用ツール</a> › <a href="index.html">回診 説明書</a> › 患者画面
       </div>
       <article class="docs-body">
         <h1>患者画面</h1>
@@ -345,12 +357,12 @@ footer {
 <p>患者名の入力と、回診メモを入力する画面です。ホーム画面で患者ボタンをタップすると開きます。</p>
 <hr>
 <h2>患者名</h2>
-<p class="img-block"><img src="images/03_患者画面-1779021540511.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
-<p class="img-block"><img src="images/03_患者画面-1779021564597.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/03_患者画面-1779021540511.webp" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/03_患者画面-1779021564597.webp" class="doc-img" style="max-width:300px"></p>
 <p>画面上部の入力欄に患者名を入力します。ホーム画面の患者ボタンにも名前が表示されます。空欄の場合は番号が表示されます。</p>
 <hr>
 <h2>クリア・ステータスボタン</h2>
-<p class="img-block"><img src="images/03_患者画面-1779021620195.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/03_患者画面-1779021620195.webp" class="doc-img" style="max-width:300px"></p>
 <p>画面上部と下部に同じボタンがあります。</p>
 <div class="table-wrap"><table><thead><tr><th>ボタン</th><th>ステータス</th></tr></thead><tbody><tr><td>バツ印</td><td>クリア</td></tr><tr><td>黄</td><td>保留</td></tr><tr><td>緑</td><td>回診済（QRコードが表示されます）</td></tr><tr><td>灰</td><td>完了</td></tr></tbody></table></div>
 <p>現在選択中のボタンは強調表示されます。同じボタンをもう一度タップすると白（未回診）に戻ります。</p>
@@ -358,7 +370,7 @@ footer {
 <p>→ クリア対象のカスタマイズは <a href="06_設定.html">06_設定</a> を参照</p>
 <hr>
 <h2>メモ</h2>
-<p class="img-block"><img src="images/03_患者画面-1779021802517.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/03_患者画面-1779021802517.webp" class="doc-img" style="max-width:300px"></p>
 <p>自由メモ欄です。カードの見出しはノートアイコンで表示されます。QR コードを生成した際に先頭に表示されます。プロブレムリストなどカルテの冒頭に毎回記載するような情報を入れておくと便利です。</p>
 <hr>
 <h2>S</h2>
@@ -369,7 +381,7 @@ footer {
 <div class="table-wrap"><table><thead><tr><th>項目</th><th>単位</th></tr></thead><tbody><tr><td>SpO2</td><td>％（メモ欄あり：例「RA」「カニューレ2L」など）</td></tr><tr><td>RR</td><td>なし</td></tr><tr><td>BP</td><td>収縮期 / 拡張期（mmHg）</td></tr><tr><td>R</td><td>なし</td></tr><tr><td>BT</td><td>℃</td></tr></tbody></table></div>
 <p>すべて空欄の場合は「Vital 安定」と出力されます。バイタル項目のカスタマイズは現時点では非対応です。</p>
 <h3>身体所見</h3>
-<p class="img-block"><img src="images/03_患者画面-1779022030396.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/03_患者画面-1779022030396.webp" class="doc-img" style="max-width:300px"></p>
 <p>設定でカスタマイズ可能な所見項目です。初期設定では以下の6項目があります。</p>
 <div class="table-wrap"><table><thead><tr><th>項目</th><th>チェックボタンを押した場合の出力</th></tr></thead><tbody><tr><td>General</td><td>良好</td></tr><tr><td>肺音</td><td>明らかなラ音なし</td></tr><tr><td>腸音</td><td>正常</td></tr><tr><td>腹部</td><td>平坦軟、圧痛なし</td></tr><tr><td>食事</td><td>摂取良好</td></tr><tr><td>排泄</td><td>尿・便ともに特記なし</td></tr></tbody></table></div>
 <ul><li>チェックボタンをタップするとオン／オフが切り替わります</li><li>テキストを入力するとチェックボタンは自動でオフになります</li><li>テキスト欄には異常所見を入力してください（正常の場合はボタンのみ）</li><li>確認・評価していない項目は何も選択せずに空欄のままでかまいません</li></ul>
@@ -387,8 +399,8 @@ footer {
 <p>→ 詳細は <a href="04_メモ・共有.html">04_メモ・共有</a> を参照</p>
 <hr>
 <h2>QRコード（ステータスが緑のとき）</h2>
-<p class="img-block"><img src="images/03_患者画面-1779022186132.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
-<p class="img-block"><img src="images/03_患者画面-1779022196463.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/03_患者画面-1779022186132.webp" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/03_患者画面-1779022196463.webp" class="doc-img" style="max-width:300px"></p>
 <p>ステータスを「緑」にすると、QR コードが自動生成されます。</p>
 <p>QR コードの上にテキストプレビューが表示されます。QR コードにはこのテキストと同じ内容が格納されています。</p>
 <ul><li>データ量が多い場合は複数 QR に分割されます（左右矢印ボタンで切り替え）</li><li>QR コードリーダーを電子カルテに接続することで、読み取ったテキストをそのまま入力できます。カルテの転記したい欄にカーソルを置いた状態で読み取ってください（キーボードと同じ動作をします）</li><li>リーダーの電子カルテへの接続可否は施設のシステム担当者にご確認ください</li></ul>
