@@ -1,10 +1,10 @@
 "use strict";
 
 import { settings, appState, saveSettings, ensurePatientsHaveAllOKeys } from "../store.js";
-import { DEFAULT_O_RULES, DEFAULT_TAGS, clone, STATUS } from "../constants.js";
+import { DEFAULT_O_RULES, DEFAULT_TAGS, clone } from "../constants.js";
 import { canEditORule, canDeleteORule, isAdminEnabled, isAdminTerminal, isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
-import { addNewTag, renameTagAt, deleteTagAt, moveTag, setLinkedYellowTag, isTagStatusLinkEnabled, isTagGroupingEnabled, getUserGroups, getTagsInGroup, getUnassignedTags, addGroup, renameGroup, setGroupMode, deleteGroup, setTagGroup, getAllTags, getGroupForTag } from "../features/tags.js";
+import { renameTagAt, deleteTagAt, moveTag, isTagGroupingEnabled, getUserGroups, getTagsInGroup, getUnassignedTags, addGroup, renameGroup, setGroupMode, deleteGroup, setTagGroup, getAllTags, getGroupForTag } from "../features/tags.js";
 import { GROUP_MODE_SINGLE, GROUP_MODE_MULTI } from "../constants.js";
 import { bindLongPressAndDrag } from "../features/drag.js";
 
@@ -119,12 +119,6 @@ function renderRoomToggleIcon() {
   } else {
     icon.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/>`;
   }
-}
-
-function renderTagStatusLinkToggleIcon() {
-  const icon = document.getElementById("tagStatusLinkToggleIcon");
-  if (!icon) return;
-  renderToggleIcon(icon, !!settings.tagStatusLinkEnabled);
 }
 
 function renderTagGroupingToggleIcon() {
@@ -328,9 +322,6 @@ function makeTagChip(idx) {
   const name = settings.tags[idx] || "";
   const wrap = document.createElement("div");
   wrap.className = "tagSettingChip";
-  if (settings.tagStatusLinkEnabled && settings.tagLinkedToYellow === name) {
-    wrap.classList.add("linked-yellow");
-  }
   const labelBtn = document.createElement("button");
   labelBtn.type = "button";
   labelBtn.className = "tagSettingChipLabel";
@@ -351,27 +342,6 @@ function makeTagChip(idx) {
     () => openInlineTagEditor(wrap, idx)
   );
 
-  if (settings.tagStatusLinkEnabled) {
-    const linkBtn = document.createElement("button");
-    linkBtn.type = "button";
-    linkBtn.className = "tagSettingChipLink";
-    const isLinked = settings.tagLinkedToYellow === name;
-    linkBtn.title = isLinked ? "黄ステータス連携 ON" : "黄ステータスに連携";
-    linkBtn.innerHTML = isLinked
-      ? `<span class="linkDot linkOn" style="background:#f59e0b;border-color:#b45309;"></span>`
-      : `<span class="linkDot"></span>`;
-    linkBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (settings.tagLinkedToYellow === name) {
-        setLinkedYellowTag("");
-      } else {
-        setLinkedYellowTag(name);
-      }
-      renderTagsList();
-      if (_renderPatientUIFn) _renderPatientUIFn();
-    });
-    wrap.appendChild(linkBtn);
-  }
   return wrap;
 }
 
@@ -471,7 +441,6 @@ export function renderSettings() {
   renderAdminExtras();
   renderRoomToggleIcon();
   renderTagsToggleIcon();
-  renderTagStatusLinkToggleIcon();
   renderTagGroupingToggleIcon();
   renderTagsList();
   renderTagGroups();
@@ -748,35 +717,6 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
     saveSettings();
     renderTagGroupingToggleIcon();
     renderTagGroups();
-    if (_renderPatientUIFn) _renderPatientUIFn();
-  });
-
-  const tagStatusLinkEnableBtn = document.getElementById("tagStatusLinkEnableBtn");
-  if (tagStatusLinkEnableBtn) tagStatusLinkEnableBtn.addEventListener("click", () => {
-    if (!settings.tagsEnabled) { alert("先にタグ機能をONにしてください"); return; }
-    if (settings.tagStatusLinkEnabled) {
-      if (!confirm("黄ステータス連携をオフにします。連携中のタグは解除され、対象患者のステータスは元に戻ります。よろしいですか？")) return;
-      // Unlink: restore status on patients with the linked tag
-      const linked = settings.tagLinkedToYellow;
-      if (linked) {
-        for (const p of appState.patients) {
-          if (Array.isArray(p.tags) && p.tags.includes(linked)) {
-            if (p.status === STATUS.YELLOW && p.prevStatus) {
-              p.status = p.prevStatus;
-              p.prevStatus = null;
-            }
-          }
-        }
-      }
-      settings.tagStatusLinkEnabled = false;
-      settings.tagLinkedToYellow = "";
-    } else {
-      if (!confirm("⚠ 黄ステータス連携を有効にします。\n\n選択したタグが付いた患者は自動で黄ステータスになり、ステータス変更ができなくなります。タグを外すと元に戻りません（黄のまま）。\n\nよろしいですか？")) return;
-      settings.tagStatusLinkEnabled = true;
-    }
-    saveSettings();
-    renderTagStatusLinkToggleIcon();
-    renderTagsList();
     if (_renderPatientUIFn) _renderPatientUIFn();
   });
 

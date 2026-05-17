@@ -1046,10 +1046,6 @@
       border-color: rgba(37,99,235,0.6);
       background: #fff;
     }
-    .tagSettingChip.linked-yellow {
-      border-color: #b45309;
-      background: #fef3c7;
-    }
     .tagSettingChipLabel {
       border: none;
       background: transparent;
@@ -1061,30 +1057,6 @@
       touch-action: none;
       user-select: none;
       white-space: nowrap;
-    }
-    .tagSettingChip.linked-yellow .tagSettingChipLabel {
-      color: #92400e;
-    }
-    .tagSettingChipLink {
-      border: none;
-      border-left: 1px solid rgba(0,0,0,0.08);
-      background: transparent;
-      cursor: pointer;
-      padding: 6px 8px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .linkDot {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: transparent;
-      border: 2px solid #d1d5db;
-    }
-    .linkDot.linkOn {
-      border-color: #b45309;
     }
     .tagSettingInput {
       border: none;

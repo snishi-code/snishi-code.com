@@ -36,7 +36,6 @@ export function getStatusFromTag(value) {
 // ============================
 
 export function isTagsEnabled() { return !!settings.tagsEnabled; }
-export function isTagStatusLinkEnabled() { return !!settings.tagStatusLinkEnabled; }
 
 // User-defined tags only (no virtual status tags)
 export function getAllTags() {
@@ -176,8 +175,6 @@ export function renameTagAt(idx, newName) {
       p.tags = p.tags.map(t => t === oldName ? next : t);
     }
   }
-  // Sync to link target if applicable
-  if (settings.tagLinkedToYellow === oldName) settings.tagLinkedToYellow = next;
   saveSettings();
   scheduleSave();
   recordOp({ type: "tag.rename", from: oldName, to: next });
@@ -188,18 +185,12 @@ export function deleteTagAt(idx) {
   if (!Array.isArray(settings.tags) || idx < 0 || idx >= settings.tags.length) return;
   const name = settings.tags[idx];
   settings.tags.splice(idx, 1);
-  // Remove tag from all patients; if linked, also restore status where appropriate
-  const wasLinked = settings.tagLinkedToYellow === name;
+  // Remove tag from all patients
   for (const p of appState.patients) {
     if (Array.isArray(p.tags) && p.tags.includes(name)) {
       p.tags = p.tags.filter(t => t !== name);
-      if (wasLinked && p.status === STATUS.YELLOW && p.prevStatus) {
-        p.status = p.prevStatus;
-        p.prevStatus = null;
-      }
     }
   }
-  if (wasLinked) settings.tagLinkedToYellow = "";
   saveSettings();
   scheduleSave();
   recordOp({ type: "tag.remove", name });
@@ -216,73 +207,10 @@ export function moveTag(fromIdx, toIdx) {
   // Tag order change doesn't need its own op type; recipients use admin sync if needed.
 }
 
-// ============================
-// Tag → Yellow status link
-// ============================
-
-export function setLinkedYellowTag(name) {
-  // Setting a new link: unlink the old first (restore those patients)
-  const old = settings.tagLinkedToYellow;
-  if (old && old !== name) {
-    for (const p of appState.patients) {
-      if (Array.isArray(p.tags) && p.tags.includes(old)) {
-        if (p.status === STATUS.YELLOW && p.prevStatus) {
-          p.status = p.prevStatus;
-          p.prevStatus = null;
-        }
-      }
-    }
-  }
-  settings.tagLinkedToYellow = String(name || "");
-  // Activate the new link: set patients having the new tag to yellow (save prevStatus)
-  const linked = settings.tagLinkedToYellow;
-  if (linked) {
-    for (const p of appState.patients) {
-      if (Array.isArray(p.tags) && p.tags.includes(linked) && p.status !== STATUS.YELLOW) {
-        p.prevStatus = p.status;
-        p.status = STATUS.YELLOW;
-      }
-    }
-  }
-  saveSettings();
-  scheduleSave();
-}
-
-// Is the given patient currently locked to YELLOW by an active link?
-export function isPatientStatusLockedByLink(p) {
-  if (!isTagStatusLinkEnabled()) return false;
-  const linked = settings.tagLinkedToYellow;
-  if (!linked) return false;
-  return Array.isArray(p?.tags) && p.tags.includes(linked);
-}
-
-// When a patient's tags are changing, apply link-induced status effects.
-// Returns the (possibly mutated) tags + adjusts patient.status / prevStatus in place.
-export function applyTagLinkOnPatientChange(patientIndex, newTags) {
-  const p = appState.patients[patientIndex];
-  if (!p) return newTags;
-  if (!isTagStatusLinkEnabled()) return newTags;
-  const linked = settings.tagLinkedToYellow;
-  if (!linked) return newTags;
-  const oldTags = Array.isArray(p.tags) ? p.tags : [];
-  const hadLinked = oldTags.includes(linked);
-  const hasLinked = newTags.includes(linked);
-  if (!hadLinked && hasLinked) {
-    // tag added → save prev status, force yellow
-    if (p.status !== STATUS.YELLOW) p.prevStatus = p.status;
-    p.status = STATUS.YELLOW;
-  } else if (hadLinked && !hasLinked) {
-    // tag removed: status stays yellow per spec; clear prevStatus
-    p.prevStatus = null;
-  }
-  return newTags;
-}
-
 function setPatientTags(patientIndex, tags) {
   const p = appState.patients[patientIndex];
   if (!p) return;
-  let next = tags.slice();
-  next = applyTagLinkOnPatientChange(patientIndex, next);
+  const next = tags.slice();
   p.tags = next;
   if (p.pid) recordOp({ type: "update", pid: p.pid, field: "tags", value: next });
   markUpdated(patientIndex + 1);

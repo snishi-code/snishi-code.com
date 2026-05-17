@@ -1,6 +1,6 @@
 "use strict";
 
-import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS, DEFAULT_TAGS_ENABLED, DEFAULT_ROOM_ENABLED, DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL, DEFAULT_ADMIN_IMPORT_ONLY, DEFAULT_ROSTER_PASSPHRASE, DEFAULT_TAG_STATUS_LINK_ENABLED, DEFAULT_TAG_GROUPING_ENABLED, clone } from "./constants.js";
+import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS, DEFAULT_TAGS_ENABLED, DEFAULT_ROOM_ENABLED, DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL, DEFAULT_ADMIN_IMPORT_ONLY, DEFAULT_ROSTER_PASSPHRASE, DEFAULT_TAG_GROUPING_ENABLED, clone } from "./constants.js";
 
 // ============================
 // Settings
@@ -24,8 +24,6 @@ export function defaultSettings() {
     adminImportOnly: DEFAULT_ADMIN_IMPORT_ONLY,
     rosterPassphrase: DEFAULT_ROSTER_PASSPHRASE,
     deviceId: "",
-    tagStatusLinkEnabled: DEFAULT_TAG_STATUS_LINK_ENABLED,
-    tagLinkedToYellow: "",
     tagGroupingEnabled: DEFAULT_TAG_GROUPING_ENABLED,
     tagGroups: [],           // [{id, name, mode}]
     tagGroupAssign: {},      // tagName -> groupId
@@ -92,8 +90,6 @@ export function loadSettings() {
     if (raw && typeof raw.adminImportOnly === "boolean") out.adminImportOnly = raw.adminImportOnly;
     if (raw && typeof raw.rosterPassphrase === "string") out.rosterPassphrase = raw.rosterPassphrase;
     if (raw && typeof raw.deviceId === "string") out.deviceId = raw.deviceId;
-    if (raw && typeof raw.tagStatusLinkEnabled === "boolean") out.tagStatusLinkEnabled = raw.tagStatusLinkEnabled;
-    if (raw && typeof raw.tagLinkedToYellow === "string") out.tagLinkedToYellow = raw.tagLinkedToYellow;
     if (raw && typeof raw.tagGroupingEnabled === "boolean") out.tagGroupingEnabled = raw.tagGroupingEnabled;
     if (raw && Array.isArray(raw.tagGroups)) {
       out.tagGroups = raw.tagGroups
@@ -180,7 +176,6 @@ export function makeDefaultPatient() {
     a: { text: "" },
     p: { text: "" },
     updatedAt: 0,
-    prevStatus: null,
   };
 }
 
@@ -258,7 +253,6 @@ export function normalizeLoaded(raw) {
       a: { text: (r && r.a && typeof r.a.text === "string") ? r.a.text : d.a.text },
       p: { text: (r && r.p && typeof r.p.text === "string") ? r.p.text : d.p.text },
       updatedAt: (r && typeof r.updatedAt === "number") ? r.updatedAt : 0,
-      prevStatus: (r && typeof r.prevStatus === "string") ? r.prevStatus : null,
     };
   }
   return out;
