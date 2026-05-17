@@ -298,7 +298,7 @@ footer {
     if (window !== window.parent) {
       document.documentElement.classList.add('docs-embedded');
       document.addEventListener('DOMContentLoaded', function() {
-        // External links (snishi-code logo, breadcrumb, etc.) → render as plain text.
+        // External links (snishi-code logo, /medical/, etc.) → render as plain text.
         document.querySelectorAll('a[href]').forEach(function(a) {
           var href = a.getAttribute('href') || '';
           var external = /^https?:\/\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
@@ -309,17 +309,29 @@ footer {
           a.parentNode.replaceChild(span, a);
         });
       });
-      // Intra-docs navigation → ask the parent to swap the bundled HTML (no network).
+      // Intra-docs navigation → ask the parent to swap the bundled HTML
+      // (no network roundtrip — works fully offline). Registered in the capture
+      // phase so the link's default navigation never fires.
       document.addEventListener('click', function(e) {
-        var a = e.target.closest && e.target.closest('a[href]');
+        var t = e.target;
+        var a = (t && t.closest) ? t.closest('a[href]') : null;
         if (!a) return;
         var href = a.getAttribute('href') || '';
-        if (!/\.html(?:[#?]|$)/.test(href)) return;
         if (/^https?:\/\//.test(href)) return;
+        // Pull the bare file name. Accepts: foo.html | path/foo.html | /docs/hospital-rounds/[foo.html] | docs index path
+        var page = null;
+        if (/\.html(?:[#?]|$)/.test(href)) {
+          page = href.split('/').pop().split('#')[0].split('?')[0];
+        } else if (href === '/docs/hospital-rounds/' || href === '/docs/hospital-rounds') {
+          page = 'index.html';
+        } else if (href.indexOf('/docs/hospital-rounds/') === 0) {
+          page = href.split('/').pop() || 'index.html';
+        }
+        if (!page) return;
         e.preventDefault();
-        var page = href.split('/').pop().split('#')[0].split('?')[0];
+        e.stopPropagation();
         window.parent.postMessage({ type: 'docs-nav', page: page }, '*');
-      });
+      }, true);
     }
 </script>
 </head>
@@ -337,7 +349,7 @@ footer {
   <main>
     <div class="docs-wrap">
       <div class="docs-breadcrumb">
-        <a href="/medical/">医療用ツール</a> › <a href="/docs/hospital-rounds/">回診 説明書</a> › タグ機能：カテゴライズ
+        <a href="/medical/">医療用ツール</a> › <a href="index.html">回診 説明書</a> › タグ機能：カテゴライズ
       </div>
       <article class="docs-body">
         <h1>タグ機能：カテゴライズ</h1>
@@ -351,22 +363,22 @@ footer {
 <p>また、カテゴリーごとに単選択と複数選択を選ぶことができます。例えば主治医は1人しかいないので、主治医タグのうち選ぶことができるのは1つだけ、一方で検査は血液や画像など複数検査のあることもあるので複数選択できるように、とすることができます。 これによって誤って主治医を複数登録してしまうなどのミスを防ぐことができます。</p>
 <hr>
 <h2>有効化</h2>
-<p class="img-block"><img src="images/10_タグ機能：カテゴライズ（オプション）-1779027521642.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/10_タグ機能：カテゴライズ（オプション）-1779027521642.webp" class="doc-img" style="max-width:300px"></p>
 <p>タグ機能を有効化すると四角が4つ並んだアイコンのトグルが出現します。これを ON にすると有効化できます。</p>
 <hr>
 <h2>カテゴリー作成</h2>
-<p class="img-block"><img src="images/10_タグ機能：カテゴライズ（オプション）-1779027548637.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/10_タグ機能：カテゴライズ（オプション）-1779027548637.webp" class="doc-img" style="max-width:300px"></p>
 <p>下部の＋ボタンを押すとポップアップが表示されます。 任意のカテゴリー名を設定できます。</p>
-<p class="img-block"><img src="images/10_タグ機能：カテゴライズ（オプション）-1779027595498.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/10_タグ機能：カテゴライズ（オプション）-1779027595498.webp" class="doc-img" style="max-width:300px"></p>
 <p>作成されたカテゴリー右上にあるタグアイコンをタップすると、そのカテゴリーに登録するタグを選択することができます。</p>
-<p class="img-block"><img src="images/10_タグ機能：カテゴライズ（オプション）-1779027693967.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/10_タグ機能：カテゴライズ（オプション）-1779027693967.webp" class="doc-img" style="max-width:300px"></p>
 <p>タグに登録できるカテゴリーは1つだけです。別カテゴリーのタグを登録すると、タグはこちらのカテゴリーに移動します。</p>
-<p class="img-block"><img src="images/10_タグ機能：カテゴライズ（オプション）-1779027776287.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/10_タグ機能：カテゴライズ（オプション）-1779027776287.webp" class="doc-img" style="max-width:300px"></p>
 <p>タグボタンの右側のゴミ箱ボタンでカテゴリーを削除できます。</p>
 <p>タグボタンの左のボタンをタップすると単選択と複数選択を切り替えることができます。丸アイコンが単選択、四角が4つ並んでいるアイコンが複数選択です。</p>
 <hr>
 <h2>患者へのタグ付与</h2>
-<p class="img-block"><img src="images/10_タグ機能：カテゴライズ（オプション）-1779027991136.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/10_タグ機能：カテゴライズ（オプション）-1779027991136.webp" class="doc-img" style="max-width:300px"></p>
 <p>タグ機能と大枠は同じですが、カテゴリーごとにタグがカテゴライズして表示されます。 設定画面で選択した挙動をします。</p>
       </article>
       <nav class="docs-page-nav"><a class="prev" href="09_タグ機能（オプション）.html">タグ機能</a><span></span></nav>

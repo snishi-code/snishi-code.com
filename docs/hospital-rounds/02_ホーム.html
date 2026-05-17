@@ -298,7 +298,7 @@ footer {
     if (window !== window.parent) {
       document.documentElement.classList.add('docs-embedded');
       document.addEventListener('DOMContentLoaded', function() {
-        // External links (snishi-code logo, breadcrumb, etc.) → render as plain text.
+        // External links (snishi-code logo, /medical/, etc.) → render as plain text.
         document.querySelectorAll('a[href]').forEach(function(a) {
           var href = a.getAttribute('href') || '';
           var external = /^https?:\/\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
@@ -309,17 +309,29 @@ footer {
           a.parentNode.replaceChild(span, a);
         });
       });
-      // Intra-docs navigation → ask the parent to swap the bundled HTML (no network).
+      // Intra-docs navigation → ask the parent to swap the bundled HTML
+      // (no network roundtrip — works fully offline). Registered in the capture
+      // phase so the link's default navigation never fires.
       document.addEventListener('click', function(e) {
-        var a = e.target.closest && e.target.closest('a[href]');
+        var t = e.target;
+        var a = (t && t.closest) ? t.closest('a[href]') : null;
         if (!a) return;
         var href = a.getAttribute('href') || '';
-        if (!/\.html(?:[#?]|$)/.test(href)) return;
         if (/^https?:\/\//.test(href)) return;
+        // Pull the bare file name. Accepts: foo.html | path/foo.html | /docs/hospital-rounds/[foo.html] | docs index path
+        var page = null;
+        if (/\.html(?:[#?]|$)/.test(href)) {
+          page = href.split('/').pop().split('#')[0].split('?')[0];
+        } else if (href === '/docs/hospital-rounds/' || href === '/docs/hospital-rounds') {
+          page = 'index.html';
+        } else if (href.indexOf('/docs/hospital-rounds/') === 0) {
+          page = href.split('/').pop() || 'index.html';
+        }
+        if (!page) return;
         e.preventDefault();
-        var page = href.split('/').pop().split('#')[0].split('?')[0];
+        e.stopPropagation();
         window.parent.postMessage({ type: 'docs-nav', page: page }, '*');
-      });
+      }, true);
     }
 </script>
 </head>
@@ -337,12 +349,12 @@ footer {
   <main>
     <div class="docs-wrap">
       <div class="docs-breadcrumb">
-        <a href="/medical/">医療用ツール</a> › <a href="/docs/hospital-rounds/">回診 説明書</a> › ホーム
+        <a href="/medical/">医療用ツール</a> › <a href="index.html">回診 説明書</a> › ホーム
       </div>
       <article class="docs-body">
         <h1>ホーム</h1>
 <h2>概要</h2>
-<p class="img-block"><img src="images/02_ホーム-1779021052489.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/02_ホーム-1779021052489.webp" class="doc-img" style="max-width:300px"></p>
 <p>起動すると最初に表示される画面です。登録された患者がマス目（グリッド）状に並び、それぞれの色でステータスを一目で確認できます。</p>
 <hr>
 <h2>アプリタイトル</h2>
@@ -354,22 +366,22 @@ footer {
 <div class="table-wrap"><table><thead><tr><th>色</th><th>使用例</th><th>変更方法</th></tr></thead><tbody><tr><td>白</td><td>未回診</td><td>デフォルト</td></tr><tr><td>黄</td><td>保留</td><td>患者画面から</td></tr><tr><td>緑</td><td>回診済</td><td>患者画面から</td></tr><tr><td>灰</td><td>完了</td><td>患者画面から</td></tr><tr><td>青</td><td>追記</td><td>データ取込時に自動（→ <a href="05_データの取込・保存.html">05_データの取込・保存</a>）</td></tr></tbody></table></div>
 <hr>
 <h2>ボタン説明</h2>
-<p class="img-block"><img src="images/01_はじめに-1779020389587.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/01_はじめに-1779020389587.webp" class="doc-img" style="max-width:300px"></p>
 <p>左から以下のボタンが並んでいます。</p>
 <div class="table-wrap"><table><thead><tr><th>ボタン</th><th>機能</th></tr></thead><tbody><tr><td>赤バツ印（全消去）</td><td>設定などを含む全情報を削除。先にデータを保存しておくことを推奨します</td></tr><tr><td>バツ印（クリア）</td><td>患者の一部データを一括で削除。どのデータを削除するかは設定から指定できます。各患者画面からその患者のデータだけを削除することも可能。</td></tr><tr><td>下矢印（取込）</td><td>端末からデータを読み込む。</td></tr><tr><td>上矢印（保存）</td><td>端末にデータを保存。</td></tr></tbody></table></div>
 <hr>
 <h2>患者ボタンをタップ</h2>
-<p class="img-block"><img src="images/02_ホーム-1779021378251.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/02_ホーム-1779021378251.webp" class="doc-img" style="max-width:300px"></p>
 <p>タップすると該当患者の詳細入力画面に移動します。</p>
 <hr>
 <h2>長押し（患者の追加・削除）</h2>
-<p class="img-block"><img src="images/02_ホーム-1779021411548.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/02_ホーム-1779021411548.webp" class="doc-img" style="max-width:300px"></p>
 <p>患者ボタンを長押しして放すと操作メニューが表示されます。</p>
 <div class="table-wrap"><table><thead><tr><th>操作</th><th>内容</th></tr></thead><tbody><tr><td>1人追加（下へ）</td><td>選択した患者の下に新しい患者ボタンを1つ追加</td></tr><tr><td>5人追加（下へ）</td><td>選択した患者の下に新しい患者ボタンを5つ追加</td></tr><tr><td>削除</td><td>選択した患者を削除（確認あり）</td></tr></tbody></table></div>
 <hr>
 <h2>患者の並び替え</h2>
-<p class="img-block"><img src="images/02_ホーム-1779021477607.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
-<p class="img-block"><img src="images/02_ホーム-1779021489239.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/02_ホーム-1779021477607.webp" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/02_ホーム-1779021489239.webp" class="doc-img" style="max-width:300px"></p>
 <p>患者ボタンを長押しして動かすとドラッグ＆ドロップで並び替えができます。</p>
       </article>
       <nav class="docs-page-nav"><a class="prev" href="01_はじめに.html">はじめに</a><a class="next" href="03_患者画面.html">患者画面</a></nav>

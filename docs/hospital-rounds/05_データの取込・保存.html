@@ -298,7 +298,7 @@ footer {
     if (window !== window.parent) {
       document.documentElement.classList.add('docs-embedded');
       document.addEventListener('DOMContentLoaded', function() {
-        // External links (snishi-code logo, breadcrumb, etc.) → render as plain text.
+        // External links (snishi-code logo, /medical/, etc.) → render as plain text.
         document.querySelectorAll('a[href]').forEach(function(a) {
           var href = a.getAttribute('href') || '';
           var external = /^https?:\/\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
@@ -309,17 +309,29 @@ footer {
           a.parentNode.replaceChild(span, a);
         });
       });
-      // Intra-docs navigation → ask the parent to swap the bundled HTML (no network).
+      // Intra-docs navigation → ask the parent to swap the bundled HTML
+      // (no network roundtrip — works fully offline). Registered in the capture
+      // phase so the link's default navigation never fires.
       document.addEventListener('click', function(e) {
-        var a = e.target.closest && e.target.closest('a[href]');
+        var t = e.target;
+        var a = (t && t.closest) ? t.closest('a[href]') : null;
         if (!a) return;
         var href = a.getAttribute('href') || '';
-        if (!/\.html(?:[#?]|$)/.test(href)) return;
         if (/^https?:\/\//.test(href)) return;
+        // Pull the bare file name. Accepts: foo.html | path/foo.html | /docs/hospital-rounds/[foo.html] | docs index path
+        var page = null;
+        if (/\.html(?:[#?]|$)/.test(href)) {
+          page = href.split('/').pop().split('#')[0].split('?')[0];
+        } else if (href === '/docs/hospital-rounds/' || href === '/docs/hospital-rounds') {
+          page = 'index.html';
+        } else if (href.indexOf('/docs/hospital-rounds/') === 0) {
+          page = href.split('/').pop() || 'index.html';
+        }
+        if (!page) return;
         e.preventDefault();
-        var page = href.split('/').pop().split('#')[0].split('?')[0];
+        e.stopPropagation();
         window.parent.postMessage({ type: 'docs-nav', page: page }, '*');
-      });
+      }, true);
     }
 </script>
 </head>
@@ -337,30 +349,30 @@ footer {
   <main>
     <div class="docs-wrap">
       <div class="docs-breadcrumb">
-        <a href="/medical/">医療用ツール</a> › <a href="/docs/hospital-rounds/">回診 説明書</a> › データの取込・保存
+        <a href="/medical/">医療用ツール</a> › <a href="index.html">回診 説明書</a> › データの取込・保存
       </div>
       <article class="docs-body">
         <h1>データの取込・保存</h1>
 <p>ホーム画面の上矢印アイコン（保存）・下矢印アイコン（取込）から操作します。</p>
 <hr>
 <h2>保存</h2>
-<p class="img-block"><img src="images/05_データの取込・保存-1779022546835.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/05_データの取込・保存-1779022546835.webp" class="doc-img" style="max-width:300px"></p>
 <p>上矢印アイコン（保存）をタップすると現在のデータを JSON ファイルとしてダウンロードします。ファイル名は <code>タイトル_日付_時刻.json</code> 形式です。</p>
 <p><strong>回診終了後や定期的に出力しておくことを推奨します。</strong> ブラウザのデータ消去や端末の初期化でアプリ内のデータが失われた場合でも、出力したファイルから復元できます。</p>
-<p class="img-block"><img src="images/05_データの取込・保存-1779022631820.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/05_データの取込・保存-1779022631820.webp" class="doc-img" style="max-width:300px"></p>
 <p>Android では自動でダウンロードフォルダに保存されますが、iPad では「"ファイル"に保存」をタップして保存してください。</p>
 <hr>
 <h2>取込</h2>
 <p>下矢印アイコン（取込）をタップするとファイル選択画面が開きます。出力した JSON ファイルを選択してください。</p>
 <p>既存データがある場合は以下を選択できます。</p>
-<p class="img-block"><img src="images/05_データの取込・保存-1779022727760.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/05_データの取込・保存-1779022727760.webp" class="doc-img" style="max-width:300px"></p>
 <div class="table-wrap"><table><thead><tr><th>操作</th><th>内容</th></tr></thead><tbody><tr><td>上書き</td><td>現在のデータを設定含めて全削除してインポート</td></tr><tr><td>追記</td><td>現在のデータに差分を追加</td></tr></tbody></table></div>
 <blockquote><p><strong>注意</strong>: 上書きを選択すると現在のデータは元に戻せません。事前に保存しておくことをお勧めします。</p></blockquote>
 <h3>追記について</h3>
-<p class="img-block"><img src="images/05_データの取込・保存-1779022787209.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
-<p class="img-block"><img src="images/05_データの取込・保存-1779022838569.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/05_データの取込・保存-1779022787209.webp" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/05_データの取込・保存-1779022838569.webp" class="doc-img" style="max-width:300px"></p>
 <p>追記を選択すると、インポート元のデータが現在のデータに差分追加されます。追記された患者のステータスは自動で <strong>青</strong> になります。</p>
-<p class="img-block"><img src="images/05_データの取込・保存-1779022864963.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/05_データの取込・保存-1779022864963.webp" class="doc-img" style="max-width:300px"></p>
 <p>追記されたテキストには「（患者名のデータが追記されました）」と表示されるので、元のデータと区別できます。</p>
 <p>患者の対応付けは番号順で行われます。取込前に患者の並び順が一致しているか確認してください。</p>
 <blockquote><p><strong>注意</strong>: 追記機能は現在改善中のため、今後動作が変わる可能性があります。</p></blockquote>

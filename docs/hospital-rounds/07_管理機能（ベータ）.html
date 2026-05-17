@@ -298,7 +298,7 @@ footer {
     if (window !== window.parent) {
       document.documentElement.classList.add('docs-embedded');
       document.addEventListener('DOMContentLoaded', function() {
-        // External links (snishi-code logo, breadcrumb, etc.) → render as plain text.
+        // External links (snishi-code logo, /medical/, etc.) → render as plain text.
         document.querySelectorAll('a[href]').forEach(function(a) {
           var href = a.getAttribute('href') || '';
           var external = /^https?:\/\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
@@ -309,17 +309,29 @@ footer {
           a.parentNode.replaceChild(span, a);
         });
       });
-      // Intra-docs navigation → ask the parent to swap the bundled HTML (no network).
+      // Intra-docs navigation → ask the parent to swap the bundled HTML
+      // (no network roundtrip — works fully offline). Registered in the capture
+      // phase so the link's default navigation never fires.
       document.addEventListener('click', function(e) {
-        var a = e.target.closest && e.target.closest('a[href]');
+        var t = e.target;
+        var a = (t && t.closest) ? t.closest('a[href]') : null;
         if (!a) return;
         var href = a.getAttribute('href') || '';
-        if (!/\.html(?:[#?]|$)/.test(href)) return;
         if (/^https?:\/\//.test(href)) return;
+        // Pull the bare file name. Accepts: foo.html | path/foo.html | /docs/hospital-rounds/[foo.html] | docs index path
+        var page = null;
+        if (/\.html(?:[#?]|$)/.test(href)) {
+          page = href.split('/').pop().split('#')[0].split('?')[0];
+        } else if (href === '/docs/hospital-rounds/' || href === '/docs/hospital-rounds') {
+          page = 'index.html';
+        } else if (href.indexOf('/docs/hospital-rounds/') === 0) {
+          page = href.split('/').pop() || 'index.html';
+        }
+        if (!page) return;
         e.preventDefault();
-        var page = href.split('/').pop().split('#')[0].split('?')[0];
+        e.stopPropagation();
         window.parent.postMessage({ type: 'docs-nav', page: page }, '*');
-      });
+      }, true);
     }
 </script>
 </head>
@@ -337,12 +349,12 @@ footer {
   <main>
     <div class="docs-wrap">
       <div class="docs-breadcrumb">
-        <a href="/medical/">医療用ツール</a> › <a href="/docs/hospital-rounds/">回診 説明書</a> › 管理機能（ベータ）
+        <a href="/medical/">医療用ツール</a> › <a href="index.html">回診 説明書</a> › 管理機能（ベータ）
       </div>
       <article class="docs-body">
         <h1>管理機能（ベータ）</h1>
 <blockquote><p>⚠️ <strong>この機能は現在ベータ版です</strong> 動作確認中の項目があり、運用前のテストが十分でない部分があります。テストデータで動作を確認してください。 「名簿取込のみ有効化」機能は早期に完成させる予定です。</p></blockquote>
-<p class="img-block"><img src="images/07_管理機能（ベータ）-1779023600407.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/07_管理機能（ベータ）-1779023600407.webp" class="doc-img" style="max-width:300px"></p>
 <p>設定画面の管理アイコンのトグルを ON にすることで使えます。</p>
 <hr>
 <h2>どういう時に使う？</h2>
@@ -352,11 +364,11 @@ footer {
 <p>真っさらなデータに、他の端末から患者名簿を取り込むことを想定しています。すでにデータがある場合はデータが破損するリスクがあるため、先に保存しておくことを推奨します。</p>
 <hr>
 <h2>名簿取込のみ有効化</h2>
-<p class="img-block"><img src="images/07_管理機能（ベータ）-1779023816929.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/07_管理機能（ベータ）-1779023816929.webp" class="doc-img" style="max-width:300px"></p>
 <p>はじめて担当する病棟などで、患者情報を1つずつ入力するのが大変な時に、すでに入力済みの他端末から患者名などを取り込むことができます。管理機能アイコンを ON にして、名簿取込のみ有効化を ON にしてください。</p>
-<p class="img-block"><img src="images/07_管理機能（ベータ）-1779023866205.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/07_管理機能（ベータ）-1779023866205.webp" class="doc-img" style="max-width:300px"></p>
 <p>共有画面の右上の管理アイコンをタップすると QR コードが表示されます。 名簿を他端末に渡す側はこの QR コードを表示してください。</p>
-<p class="img-block"><img src="images/07_管理機能（ベータ）-1779024026808.webp" loading="lazy" class="doc-img" style="max-width:300px"></p>
+<p class="img-block"><img src="/docs/hospital-rounds/images/07_管理機能（ベータ）-1779024026808.webp" class="doc-img" style="max-width:300px"></p>
 <p>取込ボタンをタップすると入力フォームが表示されます。 他端末の QR コードで読み取ったテキストをここに貼り付けて左下のチェックボタンをタップすれば名簿を取り込めます。</p>
 <hr>
 <h2>管理機能</h2>
