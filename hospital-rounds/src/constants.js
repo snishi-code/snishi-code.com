@@ -2,7 +2,7 @@
 
 export const STORAGE_KEY = "rounds_v2_soap_ryoyo_ward";
 export const SETTINGS_KEY = STORAGE_KEY + "_settings_v1";
-export const DEFAULT_PATIENT_COUNT = 100;
+export const DEFAULT_PATIENT_COUNT = 50;
 
 export const STATUS = {
   NONE: "none",
@@ -17,6 +17,8 @@ export const DEFAULT_O_RULES = [
   { key: "lung", label: "肺音", normalText: "明らかなラ音なし", placeholder: "例) 右下肺野、呼吸音減弱" },
   { key: "bowel", label: "腸音", normalText: "正常", placeholder: "例) 腸蠕動音 減弱" },
   { key: "abdomen", label: "腹部", normalText: "平坦軟、圧痛なし", placeholder: "例) 軽度膨満 / 下腹部に軽度圧痛" },
+  { key: "meal", label: "食事", normalText: "摂取良好", placeholder: "例) 食事量3割" },
+  { key: "elimination", label: "排泄", normalText: "尿・便ともに特記なし", placeholder: "例) 便秘4日、排尿問題なし" },
 ];
 
 export const DEFAULT_TAGS = [];
@@ -51,7 +53,7 @@ export const DEFAULT_CLEAR_TARGETS = {
   memo: false,
   s: true,
   o: true,
-  a: true,
+  a: false,
   p: false,
   shared: false,
   statusYellow: true,

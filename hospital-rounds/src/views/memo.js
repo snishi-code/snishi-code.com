@@ -4,7 +4,7 @@ import { appState, selectedNo, markUpdated, scheduleSave } from "../store.js";
 import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
 import { syncDetailMemoDisplay } from "../features/navigation.js";
 import { isTagsEnabled, makePatientTagPicker, makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
-import { isRoomEnabled, makeRoomInput, formatPatientLabel } from "../features/room.js";
+import { isRoomEnabled, makeRoomInput, formatPatientLabel, isRoomSortActive } from "../features/room.js";
 import { isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
 import { statusClass } from "./home.js";
@@ -30,6 +30,7 @@ function renderMemoSortBtn() {
   const btn = document.getElementById("memoRoomSortBtn");
   if (!btn) return;
   btn.style.display = (isRoomEnabled() && !isNonAdminTerminal()) ? "" : "none";
+  btn.classList.toggle("editActive", isRoomSortActive());
 }
 
 export function renderMemoScreen(renderHomeFn, opts, navigateToPatientFn) {

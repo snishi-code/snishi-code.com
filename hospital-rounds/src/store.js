@@ -309,8 +309,12 @@ export function saveNow() {
   }
 }
 
+let _onMarkUpdated = null;
+export function setMarkUpdatedHandler(fn) { _onMarkUpdated = fn; }
+
 export function markUpdated(no) {
   const p = appState.patients[no - 1];
   if (!p) return;
   p.updatedAt = Date.now();
+  if (_onMarkUpdated) _onMarkUpdated(no);
 }
