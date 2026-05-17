@@ -3,7 +3,7 @@
 import { appState, selectedNo, markUpdated, scheduleSave } from "../store.js";
 import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
 import { isTagsEnabled, makePatientTagPicker, makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
-import { isRoomEnabled, makeRoomInput, formatPatientLabel } from "../features/room.js";
+import { isRoomEnabled, makeRoomInput, formatPatientLabel, isRoomSortActive } from "../features/room.js";
 import { isNonAdminTerminal } from "../features/admin.js";
 import { isSharedQrActive, isPatientSelected, toggleSharedQrPatient } from "../features/qr-shared.js";
 import { recordOp } from "../features/roster.js";
@@ -30,6 +30,7 @@ function renderSharedSortBtn() {
   const btn = document.getElementById("sharedRoomSortBtn");
   if (!btn) return;
   btn.style.display = (isRoomEnabled() && !isNonAdminTerminal()) ? "" : "none";
+  btn.classList.toggle("editActive", isRoomSortActive());
 }
 
 export function renderSharedScreen(renderHomeFn, opts, navigateToPatientFn) {

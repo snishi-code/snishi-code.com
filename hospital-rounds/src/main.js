@@ -8,6 +8,7 @@ import {
   setAppState, setSelectedNo,
   load, saveNow, scheduleSave, saveSettings,
   normalizeLoaded, ensurePatientsHaveAllOKeys, makeEmptyOByRules,
+  setMarkUpdatedHandler,
 } from "./store.js";
 
 import { renderHome, updateCountChip } from "./views/home.js";
@@ -21,7 +22,7 @@ import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./fea
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initImportExport } from "./features/import-export.js";
 import { initSharedQr, initDocsQr, renderDocsQr, refreshSharedQrIfActive, setSharedQrSelectionChangeHandler } from "./features/qr-shared.js";
-import { sortPatientsByRoom } from "./features/room.js";
+import { sortPatientsByRoom, invalidateSortSnapshot } from "./features/room.js";
 import { initAdminUI, refreshAdminAvailability, setAdminAppliedHandler } from "./features/admin-ui.js";
 import { isAdminTerminal, isNonAdminTerminal, isAdminEnabled, findIncompleteAdminPatients, clearIncompleteAdminPatients } from "./features/admin.js";
 import { ensureRoster, flushCommit } from "./features/roster.js";
@@ -130,8 +131,13 @@ initQrNavButtons();
 history.replaceState({ view: "home" }, "", "");
 
 window.addEventListener("popstate", (e) => {
-  if (e.state && e.state.view) showView(e.state.view, false);
-  else showView("home", false);
+  const v = (e.state && e.state.view) || "home";
+  showView(v, false);
+  // Re-render so changes from another view (e.g. status flip on detail) are reflected
+  if (v === "home") doRenderHome();
+  else if (v === "memo") doRenderMemo();
+  else if (v === "shared") doRenderShared();
+  else if (v === "detail") doRenderDetail();
 });
 
 function validateAdminTerminal() {
@@ -404,6 +410,9 @@ function updateAppTitle(val) {
 
 setAppState(load());
 ensureRoster();
+
+// Drop the room-sort snapshot whenever any patient is edited
+setMarkUpdatedHandler(() => invalidateSortSnapshot());
 
 // Flush any pending op-batch when leaving the app or backgrounding
 window.addEventListener("beforeunload", () => { try { flushCommit(); } catch (_) {} });

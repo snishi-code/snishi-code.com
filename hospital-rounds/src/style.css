@@ -1150,7 +1150,11 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      touch-action: none;
+      /* Allow vertical scrolling on the row even when the finger starts on the
+         button. Long-press still fires after 400ms of holding still; if the user
+         scrolls (moves >8px before that), the long-press is cancelled and
+         native scroll proceeds. */
+      touch-action: pan-y;
       user-select: none;
     }
 
