@@ -53,10 +53,10 @@ function buildOOutput(p) {
   } else if (v.spo2_memo) {
     vParts.push(`SpO2：${v.spo2_memo}`);
   }
-  if (hasRr) vParts.push(`呼吸数：${v.rr}回`);
-  if (hasBpSys || hasBpDia) vParts.push(`血圧：${v.bp_sys || ""}/${v.bp_dia || ""}mmHg`);
-  if (hasPr) vParts.push(`脈拍：${v.pr}回`);
-  if (hasBt) vParts.push(`体温：${v.bt}℃`);
+  if (hasRr) vParts.push(`RR：${v.rr}回`);
+  if (hasBpSys || hasBpDia) vParts.push(`BP：${v.bp_sys || ""}/${v.bp_dia || ""}mmHg`);
+  if (hasPr) vParts.push(`P：${v.pr}回`);
+  if (hasBt) vParts.push(`BT：${v.bt}℃`);
 
   const parts = [];
   if (vParts.length > 0) {

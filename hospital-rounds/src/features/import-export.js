@@ -63,8 +63,8 @@ export function applyAppend(currP, impP) {
   }
 
   const vitalLabels = {
-    spo2: "SpO2", spo2_memo: "SpO2メモ", rr: "呼吸回数",
-    bp_sys: "収縮期血圧", bp_dia: "拡張期血圧", pr: "脈拍", bt: "体温"
+    spo2: "SpO2", spo2_memo: "SpO2メモ", rr: "RR",
+    bp_sys: "BP収縮期", bp_dia: "BP拡張期", pr: "P", bt: "BT"
   };
 
   for (let k in impP.vitals) {

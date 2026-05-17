@@ -241,52 +241,6 @@ export function refreshSharedQrIfActive() {
 }
 
 // ============================
-// Docs QR (説明書リンク)
-// ============================
-
-function renderDocsQrCanvas() {
-  const canvas = document.getElementById("docsQrCanvas");
-  if (!canvas) return;
-  const ecl = qrcodegen.QrCode.Ecc.LOW;
-  const url = "https://snishi-code.com/docs/hospital-rounds/";
-  try {
-    const qr = qrcodegen.QrCode.encodeText(url, ecl);
-    const border = 4;
-    const modules = qr.size + border * 2;
-    const parentW = (canvas.parentElement && canvas.parentElement.clientWidth) ? canvas.parentElement.clientWidth : 800;
-    const cssW = Math.max(240, Math.min(parentW, 980));
-    const dpr = Math.min(3, window.devicePixelRatio || 1);
-    const scale = Math.max(2, Math.floor((cssW * dpr) / modules));
-    const sizePx = modules * scale;
-    canvas.width = sizePx;
-    canvas.height = sizePx;
-    canvas.style.width = "100%";
-    canvas.style.height = "auto";
-    canvas.style.maxWidth = cssW + "px";
-    const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, sizePx, sizePx);
-    ctx.fillStyle = "#000000";
-    for (let y = 0; y < qr.size; y++) {
-      for (let x = 0; x < qr.size; x++) {
-        if (qr.getModule(x, y)) {
-          ctx.fillRect((x + border) * scale, (y + border) * scale, scale, scale);
-        }
-      }
-    }
-  } catch (err) {
-    console.error("Docs QR generation failed", err);
-  }
-}
-
-export function renderDocsQr() {
-  renderDocsQrCanvas();
-}
-
-export function initDocsQr() {}
-
-// ============================
 // Init
 // ============================
 

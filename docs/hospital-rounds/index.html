@@ -45,7 +45,14 @@
 .docs-toc .toc-num { font-size: .75rem; color: var(--muted); width: 20px; }
 .docs-toc .toc-title { font-weight: 600; }
 .docs-toc .toc-arrow { margin-left: auto; color: var(--muted); }
+
+.docs-embedded > header, .docs-embedded > footer { display: none !important; }
+.docs-embedded main { padding-top: 0 !important; }
+.docs-embedded .docs-wrap { padding-top: 12px !important; }
 </style>
+  <script>
+    if (window !== window.parent) { document.documentElement.classList.add('docs-embedded'); }
+  </script>
 </head>
 <body>
   <header>
