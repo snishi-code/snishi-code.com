@@ -312,24 +312,6 @@ function patientFilterValues(p) {
 export function patientMatchesSharedFilter(p) {
   if (!_sharedTagFilter.length) return true;
   const have = new Set(patientFilterValues(p));
-
-  // When grouping is enabled, evaluate per-group AND (intra-group OR).
-  if (isTagGroupingEnabled()) {
-    // Bucket selected filter values by group id ("" = unassigned)
-    const buckets = new Map();
-    for (const v of _sharedTagFilter) {
-      const gid = getGroupForTag(v) || "";
-      if (!buckets.has(gid)) buckets.set(gid, []);
-      buckets.get(gid).push(v);
-    }
-    for (const [gid, selected] of buckets.entries()) {
-      // Within a group: any one selected match is enough (OR semantics)
-      const ok = selected.some(t => have.has(t));
-      if (!ok) return false;
-    }
-    return true;
-  }
-
   if (_sharedFilterMode === TAG_FILTER_MODE_OR) {
     return _sharedTagFilter.some(t => have.has(t));
   }
@@ -341,10 +323,19 @@ export function patientMatchesSharedFilter(p) {
 // ============================
 
 let _openPopup = null;
+// When the user toggles a tag inside the popup we defer the screen re-render
+// until the popup actually closes—otherwise the parent screen recreates the
+// picker and the popup snaps shut on every tap.
+let _pendingOnChange = null;
 function closeOpenPopup() {
   if (_openPopup) {
     _openPopup.style.display = "none";
     _openPopup = null;
+  }
+  if (_pendingOnChange) {
+    const fn = _pendingOnChange;
+    _pendingOnChange = null;
+    try { fn(); } catch (e) { console.error(e); }
   }
 }
 document.addEventListener("click", (e) => {
@@ -381,7 +372,7 @@ function entriesToIndex(entries) {
 // Grouped picker (when tagGroupingEnabled)
 // ============================
 
-function buildGroupSection(group, entries, getSelected, setSelected, onChange, refreshTrigger) {
+function buildGroupSection(group, entries, getSelected, setSelected, onChange, refreshTrigger, refreshPopup) {
   const sec = document.createElement("div");
   sec.className = "tagPickerSection";
   if (group.name) {
@@ -396,14 +387,15 @@ function buildGroupSection(group, entries, getSelected, setSelected, onChange, r
   for (const e of entries) {
     const row = document.createElement("label");
     row.className = "tagPickerOpt";
+    // Always use checkbox visuals; single-select semantics are enforced in JS
+    // (clicking another in the same group clears the previous; clicking the
+    // same one again deselects it — true toggle).
     const cb = document.createElement("input");
-    cb.type = (group.mode === GROUP_MODE_SINGLE) ? "radio" : "checkbox";
-    cb.name = "g_" + group.id;
+    cb.type = "checkbox";
     cb.checked = current.has(e.value);
     cb.addEventListener("change", () => {
       const next = new Set(getSelected());
       if (group.mode === GROUP_MODE_SINGLE) {
-        // Remove other entries in this group
         for (const x of entries) next.delete(x.value);
         if (cb.checked) next.add(e.value);
       } else {
@@ -412,7 +404,8 @@ function buildGroupSection(group, entries, getSelected, setSelected, onChange, r
       }
       setSelected(Array.from(next));
       refreshTrigger();
-      if (onChange) onChange();
+      if (group.mode === GROUP_MODE_SINGLE && refreshPopup) refreshPopup();
+      if (onChange) _pendingOnChange = onChange;
     });
     row.appendChild(cb);
     if (e.color) {
@@ -470,8 +463,8 @@ export function makeTagPicker(opts) {
 
   function refreshPopup() {
     popup.textContent = "";
-    // Mode toggle only when NOT in grouping mode (grouped mode has per-group rules)
-    if (withModeToggle && !(grouped && isTagGroupingEnabled())) {
+    // Mode toggle row (always shown when withModeToggle is true, regardless of grouping)
+    if (withModeToggle) {
       const modeRow = document.createElement("div");
       modeRow.className = "tagPickerModeRow";
       const mkBtn = (mode, svg, title) => {
@@ -485,12 +478,29 @@ export function makeTagPicker(opts) {
           setSharedFilterMode(mode);
           refreshPopup();
           refreshTrigger();
-          if (onChange) onChange();
+          if (onChange) _pendingOnChange = onChange;
         });
         return b;
       };
       modeRow.appendChild(mkBtn(TAG_FILTER_MODE_AND, AND_SVG, "AND（すべて満たす）"));
       modeRow.appendChild(mkBtn(TAG_FILTER_MODE_OR, OR_SVG, "OR（いずれか満たす）"));
+      // Clear button (×) on the right of the mode toggles
+      const clr = document.createElement("button");
+      clr.type = "button";
+      clr.className = "tagPickerClearBtn";
+      clr.title = "選択をすべて解除";
+      clr.setAttribute("aria-label", "選択をすべて解除");
+      clr.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+      clr.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!getSelected().length) return;
+        if (!confirm("選択中のタグをすべて解除します。よろしいですか？")) return;
+        setSelected([]);
+        refreshPopup();
+        refreshTrigger();
+        if (onChange) _pendingOnChange = onChange;
+      });
+      modeRow.appendChild(clr);
       popup.appendChild(modeRow);
     }
 
@@ -504,21 +514,21 @@ export function makeTagPicker(opts) {
         const statusEntries = STATUS_TAG_DEFS.map(d => ({
           value: d.value, label: d.label, color: d.color, borderColor: d.borderColor,
         }));
-        sectionsHost.appendChild(buildGroupSection(STATUS_GROUP, statusEntries, getSelected, setSelected, onChange, refreshTrigger));
+        sectionsHost.appendChild(buildGroupSection(STATUS_GROUP, statusEntries, getSelected, setSelected, onChange, refreshTrigger, refreshPopup));
       }
       // User groups
       for (const g of userGroups) {
         const members = getTagsInGroup(g.id);
         if (!members.length) continue;
         const groupEntries = members.map(t => ({ value: t, label: t }));
-        sectionsHost.appendChild(buildGroupSection(g, groupEntries, getSelected, setSelected, onChange, refreshTrigger));
+        sectionsHost.appendChild(buildGroupSection(g, groupEntries, getSelected, setSelected, onChange, refreshTrigger, refreshPopup));
       }
       // Unassigned tags
       const unassigned = getUnassignedTags();
       if (unassigned.length) {
         const unGroup = { id: "__unassigned", name: "未分類", mode: GROUP_MODE_MULTI };
         const unEntries = unassigned.map(t => ({ value: t, label: t }));
-        sectionsHost.appendChild(buildGroupSection(unGroup, unEntries, getSelected, setSelected, onChange, refreshTrigger));
+        sectionsHost.appendChild(buildGroupSection(unGroup, unEntries, getSelected, setSelected, onChange, refreshTrigger, refreshPopup));
       }
       popup.appendChild(sectionsHost);
       return;
@@ -545,7 +555,7 @@ export function makeTagPicker(opts) {
         else next.delete(e.value);
         setSelected(Array.from(next));
         refreshTrigger();
-        if (onChange) onChange();
+        if (onChange) _pendingOnChange = onChange;
       });
       lbl.appendChild(cb);
       if (e.color) {

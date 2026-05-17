@@ -927,6 +927,23 @@
       background: #eff6ff;
       color: var(--focus);
     }
+    .tagPickerClearBtn {
+      flex: 0 0 auto;
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #b91c1c;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: auto;
+    }
+    .tagPickerClearBtn:hover {
+      border-color: #b91c1c;
+      background: #fef2f2;
+    }
 
     /* Settings tag chip list */
     .tagSettingList {
