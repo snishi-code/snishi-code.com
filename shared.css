@@ -12,9 +12,15 @@
   --blue-light: #eff6ff;
   --blue-border: #bfdbfe;
 
-  --green: #059669;
-  --green-light: #ecfdf5;
-  --green-border: #6ee7b7;
+  /* 色盲（D/P型）対応の teal 系。回診アプリ内のステータス green と同パレット */
+  --green: #14b8a6;       /* teal-500 */
+  --green-light: #f0fdfa; /* teal-50 */
+  --green-border: #5eead4; /* teal-300 */
+
+  /* 全体（root）のニュートラルバッジ用 */
+  --neutral: #475569;       /* slate-600 */
+  --neutral-light: #f1f5f9; /* slate-100 */
+  --neutral-border: #cbd5e1; /* slate-300 */
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -101,6 +107,7 @@ main {
 }
 .badge-blue { color: var(--blue); background: var(--blue-light); }
 .badge-green { color: var(--green); background: var(--green-light); }
+.badge-neutral { color: var(--neutral); background: var(--neutral-light); }
 
 .hero h1 {
   font-size: clamp(26px, 4.5vw, 40px);
