@@ -189,8 +189,10 @@ function renderOEditorRow(rule, item, onChange) {
 
   const b = document.createElement("button");
   b.type = "button";
-  b.className = "segBtn" + (item.normal ? " selected" : "");
-  b.textContent = "正常";
+  b.className = "segBtn normalCheck" + (item.normal ? " selected" : "");
+  b.title = "正常";
+  b.setAttribute("aria-label", "正常");
+  b.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
   b.addEventListener("click", () => {
     const cur = appState.patients[selectedNo - 1]?.o?.[rule.key] ?? { normal: false, note: "" };
     const next = { ...cur, normal: !cur.normal };

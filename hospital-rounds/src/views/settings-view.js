@@ -54,26 +54,23 @@ function renderClearTargets() {
   body.textContent = "";
   body.className = "cardBody clearTargets";
   for (const key of CLEAR_KEY_ORDER) {
-    const item = document.createElement("div");
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.id = "clearTarget_" + key;
-    cb.checked = !!settings.clearTargets?.[key];
-    cb.addEventListener("change", () => {
-      settings.clearTargets[key] = cb.checked;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "clearTargetBtn" + (settings.clearTargets?.[key] ? " selected" : "");
+    btn.title = CLEAR_ITEM_TITLE[key];
+    btn.setAttribute("aria-label", CLEAR_ITEM_TITLE[key]);
+    btn.appendChild(buildClearTargetLabelContent(key));
+    const x = document.createElement("span");
+    x.className = "clearTargetX";
+    x.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    btn.appendChild(x);
+    btn.addEventListener("click", () => {
+      const next = !settings.clearTargets[key];
+      settings.clearTargets[key] = next;
+      btn.classList.toggle("selected", next);
       saveSettings();
     });
-    const lbl = document.createElement("label");
-    lbl.htmlFor = "clearTarget_" + key;
-    lbl.style.cursor = "pointer";
-    lbl.style.display = "flex";
-    lbl.style.alignItems = "center";
-    lbl.title = CLEAR_ITEM_TITLE[key];
-    lbl.setAttribute("aria-label", CLEAR_ITEM_TITLE[key]);
-    lbl.appendChild(buildClearTargetLabelContent(key));
-    item.appendChild(cb);
-    item.appendChild(lbl);
-    body.appendChild(item);
+    body.appendChild(btn);
   }
 }
 
@@ -493,7 +490,12 @@ export function renderSettings() {
 
     const col1 = document.createElement("div");
     const l1 = document.createElement("label");
-    l1.textContent = "項目";
+    l1.style.display = "inline-flex";
+    l1.style.alignItems = "center";
+    l1.title = "項目";
+    l1.setAttribute("aria-label", "項目");
+    // List/category icon (3 horizontal lines)
+    l1.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/><line x1="8" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="8" y1="18" x2="20" y2="18"/></svg>`;
     const inLabel = document.createElement("input");
     inLabel.type = "text";
     inLabel.className = "settingsInp";
@@ -509,7 +511,12 @@ export function renderSettings() {
 
     const col2 = document.createElement("div");
     const l2 = document.createElement("label");
-    l2.textContent = "正常";
+    l2.style.display = "inline-flex";
+    l2.style.alignItems = "center";
+    l2.title = "正常";
+    l2.setAttribute("aria-label", "正常");
+    // Green check icon (matches the O-normal button in patient view)
+    l2.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0f766e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
     const inNormal = document.createElement("input");
     inNormal.type = "text";
     inNormal.className = "settingsInp";
