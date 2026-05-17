@@ -1,14 +1,13 @@
-const CACHE = 'hospital-rounds-v4';
+const CACHE = 'hospital-rounds-v5';
 
-// App shell. Docs HTML/images are pulled from precache-list.json at install time
-// so the full guide works offline (and the in-app "?" buttons keep working).
+// Docs HTML/CSS are bundled into the app itself (see src/docs-bundle.js) so
+// they work offline without ever touching the SW cache. The SW only pre-caches
+// the app shell plus the docs *images* (best-effort) so that figures inside the
+// embedded guide also render offline once the SW has installed.
 const SHELL = [
   '/hospital-rounds/',
   '/hospital-rounds/index.html',
   '/shared.css',
-  '/docs/hospital-rounds/',
-  '/docs/hospital-rounds/index.html',
-  '/docs/hospital-rounds/precache-list.json',
 ];
 
 async function precacheAll() {
@@ -22,7 +21,7 @@ async function precacheAll() {
         await Promise.allSettled(list.map((u) => cache.add(u)));
       }
     }
-  } catch (_) { /* offline first-install: shell-only, fill on visit */ }
+  } catch (_) { /* first install offline: shell only, images fill in on next online visit */ }
 }
 
 self.addEventListener('install', (e) => {
