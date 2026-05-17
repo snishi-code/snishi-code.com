@@ -52,7 +52,7 @@ header {
 
 .logo-mark {
   width: 28px; height: 28px;
-  background: var(--blue);
+  background: #475569;          /* slate-600 — neutral, works alongside both blue and green tools */
   border-radius: 6px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
