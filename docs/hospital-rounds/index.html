@@ -46,12 +46,27 @@
 .docs-toc .toc-title { font-weight: 600; }
 .docs-toc .toc-arrow { margin-left: auto; color: var(--muted); }
 
-.docs-embedded > header, .docs-embedded > footer { display: none !important; }
+.docs-embedded header, .docs-embedded footer { display: none !important; }
 .docs-embedded main { padding-top: 0 !important; }
 .docs-embedded .docs-wrap { padding-top: 12px !important; }
+.docs-embedded .docs-breadcrumb { margin-bottom: 16px !important; }
+.docs-extlink-text { color: inherit; }
 </style>
   <script>
-    if (window !== window.parent) { document.documentElement.classList.add('docs-embedded'); }
+    if (window !== window.parent) {
+      document.documentElement.classList.add('docs-embedded');
+      document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('a[href]').forEach(function(a) {
+          var href = a.getAttribute('href') || '';
+          var external = /^https?:\/\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
+          if (!external) return;
+          var span = document.createElement('span');
+          span.className = 'docs-extlink-text';
+          span.innerHTML = a.innerHTML;
+          a.parentNode.replaceChild(span, a);
+        });
+      });
+    }
   </script>
 </head>
 <body>

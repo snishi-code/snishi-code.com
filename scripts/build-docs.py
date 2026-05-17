@@ -242,13 +242,29 @@ def page_html(title, content_html, prev_page, next_page, app_name="回診"):
   <title>{title} — {app_name} 説明書</title>
   <link rel="stylesheet" href="/shared.css">
   <style>{DOCS_CSS}
-.docs-embedded > header, .docs-embedded > footer {{ display: none !important; }}
+.docs-embedded header, .docs-embedded footer {{ display: none !important; }}
 .docs-embedded main {{ padding-top: 0 !important; }}
 .docs-embedded .docs-wrap {{ padding-top: 12px !important; }}
 .docs-embedded .docs-breadcrumb {{ margin-bottom: 16px !important; }}
+/* Neutralised external link in embedded mode (replaces <a>) */
+.docs-extlink-text {{ color: inherit; }}
 </style>
   <script>
-    if (window !== window.parent) {{ document.documentElement.classList.add('docs-embedded'); }}
+    if (window !== window.parent) {{
+      document.documentElement.classList.add('docs-embedded');
+      document.addEventListener('DOMContentLoaded', function() {{
+        document.querySelectorAll('a[href]').forEach(function(a) {{
+          var href = a.getAttribute('href') || '';
+          var external = /^https?:\\/\\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
+          if (!external) return;
+          // Replace anchor with plain span to fully disable navigation
+          var span = document.createElement('span');
+          span.className = 'docs-extlink-text';
+          span.innerHTML = a.innerHTML;
+          a.parentNode.replaceChild(span, a);
+        }});
+      }});
+    }}
   </script>
 </head>
 <body>
@@ -301,12 +317,27 @@ def index_html(pages):
   <title>回診 説明書</title>
   <link rel="stylesheet" href="/shared.css">
   <style>{DOCS_CSS}
-.docs-embedded > header, .docs-embedded > footer {{ display: none !important; }}
+.docs-embedded header, .docs-embedded footer {{ display: none !important; }}
 .docs-embedded main {{ padding-top: 0 !important; }}
 .docs-embedded .docs-wrap {{ padding-top: 12px !important; }}
+.docs-embedded .docs-breadcrumb {{ margin-bottom: 16px !important; }}
+.docs-extlink-text {{ color: inherit; }}
 </style>
   <script>
-    if (window !== window.parent) {{ document.documentElement.classList.add('docs-embedded'); }}
+    if (window !== window.parent) {{
+      document.documentElement.classList.add('docs-embedded');
+      document.addEventListener('DOMContentLoaded', function() {{
+        document.querySelectorAll('a[href]').forEach(function(a) {{
+          var href = a.getAttribute('href') || '';
+          var external = /^https?:\\/\\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
+          if (!external) return;
+          var span = document.createElement('span');
+          span.className = 'docs-extlink-text';
+          span.innerHTML = a.innerHTML;
+          a.parentNode.replaceChild(span, a);
+        }});
+      }});
+    }}
   </script>
 </head>
 <body>

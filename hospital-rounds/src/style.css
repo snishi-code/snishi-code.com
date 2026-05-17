@@ -433,6 +433,63 @@
       color: #fff;
     }
 
+    /* O-normal button: green check (matches detail status button palette) */
+    .segBtn.normalCheck {
+      background: #fff;
+      border-color: var(--status-green-bd);
+      color: var(--status-green-bd);
+      padding: 7px 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .segBtn.normalCheck.selected {
+      background: var(--status-green-bg);
+      border-color: var(--status-green-bd);
+      color: var(--status-green-fg);
+    }
+
+    /* Reset (全消去) icon button — keeps the red colour from .danger */
+    .iconBtn.dangerIcon {
+      color: #b91c1c;
+      border-color: #fee2e2;
+      background: #fef2f2;
+    }
+    .iconBtn.dangerIcon:hover {
+      border-color: #b91c1c;
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    /* Clear target chips: white pill normally, red pill with × when selected */
+    .clearTargetBtn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 13px;
+      line-height: 1.2;
+    }
+    .clearTargetBtn .clearTargetX {
+      display: none;
+      color: inherit;
+      line-height: 0;
+    }
+    .clearTargetBtn.selected {
+      border-color: #b91c1c;
+      background: #fef2f2;
+      color: #b91c1c;
+    }
+    .clearTargetBtn.selected .clearTargetX {
+      display: inline-flex;
+    }
+
     .oInput {
       flex: 1 1 220px;
       min-width: 180px;
