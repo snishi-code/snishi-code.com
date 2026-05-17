@@ -12,7 +12,7 @@ export function showView(which, pushState = true) {
   const overviewView = document.getElementById("overviewView");
   const settingsView = document.getElementById("settingsView");
   const detailView = document.getElementById("detailView");
-  const docsQrViewEl = document.getElementById("docsQrView");
+  const docsViewEl = document.getElementById("docsView");
 
   if (homeView) homeView.classList.toggle("active", which === "home");
   if (memoView) memoView.classList.toggle("active", which === "memo");
@@ -20,7 +20,7 @@ export function showView(which, pushState = true) {
   if (overviewView) overviewView.classList.toggle("active", which === "overview");
   if (settingsView) settingsView.classList.toggle("active", which === "settings");
   if (detailView) detailView.classList.toggle("active", which === "detail");
-  if (docsQrViewEl) docsQrViewEl.classList.toggle("active", which === "docsQr");
+  if (docsViewEl) docsViewEl.classList.toggle("active", which === "docs");
 
   if (which !== "shared") {
     const sharedQrWrap = document.getElementById("sharedQrWrap");

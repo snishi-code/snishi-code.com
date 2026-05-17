@@ -21,7 +21,7 @@ import { renderSettings, initSettingsView } from "./views/settings-view.js";
 import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./features/navigation.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initImportExport } from "./features/import-export.js";
-import { initSharedQr, initDocsQr, renderDocsQr, refreshSharedQrIfActive, setSharedQrSelectionChangeHandler } from "./features/qr-shared.js";
+import { initSharedQr, refreshSharedQrIfActive, setSharedQrSelectionChangeHandler } from "./features/qr-shared.js";
 import { sortPatientsByRoom, invalidateSortSnapshot } from "./features/room.js";
 import { initAdminUI, refreshAdminAvailability, setAdminAppliedHandler } from "./features/admin-ui.js";
 import { isAdminTerminal, isNonAdminTerminal, isAdminEnabled, findIncompleteAdminPatients, clearIncompleteAdminPatients } from "./features/admin.js";
@@ -201,12 +201,14 @@ if (headerSharedBtn) headerSharedBtn.addEventListener("click", navToShared);
 if (headerHomeBtn) headerHomeBtn.addEventListener("click", navToHome);
 if (headerSettingsBtn) headerSettingsBtn.addEventListener("click", navToSettings);
 if (headerHelpBtn) headerHelpBtn.addEventListener("click", () => {
-  showView("docsQr");
-  renderDocsQr();
+  const iframe = document.getElementById("docsIframe");
+  if (iframe) {
+    const target = "/docs/hospital-rounds/index.html";
+    // Only reset the src if not already pointing at the docs index (preserve in-iframe navigation)
+    if (!iframe.src || !iframe.src.endsWith(target)) iframe.src = target;
+  }
+  showView("docs");
 });
-
-const docsQrCloseBtn = document.getElementById("docsQrCloseBtn");
-if (docsQrCloseBtn) docsQrCloseBtn.addEventListener("click", navToHome);
 
 const memoEditBtn = document.getElementById("memoEditBtn");
 if (memoEditBtn) memoEditBtn.addEventListener("click", () => {
@@ -290,7 +292,6 @@ initActionMenu();
 // ============================
 
 initSharedQr();
-initDocsQr();
 initAdminUI();
 setAdminAppliedHandler(() => {
   doRenderHome();

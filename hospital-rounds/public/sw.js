@@ -1,13 +1,24 @@
-const CACHE = 'hospital-rounds-v2';
-const SHELL = ['/hospital-rounds/', '/hospital-rounds/index.html'];
+const CACHE = 'hospital-rounds-v3';
 
-// インストール時にアプリシェルをキャッシュ
+// App shell + docs index. Individual docs pages and images are cached on first fetch (network-fill).
+const PRECACHE = [
+  '/hospital-rounds/',
+  '/hospital-rounds/index.html',
+  '/docs/hospital-rounds/',
+  '/docs/hospital-rounds/index.html',
+  '/shared.css',
+];
+
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
+  e.waitUntil(
+    caches.open(CACHE).then((c) =>
+      // allSettled so a missing pre-cache entry doesn't abort install
+      Promise.allSettled(PRECACHE.map((url) => c.add(url)))
+    )
+  );
   self.skipWaiting();
 });
 
-// 古いバージョンのキャッシュを削除
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
@@ -17,12 +28,21 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
-// キャッシュ優先（完全オフライン前提）
+// Cache-first with network fallback that fills the cache; on total failure, return the SPA shell.
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   if (!e.request.url.startsWith(self.location.origin)) return;
 
   e.respondWith(
-    caches.match(e.request).then((cached) => cached || caches.match('/hospital-rounds/'))
+    caches.match(e.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(e.request).then((res) => {
+        if (res && res.ok && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() => caches.match('/hospital-rounds/'));
+    })
   );
 });

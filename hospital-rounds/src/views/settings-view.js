@@ -8,7 +8,7 @@ import { addNewTag, renameTagAt, deleteTagAt, moveTag, setLinkedYellowTag, isTag
 import { GROUP_MODE_SINGLE, GROUP_MODE_MULTI } from "../constants.js";
 import { bindLongPressAndDrag } from "../features/drag.js";
 
-const STATUS_SWATCHES = { statusYellow: "#fbbf24", statusGreen: "#34d399", statusGray: "#6b7280", statusBlue: "#2563eb" };
+const STATUS_SWATCHES = { statusYellow: "#f59e0b", statusGreen: "#14b8a6", statusGray: "#6b7280", statusBlue: "#2563eb" };
 
 const MEMO_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
 const SHARED_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`;
@@ -80,7 +80,7 @@ function renderClearTargets() {
 function renderToggleIcon(iconEl, on) {
   if (!iconEl) return;
   if (on) {
-    iconEl.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5" fill="${getComputedStyle(document.documentElement).getPropertyValue('--status-green-bg') || '#34d399'}" stroke="currentColor"/><circle cx="16" cy="12" r="3" fill="#ffffff" stroke="currentColor"/>`;
+    iconEl.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5" fill="${getComputedStyle(document.documentElement).getPropertyValue('--status-green-bg') || '#14b8a6'}" stroke="currentColor"/><circle cx="16" cy="12" r="3" fill="#ffffff" stroke="currentColor"/>`;
   } else {
     iconEl.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/>`;
   }
@@ -118,7 +118,7 @@ function renderRoomToggleIcon() {
   const on = !!settings.roomEnabled;
   card.classList.toggle("disabled", !on);
   if (on) {
-    icon.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5" fill="${getComputedStyle(document.documentElement).getPropertyValue('--status-green-bg') || '#34d399'}" stroke="currentColor"/><circle cx="16" cy="12" r="3" fill="#ffffff" stroke="currentColor"/>`;
+    icon.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5" fill="${getComputedStyle(document.documentElement).getPropertyValue('--status-green-bg') || '#14b8a6'}" stroke="currentColor"/><circle cx="16" cy="12" r="3" fill="#ffffff" stroke="currentColor"/>`;
   } else {
     icon.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/>`;
   }
@@ -315,7 +315,7 @@ function renderTagsToggleIcon() {
   const on = !!settings.tagsEnabled;
   card.classList.toggle("disabled", !on);
   if (on) {
-    icon.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5" fill="${getComputedStyle(document.documentElement).getPropertyValue('--status-green-bg') || '#34d399'}" stroke="currentColor"/><circle cx="16" cy="12" r="3" fill="#ffffff" stroke="currentColor"/>`;
+    icon.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5" fill="${getComputedStyle(document.documentElement).getPropertyValue('--status-green-bg') || '#14b8a6'}" stroke="currentColor"/><circle cx="16" cy="12" r="3" fill="#ffffff" stroke="currentColor"/>`;
   } else {
     icon.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/>`;
   }
@@ -361,7 +361,7 @@ function makeTagChip(idx) {
     const isLinked = settings.tagLinkedToYellow === name;
     linkBtn.title = isLinked ? "黄ステータス連携 ON" : "黄ステータスに連携";
     linkBtn.innerHTML = isLinked
-      ? `<span class="linkDot linkOn" style="background:#fbbf24;border-color:#b45309;"></span>`
+      ? `<span class="linkDot linkOn" style="background:#f59e0b;border-color:#b45309;"></span>`
       : `<span class="linkDot"></span>`;
     linkBtn.addEventListener("click", (e) => {
       e.stopPropagation();

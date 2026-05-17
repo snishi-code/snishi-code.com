@@ -14,11 +14,11 @@ const TAG_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" str
 const AND_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/><path d="M9 6.6 a6 6 0 0 1 0 10.8 a6 6 0 0 1 0 -10.8 z" fill="currentColor" stroke="none" transform="translate(3 0)"/></svg>`;
 const OR_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" fill-opacity="0.85" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/></svg>`;
 
-// Status virtual tags exposed in filter pickers
+// Status virtual tags exposed in filter pickers (palette kept in sync with style.css)
 const STATUS_TAG_DEFS = [
   { value: STATUS_TAG_PREFIX + STATUS.NONE,   label: "白", color: "#ffffff", borderColor: "#9ca3af" },
-  { value: STATUS_TAG_PREFIX + STATUS.YELLOW, label: "黄", color: "#fbbf24" },
-  { value: STATUS_TAG_PREFIX + STATUS.GREEN,  label: "緑", color: "#34d399" },
+  { value: STATUS_TAG_PREFIX + STATUS.YELLOW, label: "黄", color: "#f59e0b", borderColor: "#b45309" },
+  { value: STATUS_TAG_PREFIX + STATUS.GREEN,  label: "緑", color: "#14b8a6", borderColor: "#0f766e" },
   { value: STATUS_TAG_PREFIX + STATUS.GRAY,   label: "灰", color: "#6b7280" },
   { value: STATUS_TAG_PREFIX + STATUS.BLUE,   label: "青", color: "#bfdbfe", borderColor: "#2563eb" },
 ];

@@ -241,7 +241,15 @@ def page_html(title, content_html, prev_page, next_page, app_name="回診"):
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{title} — {app_name} 説明書</title>
   <link rel="stylesheet" href="/shared.css">
-  <style>{DOCS_CSS}</style>
+  <style>{DOCS_CSS}
+.docs-embedded > header, .docs-embedded > footer {{ display: none !important; }}
+.docs-embedded main {{ padding-top: 0 !important; }}
+.docs-embedded .docs-wrap {{ padding-top: 12px !important; }}
+.docs-embedded .docs-breadcrumb {{ margin-bottom: 16px !important; }}
+</style>
+  <script>
+    if (window !== window.parent) {{ document.documentElement.classList.add('docs-embedded'); }}
+  </script>
 </head>
 <body>
   <header>
@@ -292,7 +300,14 @@ def index_html(pages):
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>回診 説明書</title>
   <link rel="stylesheet" href="/shared.css">
-  <style>{DOCS_CSS}</style>
+  <style>{DOCS_CSS}
+.docs-embedded > header, .docs-embedded > footer {{ display: none !important; }}
+.docs-embedded main {{ padding-top: 0 !important; }}
+.docs-embedded .docs-wrap {{ padding-top: 12px !important; }}
+</style>
+  <script>
+    if (window !== window.parent) {{ document.documentElement.classList.add('docs-embedded'); }}
+  </script>
 </head>
 <body>
   <header>
