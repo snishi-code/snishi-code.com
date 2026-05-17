@@ -1,21 +1,32 @@
-const CACHE = 'hospital-rounds-v3';
+const CACHE = 'hospital-rounds-v4';
 
-// App shell + docs index. Individual docs pages and images are cached on first fetch (network-fill).
-const PRECACHE = [
+// App shell. Docs HTML/images are pulled from precache-list.json at install time
+// so the full guide works offline (and the in-app "?" buttons keep working).
+const SHELL = [
   '/hospital-rounds/',
   '/hospital-rounds/index.html',
+  '/shared.css',
   '/docs/hospital-rounds/',
   '/docs/hospital-rounds/index.html',
-  '/shared.css',
+  '/docs/hospital-rounds/precache-list.json',
 ];
 
+async function precacheAll() {
+  const cache = await caches.open(CACHE);
+  await Promise.allSettled(SHELL.map((u) => cache.add(u)));
+  try {
+    const res = await fetch('/docs/hospital-rounds/precache-list.json', { cache: 'no-cache' });
+    if (res && res.ok) {
+      const list = await res.json();
+      if (Array.isArray(list)) {
+        await Promise.allSettled(list.map((u) => cache.add(u)));
+      }
+    }
+  } catch (_) { /* offline first-install: shell-only, fill on visit */ }
+}
+
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE).then((c) =>
-      // allSettled so a missing pre-cache entry doesn't abort install
-      Promise.allSettled(PRECACHE.map((url) => c.add(url)))
-    )
-  );
+  e.waitUntil(precacheAll());
   self.skipWaiting();
 });
 

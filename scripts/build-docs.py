@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate docs HTML from Markdown (Obsidian-flavoured)."""
-import os, re, shutil, html as htmllib
+import os, re, json, shutil, html as htmllib
 from pathlib import Path
 
 SRC  = Path("docs-src/hospital-rounds")
@@ -221,6 +221,29 @@ DOCS_CSS = """
 .docs-toc .toc-num { font-size: .75rem; color: var(--muted); width: 20px; }
 .docs-toc .toc-title { font-weight: 600; }
 .docs-toc .toc-arrow { margin-left: auto; color: var(--muted); }
+/* Embedded mode: hide site chrome + neutralise external links */
+.docs-embedded header, .docs-embedded footer { display: none !important; }
+.docs-embedded main { padding-top: 0 !important; }
+.docs-embedded .docs-wrap { padding-top: 12px !important; }
+.docs-embedded .docs-breadcrumb { margin-bottom: 16px !important; }
+.docs-extlink-text { color: inherit; }
+"""
+
+EMBED_SCRIPT = """
+    if (window !== window.parent) {
+      document.documentElement.classList.add('docs-embedded');
+      document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('a[href]').forEach(function(a) {
+          var href = a.getAttribute('href') || '';
+          var external = /^https?:\\/\\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
+          if (!external) return;
+          var span = document.createElement('span');
+          span.className = 'docs-extlink-text';
+          span.innerHTML = a.innerHTML;
+          a.parentNode.replaceChild(span, a);
+        });
+      });
+    }
 """
 
 def page_html(title, content_html, prev_page, next_page, app_name="回診"):
@@ -240,6 +263,7 @@ def page_html(title, content_html, prev_page, next_page, app_name="回診"):
   <title>{title} — {app_name} 説明書</title>
   <link rel="stylesheet" href="/shared.css">
   <style>{DOCS_CSS}</style>
+  <script>{EMBED_SCRIPT}</script>
 </head>
 <body>
   <header>
@@ -291,6 +315,7 @@ def index_html(pages):
   <title>回診 説明書</title>
   <link rel="stylesheet" href="/shared.css">
   <style>{DOCS_CSS}</style>
+  <script>{EMBED_SCRIPT}</script>
 </head>
 <body>
   <header>
@@ -342,6 +367,10 @@ def main():
     (DEST / "index.html").write_text(index_html(PAGES), encoding="utf-8")
     print("✓ index.html")
 
+    # Collect URLs for service-worker pre-cache
+    base = f"/{DEST.as_posix()}"
+    precache = [f"{base}/", f"{base}/index.html"]
+
     # Write each page
     for idx, (fname, title) in enumerate(PAGES):
         src_path = SRC / fname
@@ -364,7 +393,19 @@ def main():
         out_name = fname.replace('.md', '.html')
         html = page_html(title, body, prev_page, next_page)
         (DEST / out_name).write_text(html, encoding="utf-8")
+        precache.append(f"{base}/{out_name}")
         print(f"✓ {out_name}")
+
+    # Add all webp images
+    if dest_images.exists():
+        for img in sorted(dest_images.iterdir()):
+            if img.suffix.lower() == ".webp":
+                precache.append(f"{base}/images/{img.name}")
+
+    (DEST / "precache-list.json").write_text(
+        json.dumps(precache, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    print(f"✓ precache-list.json ({len(precache)} entries)")
 
     print(f"\nDone → {DEST}/")
 
