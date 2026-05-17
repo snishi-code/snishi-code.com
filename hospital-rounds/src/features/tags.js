@@ -1,8 +1,13 @@
 "use strict";
 
 import { settings, appState, saveSettings, scheduleSave, markUpdated } from "../store.js";
-import { STATUS, STATUS_TAG_PREFIX, TAG_FILTER_MODE_AND, TAG_FILTER_MODE_OR, DEFAULT_TAG_FILTER_MODE } from "../constants.js";
+import { STATUS, STATUS_TAG_PREFIX, TAG_FILTER_MODE_AND, TAG_FILTER_MODE_OR, DEFAULT_TAG_FILTER_MODE, GROUP_MODE_SINGLE, GROUP_MODE_MULTI, STATUS_GROUP_ID } from "../constants.js";
 import { recordOp } from "./roster.js";
+
+function newGroupId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return "g_" + crypto.randomUUID().slice(0, 8);
+  return "g_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
 
 const TAG_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
 
@@ -47,6 +52,96 @@ export function getAllFilterEntries() {
 }
 
 export function getStatusTagDefs() { return STATUS_TAG_DEFS.slice(); }
+
+// ============================
+// Tag grouping
+// ============================
+
+export function isTagGroupingEnabled() { return !!settings.tagGroupingEnabled; }
+
+// Virtual group always present for status colors
+const STATUS_GROUP = { id: STATUS_GROUP_ID, name: "色", mode: GROUP_MODE_SINGLE, virtual: true };
+
+export function getAllGroups() {
+  const userGroups = Array.isArray(settings.tagGroups) ? settings.tagGroups.slice() : [];
+  return [STATUS_GROUP, ...userGroups];
+}
+
+export function getUserGroups() {
+  return Array.isArray(settings.tagGroups) ? settings.tagGroups.slice() : [];
+}
+
+export function getGroupById(groupId) {
+  if (groupId === STATUS_GROUP_ID) return STATUS_GROUP;
+  return getUserGroups().find(g => g.id === groupId) || null;
+}
+
+export function getGroupForTag(tagName) {
+  if (isStatusTag(tagName)) return STATUS_GROUP_ID;
+  if (!settings.tagGroupAssign) return "";
+  return settings.tagGroupAssign[tagName] || "";
+}
+
+export function getTagsInGroup(groupId) {
+  if (groupId === STATUS_GROUP_ID) {
+    return STATUS_TAG_DEFS.map(d => d.value);
+  }
+  if (!settings.tagGroupAssign) return [];
+  return getAllTags().filter(t => settings.tagGroupAssign[t] === groupId);
+}
+
+export function getUnassignedTags() {
+  if (!settings.tagGroupAssign) return getAllTags();
+  return getAllTags().filter(t => !settings.tagGroupAssign[t]);
+}
+
+export function addGroup(name) {
+  const nm = String(name || "").trim();
+  if (!nm) return null;
+  if (!Array.isArray(settings.tagGroups)) settings.tagGroups = [];
+  if (settings.tagGroups.some(g => g.name === nm)) return null;
+  const g = { id: newGroupId(), name: nm, mode: GROUP_MODE_MULTI };
+  settings.tagGroups.push(g);
+  saveSettings();
+  return g;
+}
+
+export function renameGroup(groupId, newName) {
+  const nm = String(newName || "").trim();
+  if (!nm) return false;
+  const g = getUserGroups().find(x => x.id === groupId);
+  if (!g) return false;
+  if (settings.tagGroups.some(x => x.id !== groupId && x.name === nm)) return false;
+  g.name = nm;
+  saveSettings();
+  return true;
+}
+
+export function setGroupMode(groupId, mode) {
+  const g = getUserGroups().find(x => x.id === groupId);
+  if (!g) return;
+  g.mode = (mode === GROUP_MODE_SINGLE) ? GROUP_MODE_SINGLE : GROUP_MODE_MULTI;
+  saveSettings();
+}
+
+export function deleteGroup(groupId) {
+  if (!Array.isArray(settings.tagGroups)) return;
+  settings.tagGroups = settings.tagGroups.filter(g => g.id !== groupId);
+  // Unassign tags that were in this group
+  if (settings.tagGroupAssign) {
+    for (const [t, gid] of Object.entries(settings.tagGroupAssign)) {
+      if (gid === groupId) delete settings.tagGroupAssign[t];
+    }
+  }
+  saveSettings();
+}
+
+export function setTagGroup(tagName, groupId) {
+  if (!settings.tagGroupAssign) settings.tagGroupAssign = {};
+  if (groupId) settings.tagGroupAssign[tagName] = groupId;
+  else delete settings.tagGroupAssign[tagName];
+  saveSettings();
+}
 
 export function getPatientTags(patientIndex) {
   const p = appState.patients[patientIndex];
@@ -217,6 +312,24 @@ function patientFilterValues(p) {
 export function patientMatchesSharedFilter(p) {
   if (!_sharedTagFilter.length) return true;
   const have = new Set(patientFilterValues(p));
+
+  // When grouping is enabled, evaluate per-group AND (intra-group OR).
+  if (isTagGroupingEnabled()) {
+    // Bucket selected filter values by group id ("" = unassigned)
+    const buckets = new Map();
+    for (const v of _sharedTagFilter) {
+      const gid = getGroupForTag(v) || "";
+      if (!buckets.has(gid)) buckets.set(gid, []);
+      buckets.get(gid).push(v);
+    }
+    for (const [gid, selected] of buckets.entries()) {
+      // Within a group: any one selected match is enough (OR semantics)
+      const ok = selected.some(t => have.has(t));
+      if (!ok) return false;
+    }
+    return true;
+  }
+
   if (_sharedFilterMode === TAG_FILTER_MODE_OR) {
     return _sharedTagFilter.some(t => have.has(t));
   }
@@ -264,7 +377,60 @@ function entriesToIndex(entries) {
   return m;
 }
 
-// opts: { getSelected, setSelected, entries: [{value,label,color?}], onChange, fillWidth, withModeToggle }
+// ============================
+// Grouped picker (when tagGroupingEnabled)
+// ============================
+
+function buildGroupSection(group, entries, getSelected, setSelected, onChange, refreshTrigger) {
+  const sec = document.createElement("div");
+  sec.className = "tagPickerSection";
+  if (group.name) {
+    const h = document.createElement("div");
+    h.className = "tagPickerSectionHead";
+    h.innerHTML = `<span>${escapeHtml(group.name)}</span><span class="tagPickerSectionMode">${
+      group.mode === GROUP_MODE_SINGLE ? "・単選択" : ""
+    }</span>`;
+    sec.appendChild(h);
+  }
+  const current = new Set(getSelected());
+  for (const e of entries) {
+    const row = document.createElement("label");
+    row.className = "tagPickerOpt";
+    const cb = document.createElement("input");
+    cb.type = (group.mode === GROUP_MODE_SINGLE) ? "radio" : "checkbox";
+    cb.name = "g_" + group.id;
+    cb.checked = current.has(e.value);
+    cb.addEventListener("change", () => {
+      const next = new Set(getSelected());
+      if (group.mode === GROUP_MODE_SINGLE) {
+        // Remove other entries in this group
+        for (const x of entries) next.delete(x.value);
+        if (cb.checked) next.add(e.value);
+      } else {
+        if (cb.checked) next.add(e.value);
+        else next.delete(e.value);
+      }
+      setSelected(Array.from(next));
+      refreshTrigger();
+      if (onChange) onChange();
+    });
+    row.appendChild(cb);
+    if (e.color) {
+      const sw = document.createElement("span");
+      sw.style.cssText = `display:inline-block;width:18px;height:18px;border-radius:4px;background:${e.color};border:1px solid ${e.borderColor || "rgba(0,0,0,.2)"};flex-shrink:0;`;
+      sw.title = e.label;
+      row.appendChild(sw);
+    } else {
+      const txt = document.createElement("span");
+      txt.textContent = e.label;
+      row.appendChild(txt);
+    }
+    sec.appendChild(row);
+  }
+  return sec;
+}
+
+// opts: { getSelected, setSelected, entries: [{value,label,color?}], onChange, fillWidth, withModeToggle, includeStatus, forPatient }
 export function makeTagPicker(opts) {
   const {
     getSelected,
@@ -273,6 +439,8 @@ export function makeTagPicker(opts) {
     onChange,
     fillWidth = false,
     withModeToggle = false,
+    grouped = false,           // group sections when true (forces grouping mode)
+    forPatient = false,        // patient picker: hide status group entirely
   } = opts;
 
   const wrap = document.createElement("div");
@@ -290,12 +458,20 @@ export function makeTagPicker(opts) {
   function refreshTrigger() {
     const selected = getSelected();
     const list = (typeof entries === "function" ? entries() : entries) || [];
-    trigger.innerHTML = buildChipsHtml(selected, entriesToIndex(list));
+    // When grouping is enabled, show only the tag icon (and a dot indicating selection)
+    if (grouped && isTagGroupingEnabled()) {
+      const hasAny = selected.length > 0;
+      trigger.innerHTML = `<span class="tagPickerIcon" style="color:${hasAny ? '#2563eb' : 'var(--muted)'};">${TAG_SVG}</span>`;
+      trigger.classList.toggle("hasSelected", hasAny);
+    } else {
+      trigger.innerHTML = buildChipsHtml(selected, entriesToIndex(list));
+    }
   }
 
   function refreshPopup() {
     popup.textContent = "";
-    if (withModeToggle) {
+    // Mode toggle only when NOT in grouping mode (grouped mode has per-group rules)
+    if (withModeToggle && !(grouped && isTagGroupingEnabled())) {
       const modeRow = document.createElement("div");
       modeRow.className = "tagPickerModeRow";
       const mkBtn = (mode, svg, title) => {
@@ -317,6 +493,37 @@ export function makeTagPicker(opts) {
       modeRow.appendChild(mkBtn(TAG_FILTER_MODE_OR, OR_SVG, "OR（いずれか満たす）"));
       popup.appendChild(modeRow);
     }
+
+    // Grouped rendering
+    if (grouped && isTagGroupingEnabled()) {
+      const userGroups = getUserGroups();
+      const sectionsHost = document.createElement("div");
+
+      // Status group (filter only)
+      if (!forPatient) {
+        const statusEntries = STATUS_TAG_DEFS.map(d => ({
+          value: d.value, label: d.label, color: d.color, borderColor: d.borderColor,
+        }));
+        sectionsHost.appendChild(buildGroupSection(STATUS_GROUP, statusEntries, getSelected, setSelected, onChange, refreshTrigger));
+      }
+      // User groups
+      for (const g of userGroups) {
+        const members = getTagsInGroup(g.id);
+        if (!members.length) continue;
+        const groupEntries = members.map(t => ({ value: t, label: t }));
+        sectionsHost.appendChild(buildGroupSection(g, groupEntries, getSelected, setSelected, onChange, refreshTrigger));
+      }
+      // Unassigned tags
+      const unassigned = getUnassignedTags();
+      if (unassigned.length) {
+        const unGroup = { id: "__unassigned", name: "未分類", mode: GROUP_MODE_MULTI };
+        const unEntries = unassigned.map(t => ({ value: t, label: t }));
+        sectionsHost.appendChild(buildGroupSection(unGroup, unEntries, getSelected, setSelected, onChange, refreshTrigger));
+      }
+      popup.appendChild(sectionsHost);
+      return;
+    }
+
     const list = (typeof entries === "function" ? entries() : entries) || [];
     if (!list.length) {
       const empty = document.createElement("div");
@@ -342,13 +549,17 @@ export function makeTagPicker(opts) {
       });
       lbl.appendChild(cb);
       if (e.color) {
+        // Status color: show only the color swatch (no text label, per spec)
         const sw = document.createElement("span");
-        sw.style.cssText = `display:inline-block;width:14px;height:14px;border-radius:3px;background:${e.color};border:1px solid ${e.borderColor || "rgba(0,0,0,.2)"};flex-shrink:0;`;
+        sw.style.cssText = `display:inline-block;width:18px;height:18px;border-radius:4px;background:${e.color};border:1px solid ${e.borderColor || "rgba(0,0,0,.2)"};flex-shrink:0;`;
+        sw.title = e.label;
+        sw.setAttribute("aria-label", e.label);
         lbl.appendChild(sw);
+      } else {
+        const txt = document.createElement("span");
+        txt.textContent = e.label;
+        lbl.appendChild(txt);
       }
-      const txt = document.createElement("span");
-      txt.textContent = e.label;
-      lbl.appendChild(txt);
       popup.appendChild(lbl);
     }
   }
@@ -377,10 +588,12 @@ export function makePatientTagPicker(patientIndex, onChange) {
     setSelected: (tags) => setPatientTags(patientIndex, tags),
     entries: () => getAllTags().map(t => ({ value: t, label: t })),
     onChange,
+    grouped: true,
+    forPatient: true,
   });
 }
 
-// Shared filter picker: user tags + status virtual tags + AND/OR toggle
+// Shared filter picker: user tags + status virtual tags + AND/OR toggle (when not grouped)
 export function makeSharedTagFilterPicker(onChange) {
   return makeTagPicker({
     getSelected: getSharedTagFilter,
@@ -388,5 +601,7 @@ export function makeSharedTagFilterPicker(onChange) {
     entries: getAllFilterEntries,
     onChange,
     withModeToggle: true,
+    grouped: true,
+    forPatient: false,
   });
 }

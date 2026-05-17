@@ -1016,6 +1016,89 @@
       color: var(--focus);
     }
 
+    /* Picker section (grouped) */
+    .tagPickerSection {
+      padding: 4px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .tagPickerSection:last-child {
+      border-bottom: none;
+    }
+    .tagPickerSectionHead {
+      padding: 6px 10px 4px;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+      display: flex;
+      gap: 4px;
+      align-items: baseline;
+    }
+    .tagPickerSectionMode {
+      font-weight: 600;
+      font-size: 10px;
+    }
+    .tagPickerTrigger.hasSelected {
+      border-color: rgba(37, 99, 235, 0.6);
+      background: #eff6ff;
+    }
+
+    /* Tag group cards (settings) */
+    .tagGroupCard {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fafafa;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+    }
+    .tagGroupHead {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .tagGroupName {
+      flex: 1;
+      text-align: left;
+      border: 1px dashed transparent;
+      background: transparent;
+      color: var(--text);
+      font-weight: 700;
+      padding: 4px 6px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .tagGroupName:hover {
+      border-color: var(--line);
+      background: #fff;
+    }
+    .tagGroupBody {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 28px;
+      padding: 6px;
+      border: 1px dashed var(--line);
+      border-radius: 999px;
+      background: #fff;
+    }
+    .tagGroupAdd {
+      border: 1px dashed var(--line);
+      background: #fff;
+      color: var(--muted);
+      width: 100%;
+      height: 36px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tagGroupAdd:hover {
+      border-color: var(--focus);
+      color: var(--focus);
+    }
+
     /* Shared list patient button - unselected state during QR mode */
     .memoRow .memoNoBtn.unselected {
       opacity: 0.4;

@@ -1,6 +1,6 @@
 "use strict";
 
-import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS, DEFAULT_TAGS_ENABLED, DEFAULT_ROOM_ENABLED, DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL, DEFAULT_ADMIN_IMPORT_ONLY, DEFAULT_ROSTER_PASSPHRASE, DEFAULT_TAG_STATUS_LINK_ENABLED, clone } from "./constants.js";
+import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS, DEFAULT_TAGS_ENABLED, DEFAULT_ROOM_ENABLED, DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL, DEFAULT_ADMIN_IMPORT_ONLY, DEFAULT_ROSTER_PASSPHRASE, DEFAULT_TAG_STATUS_LINK_ENABLED, DEFAULT_TAG_GROUPING_ENABLED, clone } from "./constants.js";
 
 // ============================
 // Settings
@@ -26,6 +26,9 @@ export function defaultSettings() {
     deviceId: "",
     tagStatusLinkEnabled: DEFAULT_TAG_STATUS_LINK_ENABLED,
     tagLinkedToYellow: "",
+    tagGroupingEnabled: DEFAULT_TAG_GROUPING_ENABLED,
+    tagGroups: [],           // [{id, name, mode}]
+    tagGroupAssign: {},      // tagName -> groupId
   };
 }
 
@@ -91,6 +94,22 @@ export function loadSettings() {
     if (raw && typeof raw.deviceId === "string") out.deviceId = raw.deviceId;
     if (raw && typeof raw.tagStatusLinkEnabled === "boolean") out.tagStatusLinkEnabled = raw.tagStatusLinkEnabled;
     if (raw && typeof raw.tagLinkedToYellow === "string") out.tagLinkedToYellow = raw.tagLinkedToYellow;
+    if (raw && typeof raw.tagGroupingEnabled === "boolean") out.tagGroupingEnabled = raw.tagGroupingEnabled;
+    if (raw && Array.isArray(raw.tagGroups)) {
+      out.tagGroups = raw.tagGroups
+        .filter(g => g && typeof g === "object" && typeof g.id === "string")
+        .map(g => ({
+          id: String(g.id),
+          name: String(g.name || ""),
+          mode: g.mode === "single" ? "single" : "multi",
+        }));
+    }
+    if (raw && raw.tagGroupAssign && typeof raw.tagGroupAssign === "object") {
+      out.tagGroupAssign = {};
+      for (const [k, v] of Object.entries(raw.tagGroupAssign)) {
+        if (typeof k === "string" && typeof v === "string") out.tagGroupAssign[k] = v;
+      }
+    }
     return out;
   } catch (e) {
     console.warn("settings load failed:", e);
