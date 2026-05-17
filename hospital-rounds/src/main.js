@@ -19,6 +19,7 @@ import { renderOverviewScreen } from "./views/overview.js";
 import { renderSettings, initSettingsView } from "./views/settings-view.js";
 
 import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./features/navigation.js";
+import { DOCS_BUNDLE } from "./docs-bundle.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initImportExport } from "./features/import-export.js";
 import { initSharedQr, refreshSharedQrIfActive, setSharedQrSelectionChangeHandler } from "./features/qr-shared.js";
@@ -200,25 +201,32 @@ if (headerMemoBtn) headerMemoBtn.addEventListener("click", navToMemo);
 if (headerSharedBtn) headerSharedBtn.addEventListener("click", navToShared);
 if (headerHomeBtn) headerHomeBtn.addEventListener("click", navToHome);
 if (headerSettingsBtn) headerSettingsBtn.addEventListener("click", navToSettings);
-if (headerHelpBtn) headerHelpBtn.addEventListener("click", () => {
+// Docs are bundled into the app (DOCS_BUNDLE) so the help view works offline
+// without any network or service-worker cache hits.
+function openDocsPage(pageName) {
   const iframe = document.getElementById("docsIframe");
-  if (iframe) {
-    const target = "/docs/hospital-rounds/index.html";
-    // Only reset the src if not already pointing at the docs index (preserve in-iframe navigation)
-    if (!iframe.src || !iframe.src.endsWith(target)) iframe.src = target;
-  }
+  if (!iframe) return;
+  const key = pageName.endsWith(".html") ? pageName : pageName + ".html";
+  const html = DOCS_BUNDLE[key] || DOCS_BUNDLE["index.html"] || "";
+  iframe.srcdoc = html;
   showView("docs");
-});
+}
 
-// Inline help buttons: open a specific docs page in the iframe.
+if (headerHelpBtn) headerHelpBtn.addEventListener("click", () => openDocsPage("index"));
+
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".helpLinkBtn");
   if (!btn) return;
   const page = btn.dataset.helpPage;
   if (!page) return;
-  const iframe = document.getElementById("docsIframe");
-  if (iframe) iframe.src = `/docs/hospital-rounds/${encodeURIComponent(page)}.html`;
-  showView("docs");
+  openDocsPage(page);
+});
+
+// Intra-docs navigation requested from the iframe (prev/next/breadcrumb links)
+window.addEventListener("message", (e) => {
+  if (!e.data || e.data.type !== "docs-nav") return;
+  if (typeof e.data.page !== "string") return;
+  openDocsPage(e.data.page);
 });
 
 const memoEditBtn = document.getElementById("memoEditBtn");

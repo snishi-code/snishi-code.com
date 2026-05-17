@@ -3,8 +3,10 @@
 import os, re, json, shutil, html as htmllib
 from pathlib import Path
 
-SRC  = Path("docs-src/hospital-rounds")
-DEST = Path("docs/hospital-rounds")
+SRC          = Path("docs-src/hospital-rounds")
+DEST         = Path("docs/hospital-rounds")
+SHARED_CSS   = Path("shared.css")
+BUNDLE_DEST  = Path("hospital-rounds/src/docs-bundle.js")
 
 PAGES = [
     ("01_はじめに.md",                              "はじめに"),
@@ -233,6 +235,7 @@ EMBED_SCRIPT = """
     if (window !== window.parent) {
       document.documentElement.classList.add('docs-embedded');
       document.addEventListener('DOMContentLoaded', function() {
+        // External links (snishi-code logo, breadcrumb, etc.) → render as plain text.
         document.querySelectorAll('a[href]').forEach(function(a) {
           var href = a.getAttribute('href') || '';
           var external = /^https?:\\/\\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
@@ -243,10 +246,21 @@ EMBED_SCRIPT = """
           a.parentNode.replaceChild(span, a);
         });
       });
+      // Intra-docs navigation → ask the parent to swap the bundled HTML (no network).
+      document.addEventListener('click', function(e) {
+        var a = e.target.closest && e.target.closest('a[href]');
+        if (!a) return;
+        var href = a.getAttribute('href') || '';
+        if (!/\\.html(?:[#?]|$)/.test(href)) return;
+        if (/^https?:\\/\\//.test(href)) return;
+        e.preventDefault();
+        var page = href.split('/').pop().split('#')[0].split('?')[0];
+        window.parent.postMessage({ type: 'docs-nav', page: page }, '*');
+      });
     }
 """
 
-def page_html(title, content_html, prev_page, next_page, app_name="回診"):
+def page_html(title, content_html, prev_page, next_page, shared_css, app_name="回診"):
     prev_link = ''
     next_link = ''
     if prev_page:
@@ -261,8 +275,9 @@ def page_html(title, content_html, prev_page, next_page, app_name="回診"):
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{title} — {app_name} 説明書</title>
-  <link rel="stylesheet" href="/shared.css">
-  <style>{DOCS_CSS}</style>
+  <base href="/docs/hospital-rounds/">
+  <style>{shared_css}
+{DOCS_CSS}</style>
   <script>{EMBED_SCRIPT}</script>
 </head>
 <body>
@@ -295,7 +310,7 @@ def page_html(title, content_html, prev_page, next_page, app_name="回診"):
 </body>
 </html>"""
 
-def index_html(pages):
+def index_html(pages, shared_css):
     items = ''
     for i, (fname, title) in enumerate(pages, 1):
         slug = fname.replace('.md', '')
@@ -313,8 +328,9 @@ def index_html(pages):
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>回診 説明書</title>
-  <link rel="stylesheet" href="/shared.css">
-  <style>{DOCS_CSS}</style>
+  <base href="/docs/hospital-rounds/">
+  <style>{shared_css}
+{DOCS_CSS}</style>
   <script>{EMBED_SCRIPT}</script>
 </head>
 <body>
@@ -353,6 +369,9 @@ def index_html(pages):
 
 def main():
     DEST.mkdir(parents=True, exist_ok=True)
+    BUNDLE_DEST.parent.mkdir(parents=True, exist_ok=True)
+
+    shared_css = SHARED_CSS.read_text(encoding="utf-8") if SHARED_CSS.exists() else ""
 
     # Sync images (replace folder atomically)
     src_images = SRC / "images"
@@ -363,13 +382,18 @@ def main():
         shutil.copytree(src_images, dest_images)
         print(f"✓ images/ ({sum(1 for _ in dest_images.iterdir())} files)")
 
+    # Bundle of HTML strings for in-app (offline) embedding via iframe srcdoc
+    bundle = {}
+
     # Write index
-    (DEST / "index.html").write_text(index_html(PAGES), encoding="utf-8")
+    index_content = index_html(PAGES, shared_css)
+    (DEST / "index.html").write_text(index_content, encoding="utf-8")
+    bundle["index.html"] = index_content
     print("✓ index.html")
 
-    # Collect URLs for service-worker pre-cache
+    # Collect URLs for service-worker pre-cache (images only — HTML is bundled in app)
     base = f"/{DEST.as_posix()}"
-    precache = [f"{base}/", f"{base}/index.html"]
+    precache = []
 
     # Write each page
     for idx, (fname, title) in enumerate(PAGES):
@@ -391,12 +415,12 @@ def main():
             next_page = (nf.replace('.md', ''), nt)
 
         out_name = fname.replace('.md', '.html')
-        html = page_html(title, body, prev_page, next_page)
+        html = page_html(title, body, prev_page, next_page, shared_css)
         (DEST / out_name).write_text(html, encoding="utf-8")
-        precache.append(f"{base}/{out_name}")
+        bundle[out_name] = html
         print(f"✓ {out_name}")
 
-    # Add all webp images
+    # Add all webp images to SW precache (HTML is bundled in app, doesn't need SW)
     if dest_images.exists():
         for img in sorted(dest_images.iterdir()):
             if img.suffix.lower() == ".webp":
@@ -405,7 +429,14 @@ def main():
     (DEST / "precache-list.json").write_text(
         json.dumps(precache, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    print(f"✓ precache-list.json ({len(precache)} entries)")
+    print(f"✓ precache-list.json ({len(precache)} image entries)")
+
+    # Write in-app docs bundle (read by hospital-rounds main.js at vite build time)
+    bundle_js = "// Auto-generated by scripts/build-docs.py. Do not edit.\n"
+    bundle_js += "export const DOCS_BUNDLE = " + json.dumps(bundle, ensure_ascii=False) + ";\n"
+    BUNDLE_DEST.write_text(bundle_js, encoding="utf-8")
+    bundle_kb = len(bundle_js) // 1024
+    print(f"✓ {BUNDLE_DEST} ({len(bundle)} pages, {bundle_kb} KB)")
 
     print(f"\nDone → {DEST}/")
 
