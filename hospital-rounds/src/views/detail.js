@@ -9,6 +9,8 @@ import { makePatientTagPicker } from "../features/tags.js";
 import { makeRoomInput } from "../features/room.js";
 import { isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
+import { scanQR, isScannerSupported } from "../features/qr-scan.js";
+import { buildTimestampHeader } from "../features/qr-shared.js";
 
 let qrVisible = false;
 
@@ -116,13 +118,10 @@ function clearQrError() {
 }
 
 function syncQrToggleButtons() {
-  const ids = ["qrToggleBtn", "qrToggleBtnBottom"];
-  for (const id of ids) {
-    const b = document.getElementById(id);
-    if (!b) continue;
-    b.classList.toggle("editActive", qrVisible);
-    b.setAttribute("aria-pressed", qrVisible ? "true" : "false");
-  }
+  const b = document.getElementById("qrToggleBtn");
+  if (!b) return;
+  b.classList.toggle("editActive", qrVisible);
+  b.setAttribute("aria-pressed", qrVisible ? "true" : "false");
 }
 
 export function renderQrIfNeeded() {
@@ -435,13 +434,34 @@ export function initDetailEvents(renderHomeFn) {
   });
 
   const qrToggleBtn = document.getElementById("qrToggleBtn");
-  const qrToggleBtnBottom = document.getElementById("qrToggleBtnBottom");
-  const onQrToggle = () => {
+  if (qrToggleBtn) qrToggleBtn.addEventListener("click", () => {
     qrVisible = !qrVisible;
     renderQrIfNeeded();
-  };
-  if (qrToggleBtn) qrToggleBtn.addEventListener("click", onQrToggle);
-  if (qrToggleBtnBottom) qrToggleBtnBottom.addEventListener("click", onQrToggle);
+  });
+
+  // 受信側カメラボタン：QR カード内にあり、QR 表示中だけ見える。
+  // 読み取り結果を現在の患者の受診メモへタイムスタンプ付きで追記する。
+  const detailScanBtn = document.getElementById("detailScanBtn");
+  if (detailScanBtn) {
+    if (!isScannerSupported()) {
+      detailScanBtn.disabled = true;
+      detailScanBtn.title = "このブラウザはカメラ非対応";
+    }
+    detailScanBtn.addEventListener("click", async () => {
+      const text = await scanQR();
+      if (text == null) return;
+      const area = document.getElementById("detailMemoText");
+      const p = appState.patients[selectedNo - 1];
+      if (!area || !p) return;
+      const cur = String(area.value || "");
+      const sep = cur && !cur.endsWith("\n") ? "\n" : "";
+      const next = cur + sep + buildTimestampHeader() + "\n" + text;
+      area.value = next;
+      p.memo = next;
+      markUpdated(selectedNo);
+      scheduleSave();
+    });
+  }
 }
 
 export function initStatusButtons(renderHomeFn) {

@@ -20,7 +20,10 @@ let sharedQrPageIndex = 0;
 
 const MAX_BYTES = 800;
 
-function buildHeader() {
+// 共有QR・受信メモなどで使う共通タイムスタンプ。
+// 形式は JSON 保存のファイル名・共有QRのヘッダーと同じ:
+//   ${title}_YYYY_MMDD_HHMM
+export function buildTimestampHeader() {
   const d = new Date();
   const titleSafe = (appState.title || "回診").replace(/[\\/:*?"<>|]/g, "_");
   const yyyy = d.getFullYear();
@@ -43,7 +46,7 @@ function buildPages() {
   }
   if (items.length === 0) return [];
 
-  const header = buildHeader();
+  const header = buildTimestampHeader();
   const chunks = [];
   let currentItems = [];
   let currentBytes = 0;
