@@ -1,4 +1,4 @@
-const CACHE = 'hospital-rounds-v8';
+const CACHE = 'hospital-rounds-v9';
 
 // SW のスコープ（=sw.js が置かれているディレクトリ）。本番では '/hospital-rounds/'、
 // テスト(サブドメイン)では '/' になる。相対URL は self.registration.scope を起点に解決。
@@ -16,14 +16,15 @@ const SHELL = [
 async function precacheAll() {
   const cache = await caches.open(CACHE);
   await Promise.allSettled(SHELL.map((u) => cache.add(u)));
-  // 説明書画像の precache list はアプリ自身が同梱（public/docs-images/precache-list.json）。
-  // 取得に失敗してもアプリ本体・説明書HTMLは src/docs-bundle.js にインライン化されているため動作に支障なし。
+  // precache-list.json はファイル名の配列（例: ["foo.webp", "bar.webp"]）。
+  // URL は SW スコープを起点に組み立てるので prod/test どちらの base でも動く。
   try {
     const res = await fetch(new URL('./docs-images/precache-list.json', SCOPE).href, { cache: 'no-cache' });
     if (res && res.ok) {
       const list = await res.json();
       if (Array.isArray(list)) {
-        await Promise.allSettled(list.map((u) => cache.add(u)));
+        const urls = list.map((name) => new URL(`./docs-images/${name}`, SCOPE).href);
+        await Promise.allSettled(urls.map((u) => cache.add(u)));
       }
     }
   } catch (_) { /* first install offline: shell only, images fill in on next online visit */ }
