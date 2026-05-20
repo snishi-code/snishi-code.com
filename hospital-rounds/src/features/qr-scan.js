@@ -2,23 +2,44 @@
 
 import jsQR from "jsqr";
 
-// カメラ＋jsQR ライブスキャナ。scanQR() を呼ぶとモーダル表示、
-// QR を認識した瞬間に閉じてテキストを resolve する。
-// キャンセル・失敗時は null。完全オフラインで動作。
+// カメラ＋jsQR ライブスキャナ。
+//   scanQR()           : 1回読んで閉じる（既存）
+//   scanQRStream({...}): 連続モード。ハンドラから { stop: true } を返すまで開きっぱなし
+//
+// ライブ tick の最中に同じ文字列を連続検出するので、2 秒のデデュプ窓を入れて
+// 同一テキストの多重発火を抑える。完全オフラインで動作。
 
 let activeSession = null;
+const DEDUP_MS = 2000;
 
 export function isScannerSupported() {
   return !!(navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === "function");
 }
 
 export function scanQR() {
-  if (activeSession) {
-    return activeSession.promise;
-  }
+  return new Promise((resolve) => {
+    if (activeSession) { resolve(null); return; }
+    const session = openScanner({
+      continuous: false,
+      onScan: (text) => { resolve(text); return { stop: true }; },
+      onCancel: () => resolve(null),
+    });
+    if (!session) resolve(null);
+  });
+}
+
+// 連続スキャン。{ close(), setStatus(text), promise } を返す。
+// onScan(text, ctrl) の戻り値が { stop: true } なら自動 close。
+// promise はスキャナが閉じた時点で resolve（成功・キャンセル問わず）。
+export function scanQRStream({ onScan, onCancel } = {}) {
+  if (activeSession) return null;
+  return openScanner({ continuous: true, onScan, onCancel });
+}
+
+function openScanner({ continuous, onScan, onCancel }) {
   if (!isScannerSupported()) {
     alert("このブラウザはカメラを利用できません。代わりにテキストを貼り付けてください。");
-    return Promise.resolve(null);
+    return null;
   }
 
   const overlay = buildOverlay();
@@ -27,11 +48,12 @@ export function scanQR() {
   let cleaned = false;
   let stream = null;
   let rafId = 0;
-  let resolveResult = null;
+  let lastText = null;
+  let lastTime = 0;
+  let resolveDone = null;
+  const donePromise = new Promise((r) => { resolveDone = r; });
 
-  const promise = new Promise((res) => { resolveResult = res; });
-
-  function cleanup(result) {
+  function cleanup(reason) {
     if (cleaned) return;
     cleaned = true;
     if (rafId) cancelAnimationFrame(rafId);
@@ -40,12 +62,19 @@ export function scanQR() {
     }
     overlay.root.remove();
     activeSession = null;
-    resolveResult(result);
+    if (reason === "cancel" && onCancel) onCancel();
+    resolveDone();
   }
 
-  overlay.cancelBtn.addEventListener("click", () => cleanup(null));
+  const sessionApi = {
+    close: () => cleanup("done"),
+    setStatus: (text) => { overlay.status.textContent = String(text || ""); },
+    promise: donePromise,
+  };
+
+  overlay.cancelBtn.addEventListener("click", () => cleanup("cancel"));
   overlay.root.addEventListener("click", (e) => {
-    if (e.target === overlay.root) cleanup(null);
+    if (e.target === overlay.root) cleanup("cancel");
   });
 
   (async () => {
@@ -56,7 +85,9 @@ export function scanQR() {
       });
       overlay.video.srcObject = stream;
       await overlay.video.play();
-      overlay.status.textContent = "QR コードを枠内に映してください";
+      overlay.status.textContent = continuous
+        ? "QR を順に読み取ってください"
+        : "QR コードを枠内に映してください";
       tick();
     } catch (err) {
       overlay.status.textContent = "カメラを起動できませんでした: " + (err && err.message ? err.message : err);
@@ -78,21 +109,29 @@ export function scanQR() {
       try {
         imageData = ctx.getImageData(0, 0, w, h);
       } catch (_) {
-        // canvas tainted などのケース。続行不可なので少し待って再試行。
         rafId = requestAnimationFrame(tick);
         return;
       }
       const found = jsQR(imageData.data, w, h, { inversionAttempts: "dontInvert" });
       if (found && found.data) {
-        cleanup(found.data);
-        return;
+        const text = found.data;
+        const now = Date.now();
+        const isDup = text === lastText && now - lastTime < DEDUP_MS;
+        if (!isDup) {
+          lastText = text;
+          lastTime = now;
+          let result;
+          try { result = onScan ? onScan(text, sessionApi) : null; }
+          catch (e) { console.error("scan handler error", e); }
+          if (result && result.stop) { cleanup("done"); return; }
+        }
       }
     }
     rafId = requestAnimationFrame(tick);
   }
 
-  activeSession = { promise };
-  return promise;
+  activeSession = sessionApi;
+  return sessionApi;
 }
 
 function buildOverlay() {

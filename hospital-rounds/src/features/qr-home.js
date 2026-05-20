@@ -3,7 +3,7 @@
 import { appState, settings, makeDefaultPatient } from "../store.js";
 import { qrcodegen } from "../libs/qrcodegen.js";
 import { utf8ByteLength } from "../payload.js";
-import { scanQR, isScannerSupported } from "./qr-scan.js";
+import { scanQRStream, isScannerSupported } from "./qr-scan.js";
 import { finishDataChange } from "./drag.js";
 import { recordOp } from "./roster.js";
 
@@ -214,14 +214,12 @@ function renderQrPage() {
   const meta = document.getElementById("homeQrPageMeta");
   const prevBtn = document.getElementById("homeQrPrevBtn");
   const nextBtn = document.getElementById("homeQrNextBtn");
-  const preview = document.getElementById("homeQrTextPreview");
   const canvas = document.getElementById("homeQrCanvas");
 
   if (!qrPages || qrPages.length === 0) {
-    if (meta) meta.textContent = "";
+    if (meta) meta.textContent = "（対象の患者がいません）";
     if (prevBtn) prevBtn.disabled = true;
     if (nextBtn) nextBtn.disabled = true;
-    if (preview) preview.textContent = "（対象の患者がいません）";
     if (canvas) {
       canvas.width = 1; canvas.height = 1;
       canvas.style.width = "0";
@@ -237,7 +235,6 @@ function renderQrPage() {
   if (meta) meta.textContent = `(${i + 1}/${total}) ${bytes} bytes`;
   if (prevBtn) prevBtn.disabled = (i === 0);
   if (nextBtn) nextBtn.disabled = (i === total - 1);
-  if (preview) preview.textContent = text;
   drawQrToCanvas(text);
 }
 
@@ -285,16 +282,6 @@ function resetRecv() {
 function updateRecvStatus(text) {
   const el = document.getElementById("homeQrRecvStatus");
   if (el) el.textContent = text;
-}
-
-function flashRecv(mode) {
-  const wrap = document.getElementById("homeQrWrap");
-  if (!wrap) return;
-  const cls = mode === "dup" ? "scanFlashDup" : "scanFlashOk";
-  wrap.classList.remove("scanFlashOk", "scanFlashDup");
-  // 強制リフロー → アニメ再生
-  void wrap.offsetWidth;
-  wrap.classList.add(cls);
 }
 
 function applyRosterPayload(payload) {
@@ -353,44 +340,59 @@ function applyRosterPayload(payload) {
   }
 }
 
-async function startScan() {
-  const text = await scanQR();
-  if (text == null) return;
-  const decoded = decodePage(text);
-  if (!decoded) {
-    alert("ホーム QR の形式ではありません。");
+function startScan() {
+  const session = scanQRStream({
+    onScan: (text, ctrl) => {
+      const decoded = decodePage(text);
+      if (!decoded) {
+        ctrl.setStatus("QR 形式が認識できません");
+        return;
+      }
+      if (decoded.kind !== KIND) {
+        ctrl.setStatus(`ホームQRではありません（kind=${decoded.kind}）`);
+        return;
+      }
+      // 別バッチ ID 検出 → 静かにリセット（カメラ起動中の confirm は割込みになるので避ける）
+      if (recvBatchId && recvBatchId !== decoded.batchId) {
+        resetRecv();
+        ctrl.setStatus("新しいバッチを検出。受信バッファをリセットしました");
+      }
+      if (!recvBatchId) {
+        recvBatchId = decoded.batchId;
+        recvTotal = decoded.totalPages;
+      }
+      // 重複ページ
+      if (recvPages.has(decoded.pageNum)) {
+        ctrl.setStatus(`重複: ${recvPages.size}/${recvTotal} 受信済`);
+        return;
+      }
+      // 新規ページ
+      recvPages.set(decoded.pageNum, decoded.content);
+      try { navigator.vibrate?.(80); } catch (_) {}
+      if (recvPages.size === recvTotal) {
+        const full = [];
+        for (let i = 1; i <= recvTotal; i++) full.push(recvPages.get(i));
+        const payload = full.join("\n");
+        resetRecv();
+        ctrl.setStatus(`全 ${recvTotal} ページ受信完了`);
+        // スキャナを閉じた後に apply（alert が前面に出るように間を置く）
+        setTimeout(() => applyRosterPayload(payload), 100);
+        return { stop: true };
+      }
+      ctrl.setStatus(`${recvPages.size}/${recvTotal} 受信`);
+    },
+    onCancel: () => {
+      // ユーザがキャンセル → 途中バッファがあればホーム側に進捗を残す
+      if (recvBatchId && recvPages.size > 0) {
+        updateRecvStatus(`${recvPages.size}/${recvTotal} 受信中（続きを読み取ってください）`);
+      } else {
+        updateRecvStatus("");
+      }
+    },
+  });
+  if (!session) {
+    alert("スキャナを開けませんでした。");
     return;
-  }
-  if (decoded.kind !== KIND) {
-    alert(`これはホーム QR ではありません（kind=${decoded.kind}）。`);
-    return;
-  }
-  // 別バッチに切り替わったら confirm
-  if (recvBatchId && recvBatchId !== decoded.batchId) {
-    if (!confirm("別のバッチを検出しました。前回までの受信を破棄して新しい QR を取り込みますか?")) return;
-    resetRecv();
-  }
-  if (!recvBatchId) {
-    recvBatchId = decoded.batchId;
-    recvTotal = decoded.totalPages;
-  }
-  if (recvPages.has(decoded.pageNum)) {
-    flashRecv("dup");
-    updateRecvStatus(`重複: ${recvPages.size}/${recvTotal} 受信済`);
-    return;
-  }
-  recvPages.set(decoded.pageNum, decoded.content);
-  try { navigator.vibrate?.(80); } catch (_) {}
-  flashRecv("ok");
-
-  if (recvPages.size === recvTotal) {
-    const full = [];
-    for (let i = 1; i <= recvTotal; i++) full.push(recvPages.get(i));
-    const payload = full.join("\n");
-    resetRecv();
-    applyRosterPayload(payload);
-  } else {
-    updateRecvStatus(`${recvPages.size}/${recvTotal} 受信`);
   }
 }
 
