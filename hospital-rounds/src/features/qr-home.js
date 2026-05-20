@@ -6,6 +6,10 @@ import { utf8ByteLength } from "../payload.js";
 import { scanQRStream, isScannerSupported } from "./qr-scan.js";
 import { finishDataChange } from "./drag.js";
 import { recordOp } from "./roster.js";
+import {
+  encodePages, decodePage, newBatchId,
+  escapeField, unescapeField, splitEscapedPipe,
+} from "./qr-protocol.js";
 
 // ============================
 // ホーム QR（名簿: 部屋番号 + 名前 + タグ）
@@ -25,55 +29,15 @@ import { recordOp } from "./roster.js";
 //     （RLE の `_N` 空患者は捨てる）
 // ============================
 
-const MAX_BYTES = 800;
-// `RND_HM #<batchIdMax12> NN/NN\n` 程度。余裕を持って 50 確保
-const HEADER_BUDGET = 50;
 const KIND = "HM";
 
 // ============================
-// Encode / Decode payload
+// 名簿ペイロードのエンコード/デコード
 //
-// 各患者は 1 行 `部屋|名前|タグidx,...` の pipe 区切り。サイズ最優先で
-// 位置依存（key 名は持たない）。後ろが空のフィールドは pipe ごと省略可能。
-// 連続空患者は `_N` で RLE。
-//
-// pipe `|` / バックスラッシュ `\` / 改行 `\n` が値に含まれる可能性を考慮し、
-// それぞれ `\|` / `\\` / `\n`（2文字）にエスケープする。
+// 各患者 1 行 `部屋|名前|タグidx,...`（位置依存、後ろの空は省略可）。
+// 連続空患者は `_N` で RLE 圧縮。
+// pipe `|` / `\` / 改行 は qr-protocol の共通エスケープで安全化。
 // ============================
-
-function escapeField(s) {
-  return String(s).replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\n/g, "\\n");
-}
-function unescapeField(s) {
-  let out = "";
-  for (let i = 0; i < s.length; i++) {
-    if (s[i] === "\\" && i + 1 < s.length) {
-      const c = s[i + 1];
-      out += c === "n" ? "\n" : c;
-      i++;
-    } else {
-      out += s[i];
-    }
-  }
-  return out;
-}
-function splitEscapedPipe(line) {
-  const parts = [];
-  let cur = "";
-  for (let i = 0; i < line.length; i++) {
-    if (line[i] === "\\" && i + 1 < line.length) {
-      cur += line[i] + line[i + 1];
-      i++;
-    } else if (line[i] === "|") {
-      parts.push(cur);
-      cur = "";
-    } else {
-      cur += line[i];
-    }
-  }
-  parts.push(cur);
-  return parts;
-}
 
 function encodeRoster() {
   const tagIdxByName = new Map();
@@ -120,52 +84,6 @@ function decodeRoster(payload) {
     out.push({ room, name, tagIdxs });
   }
   return out;
-}
-
-// ============================
-// Page protocol
-// ============================
-
-function chunkPayload(payload, budget) {
-  const lines = payload.split("\n");
-  const chunks = [];
-  let cur = "";
-  let curBytes = 0;
-  for (const line of lines) {
-    const lineBytes = utf8ByteLength(line) + 1;
-    if (cur && curBytes + lineBytes > budget) {
-      chunks.push(cur);
-      cur = line;
-      curBytes = lineBytes;
-    } else {
-      cur = cur ? cur + "\n" + line : line;
-      curBytes += lineBytes;
-    }
-  }
-  if (cur) chunks.push(cur);
-  return chunks.length === 0 ? [""] : chunks;
-}
-
-function buildPages() {
-  const payload = encodeRoster();
-  if (!payload.trim()) return [];
-  const batchId = Date.now().toString(36);
-  const chunks = chunkPayload(payload, MAX_BYTES - HEADER_BUDGET);
-  const total = chunks.length;
-  return chunks.map((c, i) => `RND_${KIND} #${batchId} ${i + 1}/${total}\n${c}`);
-}
-
-const HEADER_RE = /^RND_([A-Z]+)\s+#(\S+)\s+(\d+)\/(\d+)\n([\s\S]*)$/;
-function decodePage(text) {
-  const m = String(text || "").match(HEADER_RE);
-  if (!m) return null;
-  return {
-    kind: m[1],
-    batchId: m[2],
-    pageNum: parseInt(m[3], 10),
-    totalPages: parseInt(m[4], 10),
-    content: m[5],
-  };
 }
 
 // ============================
@@ -239,7 +157,7 @@ function renderQrPage() {
 }
 
 function regenerateAndRender() {
-  qrPages = buildPages();
+  qrPages = encodePages({ kind: KIND, payload: encodeRoster(), batchId: newBatchId() });
   qrPageIndex = 0;
   renderQrPage();
 }
