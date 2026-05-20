@@ -5,8 +5,8 @@ import { STATUS } from "../constants.js";
 import { buildTabPayload } from "../payload.js";
 import { utf8ByteLength } from "../payload.js";
 import { qrcodegen } from "../libs/qrcodegen.js";
-import { isTagsEnabled, makePatientTagPicker } from "../features/tags.js";
-import { isRoomEnabled, makeRoomInput } from "../features/room.js";
+import { makePatientTagPicker } from "../features/tags.js";
+import { makeRoomInput } from "../features/room.js";
 import { isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
 
@@ -269,25 +269,21 @@ export function renderDetail(syncDetailMemoDisplay) {
   const detailRoomSlot = document.getElementById("detailRoomSlot");
   if (detailRoomSlot) {
     detailRoomSlot.textContent = "";
-    if (isRoomEnabled()) {
-      const roomInp = makeRoomInput(selectedNo - 1);
-      roomInp.classList.add("detailRoomInput");
-      if (nonAdmin) roomInp.readOnly = true;
-      detailRoomSlot.appendChild(roomInp);
-    }
+    const roomInp = makeRoomInput(selectedNo - 1);
+    roomInp.classList.add("detailRoomInput");
+    if (nonAdmin) roomInp.readOnly = true;
+    detailRoomSlot.appendChild(roomInp);
   }
 
   const detailDoctorSlot = document.getElementById("detailDoctorSlot");
   if (detailDoctorSlot) {
     detailDoctorSlot.textContent = "";
-    if (isTagsEnabled()) {
-      const picker = makePatientTagPicker(selectedNo - 1);
-      if (nonAdmin) {
-        const trigger = picker.querySelector(".tagPickerTrigger");
-        if (trigger) { trigger.disabled = true; trigger.style.cursor = "default"; trigger.style.background = "#f9fafb"; }
-      }
-      detailDoctorSlot.appendChild(picker);
+    const picker = makePatientTagPicker(selectedNo - 1);
+    if (nonAdmin) {
+      const trigger = picker.querySelector(".tagPickerTrigger");
+      if (trigger) { trigger.disabled = true; trigger.style.cursor = "default"; trigger.style.background = "#f9fafb"; }
     }
+    detailDoctorSlot.appendChild(picker);
   }
 
   if (sText) sText.value = p.s;

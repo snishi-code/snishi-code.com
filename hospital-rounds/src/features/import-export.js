@@ -1,7 +1,15 @@
 "use strict";
 
-import { appState, settings, setAppState, setSettings, saveNow, saveSettings, normalizeLoaded, ensurePatientsHaveAllOKeys } from "../store.js";
+import {
+  appState, settings, rosterState,
+  setAppState, setSettings, setRosterState,
+  saveNow, saveSettings, normalizeLoaded, normalizeRosterMeta,
+  ensurePatientsHaveAllOKeys,
+} from "../store.js";
 import { STATUS } from "../constants.js";
+import {
+  projectBundle, parseBundle, getSection, SECTION,
+} from "../bundle.js";
 
 export function askImportAction() {
   return new Promise(resolve => {
@@ -115,6 +123,26 @@ export function applyAppend(currP, impP) {
   }
 }
 
+// Rebuild appState (clinical only) from a bundle's sections.patients + meta.
+function importedAppStateFromBundle(bundle) {
+  const sPatients = getSection(bundle, SECTION.PATIENTS);
+  const sMeta = getSection(bundle, SECTION.META);
+  return normalizeLoaded({
+    title: sMeta && typeof sMeta.title === "string" ? sMeta.title : "回診",
+    patients: Array.isArray(sPatients) ? sPatients : null,
+  });
+}
+
+function importedRosterStateFromBundle(bundle) {
+  const sHistory = getSection(bundle, SECTION.HISTORY) || {};
+  return normalizeRosterMeta({
+    rosterId: bundle.rosterId,
+    baseSnapshot: sHistory.baseSnapshot || null,
+    commits: sHistory.commits || [],
+    head: sHistory.head || null,
+  });
+}
+
 export function initImportExport(callbacks) {
   const { renderHome, renderDetail, renderSettings, renderOverviewScreen, renderMemoScreen, renderSharedScreen, showView } = callbacks;
 
@@ -129,8 +157,8 @@ export function initImportExport(callbacks) {
     settingsExportBtn.addEventListener("click", () => {
       try {
         if (lastExportUrl) URL.revokeObjectURL(lastExportUrl);
-        const data = { appState, settings };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const bundle = projectBundle({ appState, rosterState, settings });
+        const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         lastExportUrl = url;
 
@@ -168,9 +196,24 @@ export function initImportExport(callbacks) {
       const reader = new FileReader();
       reader.onload = async (ev) => {
         try {
-          const parsed = JSON.parse(ev.target.result);
-          if (parsed.appState) {
-            const importedState = normalizeLoaded(parsed.appState);
+          const parsedRaw = JSON.parse(ev.target.result);
+          let bundle;
+          try {
+            bundle = parseBundle(parsedRaw);
+          } catch (err) {
+            alert("ファイル形式を認識できません。別のJSONファイルをお試しください。");
+            console.error("parse failed:", err);
+            settingsImportFile.value = "";
+            return;
+          }
+
+          const sPatients = getSection(bundle, SECTION.PATIENTS);
+          const sSettings = getSection(bundle, SECTION.SETTINGS);
+
+          if (Array.isArray(sPatients)) {
+            const importedState = importedAppStateFromBundle(bundle);
+            const importedRoster = importedRosterStateFromBundle(bundle);
+
             let isEmpty = true;
             for (let i = 0; i < appState.patients.length; i++) {
               const p = appState.patients[i];
@@ -188,6 +231,7 @@ export function initImportExport(callbacks) {
 
             if (isEmpty) {
               setAppState(importedState);
+              setRosterState(importedRoster);
               const appTitleInput = document.getElementById("appTitleInput");
               if (appTitleInput) appTitleInput.value = appState.title;
               document.title = appState.title;
@@ -202,6 +246,7 @@ export function initImportExport(callbacks) {
                   settingsImportFile.value = ""; return;
                 }
                 setAppState(importedState);
+                setRosterState(importedRoster);
                 const appTitleInput = document.getElementById("appTitleInput");
                 if (appTitleInput) appTitleInput.value = appState.title;
                 document.title = appState.title;
@@ -217,12 +262,12 @@ export function initImportExport(callbacks) {
             }
 
             saveNow();
-            if (parsed.settings && isOverwrite) {
-              setSettings(parsed.settings);
+            if (sSettings && isOverwrite) {
+              setSettings(sSettings);
               saveSettings();
             }
-          } else if (parsed.settings) {
-            setSettings(parsed.settings);
+          } else if (sSettings) {
+            setSettings(sSettings);
             saveSettings();
           }
 

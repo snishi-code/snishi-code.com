@@ -5,9 +5,29 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>回診</title>
-  <link rel="manifest" href="/hospital-rounds/manifest.json" />
-  <meta name="theme-color" content="#2563eb" />
-  <link rel="apple-touch-icon" href="/hospital-rounds/icons/apple-touch-icon.png" />
+  <script>
+    // 本番ホスト: snishi-code.com（/hospital-rounds/ 配下）。それ以外（test サブドメイン、localhost 等）は test。
+    (function () {
+      var host = location.hostname;
+      var isProd = (host === 'snishi-code.com' || host === 'www.snishi-code.com');
+      document.documentElement.dataset.env = isProd ? 'prod' : 'test';
+    })();
+  </script>
+  <link rel="manifest" href="./manifest.json" id="appManifest" />
+  <meta name="theme-color" content="#2563eb" id="appThemeColor" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" id="appTouchIcon" />
+  <script>
+    // test 環境では PWA 関連リンクを test 用へ差し替え（マニフェスト読込より前に実行）
+    (function () {
+      if (document.documentElement.dataset.env !== 'test') return;
+      var m = document.getElementById('appManifest');
+      if (m) m.setAttribute('href', './manifest-test.json');
+      var t = document.getElementById('appTouchIcon');
+      if (t) t.setAttribute('href', './icons/apple-touch-icon-test.png');
+      var th = document.getElementById('appThemeColor');
+      if (th) th.setAttribute('content', '#475569');
+    })();
+  </script>
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -18,7 +38,12 @@
   <header>
     <div class="headerInner">
       <div class="appTitle">
-        <input type="text" id="appTitleInput" class="appTitleInput" value="回診" />
+        <div class="appTitleRow">
+          <span class="envBadge" aria-label="テスト環境" title="テスト環境">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </span>
+          <input type="text" id="appTitleInput" class="appTitleInput" value="回診" />
+        </div>
       </div>
       <div class="chipRow">
         <button class="secondary" id="headerHelpBtn" type="button" title="説明書" aria-label="説明書">
@@ -100,9 +125,6 @@
           </button>
         </div>
         <div class="detailTopActions">
-          <button class="iconBtn" id="sharedPasteBtn" type="button" title="受信メモ" aria-label="受信メモ">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
-          </button>
           <button class="iconBtn" id="sharedAdminBtn" type="button" title="管理" aria-label="管理" style="display:none;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
           </button>
@@ -117,9 +139,19 @@
       <div class="card qrWrap" id="sharedPasteCard">
         <div class="cardHead">
           <div class="label">受信メモ</div>
-          <div class="qrHint">他端末で読み取ったテキストをここに貼り付けて確認できます</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="qrHint">他端末で読み取ったテキストをここに貼り付けて確認できます</div>
+            <button class="iconBtn" id="sharedPasteCloseBtn" type="button" title="閉じる" aria-label="閉じる">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
         </div>
         <div class="cardBody">
+          <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+            <button class="iconBtn" id="sharedPasteScanBtn" type="button" title="カメラで QR を読む" aria-label="カメラで QR を読む">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </button>
+          </div>
           <textarea id="sharedPasteArea" style="min-height: 160px;"></textarea>
         </div>
       </div>
@@ -169,6 +201,11 @@
             <div class="qrHint" style="margin-bottom:8px;">
               カメラで読み取った各QRのテキストを順不同で貼り付け、最後に「取込」をタップしてください。
             </div>
+            <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+              <button class="iconBtn" id="adminImportScanBtn" type="button" title="カメラで QR を読む" aria-label="カメラで QR を読む">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </button>
+            </div>
             <textarea id="adminImportArea" style="min-height:160px;font-size:12px;" placeholder="==ADMIN 1/N==&#10;..."></textarea>
             <div id="adminImportStatus" class="qrHint" style="margin-top:6px;"></div>
             <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
@@ -186,22 +223,21 @@
       <div class="card qrWrap" id="sharedQrWrap">
         <div class="cardHead">
           <div class="label">共有QR</div>
-          <div class="qrHint"><span class="mono" id="sharedQrPageMeta"></span></div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="qrHint"><span class="mono" id="sharedQrPageMeta"></span></span>
+            <button class="iconBtn" id="sharedQrScanBtn" type="button" title="カメラで QR を読む" aria-label="カメラで QR を読む">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </button>
+          </div>
         </div>
         <div class="cardBody">
-          <div id="sharedQrTagFilter" style="display:none;margin-bottom:10px;">
-            <label style="display:flex;align-items:center;margin-bottom:4px;color:var(--text);" title="タグ" aria-label="タグ">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-            </label>
-            <span id="sharedQrTagPickerSlot"></span>
-          </div>
           <div class="qrHint">
             <div class="mono" id="sharedQrTextPreview" style="margin-top:6px;word-break:break-all;white-space:pre-wrap"></div>
           </div>
         </div>
         <div
           style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border-top:1px solid var(--line);background:#fafafa;flex-wrap:wrap">
-          <div class="qrHint">複数QRの場合は順番に読み取ってください。下部の患者ボタンで含める/除外を切り替えできます。</div>
+          <div class="qrHint">複数QRの場合は順番に読み取ってください。対象患者は上部のタグフィルターで絞り込めます。</div>
           <div style="display:flex;gap:8px;align-items:center">
             <button class="secondary" id="sharedQrPrevBtn" type="button" title="前" aria-label="前">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -310,6 +346,33 @@
         <div class="cardBody" id="clearTargetsBody"></div>
       </div>
 
+      <div class="card" id="tagsCard">
+        <div class="cardHead">
+          <div class="label" title="タグ" aria-label="タグ" style="display:flex;align-items:center;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          </div>
+          <button class="iconBtn helpLinkBtn" data-help-page="09_タグ機能（オプション）" type="button" title="タグ機能の説明" aria-label="タグ機能の説明" style="margin-left:auto;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </button>
+        </div>
+        <div class="cardBody" id="tagsBody">
+          <div id="tagsList"></div>
+
+          <div class="toggleLine" style="margin-top:14px;">
+            <span class="tLabel" style="display:flex;align-items:center;gap:6px;" title="グループタグ機能" aria-label="グループタグ機能">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            </span>
+            <button class="iconBtn helpLinkBtn" data-help-page="10_タグ機能：カテゴライズ（オプション）" type="button" title="グループタグ機能の説明" aria-label="グループタグ機能の説明" style="margin-left:auto;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </button>
+            <button class="iconBtn" id="tagGroupingEnableBtn" type="button" title="グループタグ機能 ON/OFF" aria-label="グループタグ機能 ON/OFF">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="tagGroupingToggleIcon"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/></svg>
+            </button>
+          </div>
+          <div id="tagGroupsHost" style="margin-top:10px;display:none;"></div>
+        </div>
+      </div>
+
       <div class="card" id="adminCard">
         <div class="cardHead">
           <div class="label" title="管理機能" aria-label="管理機能" style="display:flex;align-items:center;">
@@ -343,50 +406,6 @@
             <div class="qrHint" style="margin-top:6px;">名簿のコピー時のみ使用します。受信側はコピーの取込時に同じ合言葉を入力する必要があります。日々の差分QRは合言葉不要で同じ名簿の端末間で自動的にやり取りされます。</div>
             <div class="qrHint" style="margin-top:6px;">認証コード: <span class="mono" id="rosterIdLabel" style="font-size:11px;">—</span></div>
           </div>
-        </div>
-      </div>
-
-      <div class="card" id="roomCard">
-        <div class="cardHead">
-          <div class="label" title="部屋番号" aria-label="部屋番号" style="display:flex;align-items:center;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
-          </div>
-          <button class="iconBtn helpLinkBtn" data-help-page="08_部屋番号機能（オプション）" type="button" title="部屋番号機能の説明" aria-label="部屋番号機能の説明" style="margin-left:auto;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          </button>
-          <button class="iconBtn" id="roomEnableBtn" type="button" title="有効/無効切替" aria-label="有効/無効切替">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="roomToggleIcon"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/></svg>
-          </button>
-        </div>
-      </div>
-
-      <div class="card" id="tagsCard">
-        <div class="cardHead">
-          <div class="label" title="タグ" aria-label="タグ" style="display:flex;align-items:center;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-          </div>
-          <button class="iconBtn helpLinkBtn" data-help-page="09_タグ機能（オプション）" type="button" title="タグ機能の説明" aria-label="タグ機能の説明" style="margin-left:auto;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          </button>
-          <button class="iconBtn" id="tagsEnableBtn" type="button" title="有効/無効切替" aria-label="有効/無効切替">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="tagsToggleIcon"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/></svg>
-          </button>
-        </div>
-        <div class="cardBody" id="tagsBody">
-          <div id="tagsList"></div>
-
-          <div class="toggleLine" style="margin-top:14px;">
-            <span class="tLabel" style="display:flex;align-items:center;gap:6px;" title="タグカテゴライズ" aria-label="タグカテゴライズ">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-            </span>
-            <button class="iconBtn helpLinkBtn" data-help-page="10_タグ機能：カテゴライズ（オプション）" type="button" title="タグカテゴライズの説明" aria-label="タグカテゴライズの説明" style="margin-left:auto;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            </button>
-            <button class="iconBtn" id="tagGroupingEnableBtn" type="button" title="カテゴライズ機能 ON/OFF" aria-label="カテゴライズ機能 ON/OFF">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="tagGroupingToggleIcon"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/></svg>
-            </button>
-          </div>
-          <div id="tagGroupsHost" style="margin-top:10px;display:none;"></div>
         </div>
       </div>
     </section>
@@ -586,7 +605,8 @@
   <script type="module" src="/src/main.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/hospital-rounds/sw.js', { scope: '/hospital-rounds/' });
+      // ./sw.js は本番(/hospital-rounds/sw.js)/テスト(/sw.js)どちらでも正しく解決される
+      navigator.serviceWorker.register('./sw.js');
     }
   </script>
 </body>

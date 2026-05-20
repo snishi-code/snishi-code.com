@@ -2,14 +2,13 @@
 
 import { qrcodegen } from "../libs/qrcodegen.js";
 import { utf8ByteLength } from "../payload.js";
-import { settings } from "../store.js";
+import { settings, rosterState } from "../store.js";
 import {
   isAdminEnabled, isAdminTerminal, isAdminImportOnly,
   buildCopyPages, buildDiffPages,
   parseRosterPages, decodeRosterPayload, applyFullPayload, applyDiffPayload,
 } from "./admin.js";
 import { flushCommit } from "./roster.js";
-import { appState } from "../store.js";
 
 let _pages = [];
 let _pageIndex = 0;
@@ -168,7 +167,7 @@ async function handleImport() {
   let secret;
   if (parsed.kind === "DIFF") {
     // Diffs are encrypted with the local roster's authentication code (rosterId)
-    secret = appState.rosterId || "";
+    secret = rosterState?.rosterId || "";
     if (!secret) {
       if (status) status.textContent = "エラー: ローカルに名簿がありません。先にコピーを取込んでください。";
       return;

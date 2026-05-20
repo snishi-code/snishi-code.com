@@ -2,13 +2,14 @@
 
 import "./style.css";
 
-import { STORAGE_KEY, STATUS } from "./constants.js";
+import { STATUS } from "./constants.js";
+import { STORAGE_KEYS } from "./storage.js";
 import {
   appState, settings, selectedNo,
-  setAppState, setSelectedNo,
-  load, saveNow, scheduleSave, saveSettings,
+  setAppState, setRosterState, setSelectedNo,
+  saveNow, scheduleSave, saveSettings,
   normalizeLoaded, ensurePatientsHaveAllOKeys, makeEmptyOByRules,
-  setMarkUpdatedHandler,
+  setMarkUpdatedHandler, requestStoragePersistence,
 } from "./store.js";
 
 import { renderHome, updateCountChip } from "./views/home.js";
@@ -22,11 +23,12 @@ import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./fea
 import { DOCS_BUNDLE } from "./docs-bundle.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initImportExport } from "./features/import-export.js";
-import { initSharedQr, refreshSharedQrIfActive, setSharedQrSelectionChangeHandler } from "./features/qr-shared.js";
+import { initSharedQr, refreshSharedQrIfActive } from "./features/qr-shared.js";
 import { sortPatientsByRoom, invalidateSortSnapshot } from "./features/room.js";
 import { initAdminUI, refreshAdminAvailability, setAdminAppliedHandler } from "./features/admin-ui.js";
+import { scanQR, isScannerSupported } from "./features/qr-scan.js";
 import { isAdminTerminal, isNonAdminTerminal, isAdminEnabled, findIncompleteAdminPatients, clearIncompleteAdminPatients } from "./features/admin.js";
-import { ensureRoster, flushCommit } from "./features/roster.js";
+import { flushCommit } from "./features/roster.js";
 
 // ============================
 // Wrappers that capture current context
@@ -320,10 +322,6 @@ setAdminAppliedHandler(() => {
   else if (v === "sharedView") doRenderShared();
 });
 
-setSharedQrSelectionChangeHandler(() => {
-  const sharedView = document.getElementById("sharedView");
-  if (sharedView && sharedView.classList.contains("active")) doRenderShared();
-});
 
 function doSortByRoom() {
   if (!confirm("部屋番号順に並び替えますか？")) return;
@@ -348,23 +346,49 @@ if (memoRoomSortBtn) memoRoomSortBtn.addEventListener("click", doSortByRoom);
 if (sharedRoomSortBtn) sharedRoomSortBtn.addEventListener("click", doSortByRoom);
 
 // ============================
-// Shared paste area toggle
+// Shared paste card close button
 // ============================
 
-const sharedPasteBtn = document.getElementById("sharedPasteBtn");
-if (sharedPasteBtn) {
-  sharedPasteBtn.addEventListener("click", () => {
+const sharedPasteCloseBtn = document.getElementById("sharedPasteCloseBtn");
+if (sharedPasteCloseBtn) {
+  sharedPasteCloseBtn.addEventListener("click", () => {
     const card = document.getElementById("sharedPasteCard");
-    if (!card) return;
-    const isOpen = card.classList.contains("active");
-    card.classList.toggle("active", !isOpen);
-    sharedPasteBtn.classList.toggle("editActive", !isOpen);
-    if (!isOpen) {
-      const area = document.getElementById("sharedPasteArea");
-      if (area) setTimeout(() => area.focus(), 50);
+    if (card) card.classList.remove("active");
+  });
+}
+
+// カメラ QR スキャナ。読み取り結果を該当 textarea に追記してから input イベントを起こす
+// （既存の貼付ハンドラはこれで普通に発火する）。
+function appendScannedToTextarea(area, text) {
+  if (!area || !text) return;
+  const cur = area.value || "";
+  const sep = cur && !cur.endsWith("\n") ? "\n" : "";
+  area.value = cur + sep + text;
+  area.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function wireScanButton(btnId, areaId, opts = {}) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  if (!isScannerSupported()) {
+    btn.disabled = true;
+    btn.title = "このブラウザはカメラ非対応";
+  }
+  btn.addEventListener("click", async () => {
+    const text = await scanQR();
+    if (text == null) return;
+    const area = document.getElementById(areaId);
+    appendScannedToTextarea(area, text);
+    if (opts.openCardId) {
+      const card = document.getElementById(opts.openCardId);
+      if (card) card.classList.add("active");
     }
   });
 }
+
+// Paste-card camera handles continuation scans (text accumulates in the area).
+wireScanButton("sharedPasteScanBtn", "sharedPasteArea");
+wireScanButton("adminImportScanBtn", "adminImportArea");
 
 // ============================
 // Reset
@@ -376,6 +400,9 @@ if (resetBtn) {
     const ok = confirm("全患者の入力を消去します。よろしいですか？");
     if (!ok) return;
     setAppState(normalizeLoaded(null));
+    // Roster commits reference the previous pids; drop the sync metadata so a
+    // future admin enable starts from a clean baseline.
+    setRosterState(null);
     saveNow();
     doRenderHome();
     doRenderDetail();
@@ -428,8 +455,8 @@ function updateAppTitle(val) {
 // Boot
 // ============================
 
-setAppState(load());
-ensureRoster();
+// store.js hydrates appState / rosterState / settings from storage at module
+// init, so no explicit load step is needed here.
 
 // Drop the room-sort snapshot whenever any patient is edited
 setMarkUpdatedHandler(() => invalidateSortSnapshot());
@@ -448,11 +475,10 @@ if (appTitleInput) {
   });
 }
 
-const saveChip = document.getElementById("saveChip");
-if (saveChip) saveChip.textContent = localStorage.getItem(STORAGE_KEY) ? "保存: 復元済" : "保存: -";
-
 const storageKeyLabel = document.getElementById("storageKeyLabel");
-if (storageKeyLabel) storageKeyLabel.textContent = STORAGE_KEY;
+if (storageKeyLabel) storageKeyLabel.textContent = STORAGE_KEYS.bundle;
+
+requestStoragePersistence();
 
 doRenderHome();
 setSelectedNo(1);

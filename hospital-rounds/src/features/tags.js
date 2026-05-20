@@ -35,8 +35,6 @@ export function getStatusFromTag(value) {
 // Public API
 // ============================
 
-export function isTagsEnabled() { return !!settings.tagsEnabled; }
-
 // User-defined tags only (no virtual status tags)
 export function getAllTags() {
   return Array.isArray(settings.tags)

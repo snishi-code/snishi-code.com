@@ -3,10 +3,6 @@
 import { appState, settings, markUpdated, scheduleSave, saveNow } from "../store.js";
 import { recordOp } from "./roster.js";
 
-export function isRoomEnabled() {
-  return !!settings.roomEnabled;
-}
-
 export function getPatientRoom(patientIndex) {
   const p = appState.patients[patientIndex];
   return String(p?.room ?? "");

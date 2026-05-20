@@ -3,8 +3,16 @@
 // Roster commit log (Git-like, linear). Tracks structural changes only:
 // patient name/room/tags + add/delete/move + setting.tags list.
 // Does NOT track clinical data (SOAP, memo, shared, vitals, status).
+//
+// The roster state (rosterId / baseSnapshot / commits / head) lives in its
+// own module-level binding (store.js: rosterState). It is created lazily —
+// devices that never enable the admin/sync features keep it null and never
+// emit roster fields in their exports.
 
-import { appState, settings, saveSettings, scheduleSave, makeDefaultPatient } from "../store.js";
+import {
+  appState, settings, rosterState, setRosterState,
+  saveSettings, scheduleSave, makeDefaultPatient,
+} from "../store.js";
 import { ROSTER_DIFF_WINDOW_DAYS } from "../constants.js";
 
 function newId() {
@@ -20,27 +28,6 @@ export function getDeviceId() {
   return settings.deviceId;
 }
 
-export function ensureRoster() {
-  let changed = false;
-  for (const p of appState.patients) {
-    if (!p.pid) { p.pid = newId(); changed = true; }
-  }
-  if (!appState.rosterId) {
-    appState.rosterId = newId();
-    changed = true;
-  }
-  if (!appState.baseSnapshot) {
-    appState.baseSnapshot = currentRosterView();
-    appState.baseSnapshot.ts = Date.now();
-    changed = true;
-  }
-  if (!Array.isArray(appState.commits)) {
-    appState.commits = [];
-    changed = true;
-  }
-  return changed;
-}
-
 // "Roster view" = the parts of state that are synced via commits.
 export function currentRosterView() {
   return {
@@ -54,6 +41,43 @@ export function currentRosterView() {
   };
 }
 
+// Initialize rosterState if absent. Called by the few entry points that
+// genuinely need a roster (admin payload building, diff replay, op recording
+// while admin is enabled).
+export function ensureRosterState() {
+  let changed = false;
+  for (const p of appState.patients) {
+    if (!p.pid) { p.pid = newId(); changed = true; }
+  }
+  if (!rosterState) {
+    const snap = currentRosterView();
+    snap.ts = Date.now();
+    setRosterState({
+      rosterId: newId(),
+      baseSnapshot: snap,
+      commits: [],
+      head: null,
+    });
+    changed = true;
+  } else {
+    if (!rosterState.rosterId) { rosterState.rosterId = newId(); changed = true; }
+    if (!rosterState.baseSnapshot) {
+      const snap = currentRosterView();
+      snap.ts = Date.now();
+      rosterState.baseSnapshot = snap;
+      changed = true;
+    }
+    if (!Array.isArray(rosterState.commits)) {
+      rosterState.commits = [];
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+// Backward-compatible alias used by older call sites.
+export const ensureRoster = ensureRosterState;
+
 // ============================
 // Op recording (batched into commits)
 // ============================
@@ -64,6 +88,10 @@ const FLUSH_MS = 1500;
 
 export function recordOp(op) {
   if (!op || !op.type) return;
+  // The commit log is part of the admin/sync overlay. With admin disabled the
+  // bundle stays free of roster fields — single-device users never accrue
+  // this metadata.
+  if (!settings.adminEnabled) return;
   _pendingOps.push(op);
   if (_flushTimer) clearTimeout(_flushTimer);
   _flushTimer = setTimeout(flushCommit, FLUSH_MS);
@@ -94,16 +122,16 @@ export function flushCommit() {
   const ops = squashOps(_pendingOps);
   _pendingOps = [];
   if (!ops.length) return null;
-  ensureRoster();
+  ensureRosterState();
   const commit = {
     id: newId(),
-    parent: appState.head || null,
+    parent: rosterState.head || null,
     ts: Date.now(),
     deviceId: getDeviceId(),
     ops,
   };
-  appState.commits.push(commit);
-  appState.head = commit.id;
+  rosterState.commits.push(commit);
+  rosterState.head = commit.id;
   scheduleSave();
   return commit;
 }
@@ -178,12 +206,12 @@ export function applyOpsToView(view, ops) {
 
 // Rebuild canonical roster from baseSnapshot + commits
 export function rebuildRoster() {
-  ensureRoster();
+  ensureRosterState();
   let view = {
-    patients: (appState.baseSnapshot?.patients || []).map(p => ({ ...p, tags: (p.tags || []).slice() })),
-    tags: (appState.baseSnapshot?.tags || []).slice(),
+    patients: (rosterState.baseSnapshot?.patients || []).map(p => ({ ...p, tags: (p.tags || []).slice() })),
+    tags: (rosterState.baseSnapshot?.tags || []).slice(),
   };
-  for (const c of appState.commits) view = applyOpsToView(view, c.ops);
+  for (const c of rosterState.commits) view = applyOpsToView(view, c.ops);
   return view;
 }
 
@@ -219,20 +247,21 @@ export function applyRosterView(view) {
 // ============================
 
 export function getCommitsWithinWindow(days = ROSTER_DIFF_WINDOW_DAYS) {
+  if (!rosterState) return [];
   const since = Date.now() - days * 24 * 60 * 60 * 1000;
-  return appState.commits.filter(c => c.ts >= since);
+  return rosterState.commits.filter(c => c.ts >= since);
 }
 
 // Given a list of foreign commits, return those not yet in local log
 export function commitsToApply(foreignCommits) {
-  const localIds = new Set(appState.commits.map(c => c.id));
+  const localIds = new Set((rosterState?.commits || []).map(c => c.id));
   return foreignCommits.filter(c => !localIds.has(c.id));
 }
 
 // Verify a sequence of commits chains to a known parent (or null) and is linear
 export function canApplyChain(foreignCommits) {
   if (!foreignCommits.length) return { ok: true };
-  const localIds = new Set(appState.commits.map(c => c.id));
+  const localIds = new Set((rosterState?.commits || []).map(c => c.id));
   const newIds = new Set(foreignCommits.map(c => c.id));
   for (const c of foreignCommits) {
     if (c.parent == null) continue; // base
@@ -245,11 +274,12 @@ export function canApplyChain(foreignCommits) {
 
 export function appendCommits(commits) {
   // Append in parent-order; assumes canApplyChain succeeded
-  const localIds = new Set(appState.commits.map(c => c.id));
+  ensureRosterState();
+  const localIds = new Set(rosterState.commits.map(c => c.id));
   for (const c of commits) {
     if (localIds.has(c.id)) continue;
-    appState.commits.push(c);
-    appState.head = c.id;
+    rosterState.commits.push(c);
+    rosterState.head = c.id;
     localIds.add(c.id);
   }
   scheduleSave();

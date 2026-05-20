@@ -1,7 +1,5 @@
 "use strict";
 
-export const STORAGE_KEY = "rounds_v2_soap_ryoyo_ward";
-export const SETTINGS_KEY = STORAGE_KEY + "_settings_v1";
 export const DEFAULT_PATIENT_COUNT = 50;
 
 export const STATUS = {
@@ -22,8 +20,6 @@ export const DEFAULT_O_RULES = [
 ];
 
 export const DEFAULT_TAGS = [];
-export const DEFAULT_TAGS_ENABLED = false;
-export const DEFAULT_ROOM_ENABLED = false;
 export const DEFAULT_ADMIN_ENABLED = false;
 export const DEFAULT_ADMIN_TERMINAL = false;
 export const DEFAULT_ADMIN_IMPORT_ONLY = false;

@@ -1,21 +1,22 @@
 "use strict";
 
-import { appState, settings } from "../store.js";
+import { appState } from "../store.js";
 import { qrcodegen } from "../libs/qrcodegen.js";
 import { utf8ByteLength } from "../payload.js";
-import { isTagsEnabled, getAllTags, makeTagPicker } from "./tags.js";
-
-let _onSelectionChange = null;
-export function setSharedQrSelectionChangeHandler(fn) { _onSelectionChange = fn; }
+import { patientMatchesSharedFilter } from "./tags.js";
+import { scanQR, isScannerSupported } from "./qr-scan.js";
 
 // ============================
 // Shared QR state
+//
+// The patients included in the QR are derived directly from the shared list's
+// tag filter (single source of truth): every patient that matches the filter
+// AND has non-empty shared text is included. There is no per-patient override
+// — adjusting the filter is the way to add or remove patients.
 // ============================
 
 let sharedQrPages = [];
 let sharedQrPageIndex = 0;
-let sharedQrSelected = new Set();
-let sharedQrTagFilter = [];
 
 const MAX_BYTES = 800;
 
@@ -33,8 +34,8 @@ function buildHeader() {
 function buildPages() {
   const items = [];
   for (let i = 0; i < appState.patients.length; i++) {
-    if (!sharedQrSelected.has(i + 1)) continue;
     const p = appState.patients[i];
+    if (!patientMatchesSharedFilter(p)) continue;
     const text = String(p.shared ?? "").trim();
     if (!text) continue;
     const label = (p.name && p.name.trim()) ? p.name.trim() : String(i + 1);
@@ -125,7 +126,7 @@ function renderQrPage() {
     if (meta) meta.textContent = "";
     if (prevBtn) prevBtn.disabled = true;
     if (nextBtn) nextBtn.disabled = true;
-    if (preview) preview.textContent = "（選択されている患者がいません）";
+    if (preview) preview.textContent = "（対象の患者がいません）";
     if (canvas) {
       const ctx = canvas.getContext("2d");
       canvas.width = 1; canvas.height = 1;
@@ -146,86 +147,23 @@ function renderQrPage() {
   drawSharedQrCanvas(text, ecl);
 }
 
-export function isPatientSelected(no) { return sharedQrSelected.has(no); }
-
-export function toggleSharedQrPatient(no) {
-  if (sharedQrSelected.has(no)) sharedQrSelected.delete(no);
-  else sharedQrSelected.add(no);
-  regenerateAndRender();
-  if (_onSelectionChange) _onSelectionChange();
-}
-
-function patientHasAllTags(p, tags) {
-  if (!tags.length) return true;
-  const pt = Array.isArray(p.tags) ? p.tags : [];
-  return tags.every(t => pt.includes(t));
-}
-
-function selectDefault() {
-  sharedQrSelected = new Set();
-  for (let i = 0; i < appState.patients.length; i++) {
-    const p = appState.patients[i];
-    if (p.shared && p.shared.trim()) sharedQrSelected.add(i + 1);
-  }
-}
-
-function applyTagFilter(tags) {
-  sharedQrTagFilter = Array.isArray(tags) ? tags.slice() : [];
-  if (!sharedQrTagFilter.length) {
-    selectDefault();
-    return;
-  }
-  sharedQrSelected = new Set();
-  for (let i = 0; i < appState.patients.length; i++) {
-    const p = appState.patients[i];
-    if (patientHasAllTags(p, sharedQrTagFilter)) sharedQrSelected.add(i + 1);
-  }
-}
-
 function regenerateAndRender() {
   sharedQrPages = buildPages();
   sharedQrPageIndex = 0;
   renderQrPage();
 }
 
-function populateTagFilter() {
-  const filterWrap = document.getElementById("sharedQrTagFilter");
-  const slot = document.getElementById("sharedQrTagPickerSlot");
-  if (!filterWrap || !slot) return;
-  const enabled = isTagsEnabled();
-  filterWrap.style.display = enabled ? "" : "none";
-  if (!enabled) return;
-  slot.textContent = "";
-  const picker = makeTagPicker({
-    getSelected: () => sharedQrTagFilter.slice(),
-    setSelected: (tags) => { sharedQrTagFilter = tags.slice(); },
-    allTags: getAllTags,
-    onChange: () => {
-      applyTagFilter(sharedQrTagFilter);
-      regenerateAndRender();
-      if (_onSelectionChange) _onSelectionChange();
-    },
-    fillWidth: true,
-  });
-  slot.appendChild(picker);
-}
-
 function openSharedQr() {
   const wrap = document.getElementById("sharedQrWrap");
   if (!wrap) return;
-  selectDefault();
-  sharedQrTagFilter = [];
-  populateTagFilter();
   wrap.classList.add("active");
   regenerateAndRender();
-  if (_onSelectionChange) _onSelectionChange();
 }
 
 function closeSharedQr() {
   const wrap = document.getElementById("sharedQrWrap");
   if (!wrap) return;
   wrap.classList.remove("active");
-  if (_onSelectionChange) _onSelectionChange();
 }
 
 export function isSharedQrActive() {
@@ -235,14 +173,27 @@ export function isSharedQrActive() {
 
 export function refreshSharedQrIfActive() {
   if (!isSharedQrActive()) return;
-  populateTagFilter();
   regenerateAndRender();
-  if (_onSelectionChange) _onSelectionChange();
 }
 
 // ============================
 // Init
 // ============================
+
+// Open the paste card and append the scanned text to its textarea, then fire
+// the input event so any subscribers see the new value. Used by both the
+// QR-card scan shortcut and the paste-card camera button.
+function deliverScannedText(text) {
+  const pasteCard = document.getElementById("sharedPasteCard");
+  const area = document.getElementById("sharedPasteArea");
+  if (pasteCard) pasteCard.classList.add("active");
+  if (!area) return;
+  const cur = area.value || "";
+  const sep = cur && !cur.endsWith("\n") ? "\n" : "";
+  area.value = cur + sep + text;
+  area.dispatchEvent(new Event("input", { bubbles: true }));
+  setTimeout(() => area.focus(), 50);
+}
 
 export function initSharedQr() {
   const sharedShowQrBtn = document.getElementById("sharedShowQrBtn");
@@ -265,4 +216,20 @@ export function initSharedQr() {
     if (sharedQrPageIndex < sharedQrPages.length - 1) { sharedQrPageIndex++; renderQrPage(); }
   });
 
+  // Camera shortcut sitting on the QR display card. Tapping it launches the
+  // scanner; on a successful read we close the QR view and pop open the
+  // 受信メモ card with the scanned text inserted.
+  const sharedQrScanBtn = document.getElementById("sharedQrScanBtn");
+  if (sharedQrScanBtn) {
+    if (!isScannerSupported()) {
+      sharedQrScanBtn.disabled = true;
+      sharedQrScanBtn.title = "このブラウザはカメラ非対応";
+    }
+    sharedQrScanBtn.addEventListener("click", async () => {
+      const text = await scanQR();
+      if (text == null) return;
+      closeSharedQr();
+      deliverScannedText(text);
+    });
+  }
 }

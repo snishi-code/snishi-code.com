@@ -3,8 +3,8 @@
 import { appState } from "../store.js";
 import { STATUS } from "../constants.js";
 import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
-import { isTagsEnabled, makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
-import { isRoomEnabled, formatPatientLabel, isRoomSortActive } from "../features/room.js";
+import { makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
+import { formatPatientLabel, isRoomSortActive } from "../features/room.js";
 import { isNonAdminTerminal } from "../features/admin.js";
 
 export function statusClass(status) {
@@ -31,11 +31,6 @@ function renderHomeTagFilter(onChange) {
   const slot = document.getElementById("homeTagFilterSlot");
   if (!slot) return;
   slot.textContent = "";
-  if (!isTagsEnabled()) {
-    slot.style.display = "none";
-    return;
-  }
-  slot.style.display = "";
   const picker = makeSharedTagFilterPicker(onChange);
   slot.appendChild(picker);
 }
@@ -43,7 +38,7 @@ function renderHomeTagFilter(onChange) {
 function renderHomeSortBtn() {
   const btn = document.getElementById("homeRoomSortBtn");
   if (!btn) return;
-  btn.style.display = (isRoomEnabled() && !isNonAdminTerminal()) ? "" : "none";
+  btn.style.display = isNonAdminTerminal() ? "none" : "";
   btn.classList.toggle("editActive", isRoomSortActive());
 }
 
@@ -54,10 +49,9 @@ export function renderHome(onPatientClick) {
   if (!homeGrid) return;
   homeGrid.textContent = "";
   const frag = document.createDocumentFragment();
-  const tagsEnabled = isTagsEnabled();
   for (let i = 1; i <= appState.patients.length; i++) {
     const p = appState.patients[i - 1];
-    if (tagsEnabled && !patientMatchesSharedFilter(p)) continue;
+    if (!patientMatchesSharedFilter(p)) continue;
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "patientBtn " + statusClass(p.status);

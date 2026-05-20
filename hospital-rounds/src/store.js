@@ -1,9 +1,17 @@
 "use strict";
 
-import { STORAGE_KEY, SETTINGS_KEY, DEFAULT_PATIENT_COUNT, STATUS, DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS, DEFAULT_TAGS_ENABLED, DEFAULT_ROOM_ENABLED, DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL, DEFAULT_ADMIN_IMPORT_ONLY, DEFAULT_ROSTER_PASSPHRASE, DEFAULT_TAG_GROUPING_ENABLED, clone } from "./constants.js";
+import {
+  DEFAULT_PATIENT_COUNT, STATUS,
+  DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS,
+  DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL, DEFAULT_ADMIN_IMPORT_ONLY,
+  DEFAULT_ROSTER_PASSPHRASE, DEFAULT_TAG_GROUPING_ENABLED,
+  clone,
+} from "./constants.js";
+import { projectBundle, getSection, SECTION } from "./bundle.js";
+import { loadBundle as storageLoad, saveBundle as storageSave } from "./storage.js";
 
 // ============================
-// Settings
+// Settings defaults & normalization
 // ============================
 
 export function defaultSettings() {
@@ -16,109 +24,89 @@ export function defaultSettings() {
     },
     oRules: clone(DEFAULT_O_RULES),
     clearTargets: clone(DEFAULT_CLEAR_TARGETS),
-    tagsEnabled: DEFAULT_TAGS_ENABLED,
     tags: clone(DEFAULT_TAGS),
-    roomEnabled: DEFAULT_ROOM_ENABLED,
     adminEnabled: DEFAULT_ADMIN_ENABLED,
     adminTerminal: DEFAULT_ADMIN_TERMINAL,
     adminImportOnly: DEFAULT_ADMIN_IMPORT_ONLY,
     rosterPassphrase: DEFAULT_ROSTER_PASSPHRASE,
     deviceId: "",
     tagGroupingEnabled: DEFAULT_TAG_GROUPING_ENABLED,
-    tagGroups: [],           // [{id, name, mode}]
-    tagGroupAssign: {},      // tagName -> groupId
+    tagGroups: [],
+    tagGroupAssign: {},
   };
 }
 
-export function loadSettings() {
-  try {
-    const s = localStorage.getItem(SETTINGS_KEY);
-    if (!s) return defaultSettings();
-    const raw = JSON.parse(s);
-    const out = defaultSettings();
-    if (raw && raw.defaults && typeof raw.defaults === "object") {
-      out.defaults.s = (typeof raw.defaults.s === "string") ? raw.defaults.s : out.defaults.s;
-      if (raw.defaults.s === "変わりありません" || raw.defaults.s === "（変わりありません）") {
-        out.defaults.s = "";
-      }
-      out.defaults.a = (typeof raw.defaults.a === "string") ? raw.defaults.a : out.defaults.a;
-      out.defaults.p = (typeof raw.defaults.p === "string") ? raw.defaults.p : out.defaults.p;
+function normalizeSettings(raw) {
+  const out = defaultSettings();
+  if (!raw || typeof raw !== "object") return out;
+  if (raw.defaults && typeof raw.defaults === "object") {
+    out.defaults.s = (typeof raw.defaults.s === "string") ? raw.defaults.s : out.defaults.s;
+    if (raw.defaults.s === "変わりありません" || raw.defaults.s === "（変わりありません）") {
+      out.defaults.s = "";
     }
-    if (raw && Array.isArray(raw.oRules)) {
-      const cleaned = [];
-      for (const r of raw.oRules) {
-        if (!r || typeof r !== "object") continue;
-        const key = String(r.key ?? "").trim();
-        const label = String(r.label ?? "").trim();
-        if (!key || !label) continue;
-        if (key === "vital") continue;
-        cleaned.push({
-          key,
-          label,
-          normalText: String(r.normalText ?? ""),
-          placeholder: String(r.placeholder ?? ""),
-          fromAdmin: !!r.fromAdmin,
-        });
-      }
-      if (cleaned.length) out.oRules = cleaned;
-    }
-    if (raw && raw.clearTargets && typeof raw.clearTargets === "object") {
-      const ct = raw.clearTargets;
-      out.clearTargets = {
-        memo:   typeof ct.memo   === "boolean" ? ct.memo   : DEFAULT_CLEAR_TARGETS.memo,
-        s:      typeof ct.s      === "boolean" ? ct.s      : DEFAULT_CLEAR_TARGETS.s,
-        o:      typeof ct.o      === "boolean" ? ct.o      : DEFAULT_CLEAR_TARGETS.o,
-        a:      typeof ct.a      === "boolean" ? ct.a      : DEFAULT_CLEAR_TARGETS.a,
-        p:      typeof ct.p      === "boolean" ? ct.p      : DEFAULT_CLEAR_TARGETS.p,
-        shared: typeof ct.shared === "boolean" ? ct.shared : DEFAULT_CLEAR_TARGETS.shared,
-        statusYellow: typeof ct.statusYellow === "boolean" ? ct.statusYellow : DEFAULT_CLEAR_TARGETS.statusYellow,
-        statusGreen:  typeof ct.statusGreen  === "boolean" ? ct.statusGreen  : DEFAULT_CLEAR_TARGETS.statusGreen,
-        statusGray:   typeof ct.statusGray   === "boolean" ? ct.statusGray   : DEFAULT_CLEAR_TARGETS.statusGray,
-        statusBlue:   typeof ct.statusBlue   === "boolean" ? ct.statusBlue   : DEFAULT_CLEAR_TARGETS.statusBlue,
-      };
-    }
-    if (raw && typeof raw.tagsEnabled === "boolean") out.tagsEnabled = raw.tagsEnabled;
-    else if (raw && typeof raw.doctorEnabled === "boolean") out.tagsEnabled = raw.doctorEnabled;
-    if (raw && Array.isArray(raw.tags)) {
-      out.tags = raw.tags.filter(d => typeof d === "string").map(d => String(d));
-    } else if (raw && Array.isArray(raw.doctors)) {
-      out.tags = raw.doctors.filter(d => typeof d === "string").map(d => String(d));
-    }
-    if (raw && typeof raw.roomEnabled === "boolean") out.roomEnabled = raw.roomEnabled;
-    if (raw && typeof raw.adminEnabled === "boolean") out.adminEnabled = raw.adminEnabled;
-    if (raw && typeof raw.adminTerminal === "boolean") out.adminTerminal = raw.adminTerminal;
-    if (raw && typeof raw.adminImportOnly === "boolean") out.adminImportOnly = raw.adminImportOnly;
-    if (raw && typeof raw.rosterPassphrase === "string") out.rosterPassphrase = raw.rosterPassphrase;
-    if (raw && typeof raw.deviceId === "string") out.deviceId = raw.deviceId;
-    if (raw && typeof raw.tagGroupingEnabled === "boolean") out.tagGroupingEnabled = raw.tagGroupingEnabled;
-    if (raw && Array.isArray(raw.tagGroups)) {
-      out.tagGroups = raw.tagGroups
-        .filter(g => g && typeof g === "object" && typeof g.id === "string")
-        .map(g => ({
-          id: String(g.id),
-          name: String(g.name || ""),
-          mode: g.mode === "single" ? "single" : "multi",
-        }));
-    }
-    if (raw && raw.tagGroupAssign && typeof raw.tagGroupAssign === "object") {
-      out.tagGroupAssign = {};
-      for (const [k, v] of Object.entries(raw.tagGroupAssign)) {
-        if (typeof k === "string" && typeof v === "string") out.tagGroupAssign[k] = v;
-      }
-    }
-    return out;
-  } catch (e) {
-    console.warn("settings load failed:", e);
-    return defaultSettings();
+    out.defaults.a = (typeof raw.defaults.a === "string") ? raw.defaults.a : out.defaults.a;
+    out.defaults.p = (typeof raw.defaults.p === "string") ? raw.defaults.p : out.defaults.p;
   }
-}
-
-export function saveSettings() {
-  try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  } catch (e) {
-    console.warn("settings save failed:", e);
+  if (Array.isArray(raw.oRules)) {
+    const cleaned = [];
+    for (const r of raw.oRules) {
+      if (!r || typeof r !== "object") continue;
+      const key = String(r.key ?? "").trim();
+      const label = String(r.label ?? "").trim();
+      if (!key || !label) continue;
+      if (key === "vital") continue;
+      cleaned.push({
+        key,
+        label,
+        normalText: String(r.normalText ?? ""),
+        placeholder: String(r.placeholder ?? ""),
+        fromAdmin: !!r.fromAdmin,
+      });
+    }
+    if (cleaned.length) out.oRules = cleaned;
   }
+  if (raw.clearTargets && typeof raw.clearTargets === "object") {
+    const ct = raw.clearTargets;
+    out.clearTargets = {
+      memo:   typeof ct.memo   === "boolean" ? ct.memo   : DEFAULT_CLEAR_TARGETS.memo,
+      s:      typeof ct.s      === "boolean" ? ct.s      : DEFAULT_CLEAR_TARGETS.s,
+      o:      typeof ct.o      === "boolean" ? ct.o      : DEFAULT_CLEAR_TARGETS.o,
+      a:      typeof ct.a      === "boolean" ? ct.a      : DEFAULT_CLEAR_TARGETS.a,
+      p:      typeof ct.p      === "boolean" ? ct.p      : DEFAULT_CLEAR_TARGETS.p,
+      shared: typeof ct.shared === "boolean" ? ct.shared : DEFAULT_CLEAR_TARGETS.shared,
+      statusYellow: typeof ct.statusYellow === "boolean" ? ct.statusYellow : DEFAULT_CLEAR_TARGETS.statusYellow,
+      statusGreen:  typeof ct.statusGreen  === "boolean" ? ct.statusGreen  : DEFAULT_CLEAR_TARGETS.statusGreen,
+      statusGray:   typeof ct.statusGray   === "boolean" ? ct.statusGray   : DEFAULT_CLEAR_TARGETS.statusGray,
+      statusBlue:   typeof ct.statusBlue   === "boolean" ? ct.statusBlue   : DEFAULT_CLEAR_TARGETS.statusBlue,
+    };
+  }
+  if (Array.isArray(raw.tags)) {
+    out.tags = raw.tags.filter(d => typeof d === "string").map(d => String(d));
+  } else if (Array.isArray(raw.doctors)) {
+    out.tags = raw.doctors.filter(d => typeof d === "string").map(d => String(d));
+  }
+  if (typeof raw.adminEnabled === "boolean") out.adminEnabled = raw.adminEnabled;
+  if (typeof raw.adminTerminal === "boolean") out.adminTerminal = raw.adminTerminal;
+  if (typeof raw.adminImportOnly === "boolean") out.adminImportOnly = raw.adminImportOnly;
+  if (typeof raw.rosterPassphrase === "string") out.rosterPassphrase = raw.rosterPassphrase;
+  if (typeof raw.deviceId === "string") out.deviceId = raw.deviceId;
+  if (typeof raw.tagGroupingEnabled === "boolean") out.tagGroupingEnabled = raw.tagGroupingEnabled;
+  if (Array.isArray(raw.tagGroups)) {
+    out.tagGroups = raw.tagGroups
+      .filter(g => g && typeof g === "object" && typeof g.id === "string")
+      .map(g => ({
+        id: String(g.id),
+        name: String(g.name || ""),
+        mode: g.mode === "single" ? "single" : "multi",
+      }));
+  }
+  if (raw.tagGroupAssign && typeof raw.tagGroupAssign === "object") {
+    out.tagGroupAssign = {};
+    for (const [k, v] of Object.entries(raw.tagGroupAssign)) {
+      if (typeof k === "string" && typeof v === "string") out.tagGroupAssign[k] = v;
+    }
+  }
+  return out;
 }
 
 export function oRuleMap() {
@@ -136,23 +124,7 @@ export function makeEmptyOByRules() {
 }
 
 // ============================
-// Mutable shared state
-// (ES module live bindings — setters allow reassignment)
-// ============================
-
-export let appState = { v: 3, patients: [], rosterId: "", baseSnapshot: null, commits: [], head: null };
-export let settings = loadSettings();
-export let selectedNo = 1;
-
-export function setAppState(s) { appState = s; }
-export function setSettings(s) { settings = s; }
-export function setSelectedNo(n) { selectedNo = n; }
-
-let saveTimer = null;
-let lastSavedAt = 0;
-
-// ============================
-// Patient data helpers
+// Patient helpers
 // ============================
 
 function newId() {
@@ -215,20 +187,13 @@ function migrateLegacyO(r) {
   return out;
 }
 
-export function normalizeLoaded(raw) {
-  const out = { v: 3, title: "回診", patients: [], rosterId: "", baseSnapshot: null, commits: [], head: null };
-  if (raw && typeof raw.title === "string") out.title = raw.title;
-  if (raw && typeof raw.rosterId === "string") out.rosterId = raw.rosterId;
-  if (raw && raw.baseSnapshot && typeof raw.baseSnapshot === "object") out.baseSnapshot = raw.baseSnapshot;
-  if (raw && Array.isArray(raw.commits)) out.commits = raw.commits;
-  if (raw && typeof raw.head === "string") out.head = raw.head;
-  const arr = raw && raw.patients && Array.isArray(raw.patients) ? raw.patients : (Array.isArray(raw) ? raw : null);
-  const len = arr ? arr.length : DEFAULT_PATIENT_COUNT;
-  out.patients = new Array(len);
+function normalizePatientArray(arr) {
+  const len = (arr && arr.length) ? arr.length : DEFAULT_PATIENT_COUNT;
+  const out = new Array(len);
   for (let i = 0; i < len; i++) {
     const r = arr ? arr[i] : null;
     const d = makeDefaultPatient();
-    out.patients[i] = {
+    out[i] = {
       pid: (r && typeof r.pid === "string" && r.pid) ? r.pid : d.pid,
       status: (r && typeof r.status === "string" && [STATUS.NONE, STATUS.YELLOW, STATUS.GREEN, STATUS.GRAY].includes(r.status)) ? r.status : d.status,
       name: (r && typeof r.name === "string") ? r.name : d.name,
@@ -258,6 +223,17 @@ export function normalizeLoaded(raw) {
   return out;
 }
 
+// Kept for backward compatibility with import-export.js. Trims roster fields:
+// caller is responsible for handling history/rosterId via normalizeRosterMeta.
+export function normalizeLoaded(raw) {
+  const arr = raw && raw.patients && Array.isArray(raw.patients) ? raw.patients : (Array.isArray(raw) ? raw : null);
+  return {
+    v: 3,
+    title: (raw && typeof raw.title === "string") ? raw.title : "回診",
+    patients: normalizePatientArray(arr),
+  };
+}
+
 export function ensurePatientsHaveAllOKeys() {
   const keys = settings.oRules.map(r => r.key);
   for (const p of appState.patients) {
@@ -269,37 +245,110 @@ export function ensurePatientsHaveAllOKeys() {
 }
 
 // ============================
+// Roster meta normalization
+// ============================
+
+function isMeaningfulRosterMeta(rm) {
+  if (!rm) return false;
+  if (rm.rosterId) return true;
+  if (rm.baseSnapshot) return true;
+  if (Array.isArray(rm.commits) && rm.commits.length) return true;
+  if (rm.head) return true;
+  return false;
+}
+
+export function normalizeRosterMeta(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const out = {
+    rosterId: typeof raw.rosterId === "string" ? raw.rosterId : "",
+    baseSnapshot: (raw.baseSnapshot && typeof raw.baseSnapshot === "object") ? raw.baseSnapshot : null,
+    commits: Array.isArray(raw.commits) ? raw.commits : [],
+    head: typeof raw.head === "string" ? raw.head : null,
+  };
+  return isMeaningfulRosterMeta(out) ? out : null;
+}
+
+// ============================
+// Live bindings
+// (ES module live bindings — setters allow reassignment)
+//
+// settings must be declared first: normalizePatientArray → makeDefaultPatient
+// → makeEmptyOByRules reads settings.oRules, and these run during appState
+// initialization. Reordering would hit the Temporal Dead Zone.
+// ============================
+
+export let settings = defaultSettings();
+export let appState = { v: 3, title: "回診", patients: normalizePatientArray(null) };
+export let rosterState = null;          // populated lazily when roster features are used
+export let selectedNo = 1;
+
+export function setAppState(s) { appState = s; }
+export function setRosterState(r) { rosterState = r; }
+export function setSettings(s) { settings = s; }
+export function setSelectedNo(n) { selectedNo = n; }
+
+// ============================
 // Persistence
 // ============================
 
-export function load() {
-  try {
-    const s = localStorage.getItem(STORAGE_KEY);
-    if (!s) return normalizeLoaded(null);
-    return normalizeLoaded(JSON.parse(s));
-  } catch (e) {
-    console.warn("load failed:", e);
-    return normalizeLoaded(null);
-  }
+function applyBundleToLive(bundle) {
+  if (!bundle) return;
+  const sSettings = getSection(bundle, SECTION.SETTINGS);
+  const sPatients = getSection(bundle, SECTION.PATIENTS);
+  const sMeta = getSection(bundle, SECTION.META);
+  const sHistory = getSection(bundle, SECTION.HISTORY);
+
+  settings = normalizeSettings(sSettings || {});
+  appState = {
+    v: 3,
+    title: (sMeta && typeof sMeta.title === "string") ? sMeta.title : "回診",
+    patients: normalizePatientArray(Array.isArray(sPatients) ? sPatients : null),
+  };
+  rosterState = normalizeRosterMeta({
+    rosterId: bundle.rosterId,
+    baseSnapshot: sHistory ? sHistory.baseSnapshot : null,
+    commits: sHistory ? sHistory.commits : [],
+    head: sHistory ? sHistory.head : null,
+  });
 }
 
+// Module-init load: hydrate from storage before any other module reads state.
+applyBundleToLive(storageLoad());
+
+let saveTimer = null;
+
 export function scheduleSave() {
-  const saveChip = document.getElementById("saveChip");
-  if (saveChip) saveChip.textContent = "保存: 入力中…";
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(saveNow, 180);
 }
 
 export function saveNow() {
   saveTimer = null;
-  const saveChip = document.getElementById("saveChip");
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
-    lastSavedAt = Date.now();
-    if (saveChip) saveChip.textContent = "保存: 済 (" + new Date(lastSavedAt).toLocaleTimeString() + ")";
+    storageSave(projectBundle({ appState, rosterState, settings }));
   } catch (e) {
     console.error("save failed:", e);
-    if (saveChip) saveChip.textContent = "保存: 失敗";
+  }
+}
+
+// Settings is part of the same bundle now, so saving settings rewrites the
+// whole snapshot. The function name is kept so existing call sites don't have
+// to change.
+export function saveSettings() {
+  saveNow();
+}
+
+// Legacy compat: returns the clinical-only appState. Roster meta and settings
+// have already been loaded into their own live bindings during module init.
+export function load() {
+  return appState;
+}
+
+// iOS Safari 等の eviction を抑制（PWA インストール時に true を返すことが多い）。
+// 失敗しても挙動には影響しないので best-effort で呼ぶだけ。
+export function requestStoragePersistence() {
+  if (navigator.storage && typeof navigator.storage.persist === "function") {
+    navigator.storage.persist().catch(() => {});
   }
 }
 

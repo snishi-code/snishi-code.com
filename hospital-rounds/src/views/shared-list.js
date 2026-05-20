@@ -2,10 +2,10 @@
 
 import { appState, selectedNo, markUpdated, scheduleSave } from "../store.js";
 import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
-import { isTagsEnabled, makePatientTagPicker, makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
-import { isRoomEnabled, makeRoomInput, formatPatientLabel, isRoomSortActive } from "../features/room.js";
+import { makePatientTagPicker, makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
+import { makeRoomInput, formatPatientLabel, isRoomSortActive } from "../features/room.js";
 import { isNonAdminTerminal } from "../features/admin.js";
-import { isSharedQrActive, isPatientSelected, toggleSharedQrPatient } from "../features/qr-shared.js";
+import { refreshSharedQrIfActive } from "../features/qr-shared.js";
 import { recordOp } from "../features/roster.js";
 import { statusClass } from "./home.js";
 
@@ -18,24 +18,21 @@ function renderSharedTagFilter(rerender) {
   const slot = document.getElementById("sharedTagFilterSlot");
   if (!slot) return;
   slot.textContent = "";
-  if (!isTagsEnabled()) {
-    slot.style.display = "none";
-    return;
-  }
-  slot.style.display = "";
   slot.appendChild(makeSharedTagFilterPicker(rerender));
 }
 
 function renderSharedSortBtn() {
   const btn = document.getElementById("sharedRoomSortBtn");
   if (!btn) return;
-  btn.style.display = (isRoomEnabled() && !isNonAdminTerminal()) ? "" : "none";
+  btn.style.display = isNonAdminTerminal() ? "none" : "";
   btn.classList.toggle("editActive", isRoomSortActive());
 }
 
 export function renderSharedScreen(renderHomeFn, opts, navigateToPatientFn) {
   const rerender = () => renderSharedScreen(renderHomeFn, opts, navigateToPatientFn);
   renderSharedTagFilter(rerender);
+  // Keep the QR-side picker in sync when the main filter changes from up here.
+  refreshSharedQrIfActive();
   renderSharedSortBtn();
   const sharedListHost = document.getElementById("sharedListHost");
   if (!sharedListHost) return;
@@ -43,22 +40,18 @@ export function renderSharedScreen(renderHomeFn, opts, navigateToPatientFn) {
   const limit = opts && typeof opts.limit === "number" ? Math.max(0, Math.min(len, opts.limit)) : len;
   sharedListHost.textContent = "";
   const frag = document.createDocumentFragment();
-  const tagsEnabled = isTagsEnabled();
-  const roomEnabled = isRoomEnabled();
   for (let i = 1; i <= limit; i++) {
     const p = appState.patients[i - 1];
-    if (tagsEnabled && !patientMatchesSharedFilter(p)) continue;
+    if (!patientMatchesSharedFilter(p)) continue;
     const row = document.createElement("div");
     row.className = "memoRow";
 
     if (_editMode) {
       const nameWrap = document.createElement("div");
       nameWrap.className = "nameDoctorRow";
-      if (roomEnabled) {
-        nameWrap.appendChild(makeRoomInput(i - 1, () => {
-          if (renderHomeFn) renderHomeFn();
-        }));
-      }
+      nameWrap.appendChild(makeRoomInput(i - 1, () => {
+        if (renderHomeFn) renderHomeFn();
+      }));
       const numInp = document.createElement("input");
       numInp.type = "text";
       numInp.className = "memoNoInp";
@@ -77,30 +70,22 @@ export function renderSharedScreen(renderHomeFn, opts, navigateToPatientFn) {
         if (renderHomeFn) renderHomeFn();
       });
       nameWrap.appendChild(numInp);
-      if (isTagsEnabled()) {
-        nameWrap.appendChild(makePatientTagPicker(i - 1));
-      }
+      nameWrap.appendChild(makePatientTagPicker(i - 1));
       row.appendChild(nameWrap);
     } else {
       const numBtn = document.createElement("button");
       numBtn.type = "button";
-      const qrActive = isSharedQrActive();
       numBtn.className = "memoNoBtn secondary " + statusClass(p.status);
-      if (qrActive && !isPatientSelected(i)) numBtn.classList.add("unselected");
       const displayName = formatPatientLabel(p, String(i));
       numBtn.textContent = displayName;
       numBtn.title = displayName;
-      if (qrActive) {
-        numBtn.addEventListener("click", () => toggleSharedQrPatient(i));
-      } else {
-        bindLongPressAndDrag(
-          numBtn,
-          () => appState.patients.indexOf(p),
-          onPatientDrop,
-          openActionMenu,
-          navigateToPatientFn ? () => navigateToPatientFn(i) : null
-        );
-      }
+      bindLongPressAndDrag(
+        numBtn,
+        () => appState.patients.indexOf(p),
+        onPatientDrop,
+        openActionMenu,
+        navigateToPatientFn ? () => navigateToPatientFn(i) : null
+      );
       row.appendChild(numBtn);
     }
 

@@ -1,14 +1,18 @@
 "use strict";
 
-import { appState, settings, saveSettings, saveNow } from "../store.js";
+import { appState, rosterState, setRosterState, settings, saveSettings, saveNow } from "../store.js";
 import { utf8ByteLength } from "../payload.js";
 import { encryptText, decryptText } from "./crypto.js";
 import {
-  ensureRoster, currentRosterView, rebuildRoster, applyRosterView,
+  ensureRosterState, currentRosterView, rebuildRoster, applyRosterView,
   canApplyChain, commitsToApply, appendCommits, flushCommit,
   getCommitsWithinWindow,
 } from "./roster.js";
 import { ROSTER_DIFF_WINDOW_DAYS } from "../constants.js";
+import {
+  BUNDLE_FORMAT, BUNDLE_SCHEMA, BUNDLE_APP_VERSION,
+  SECTION, parseBundle, getSection, hasSection,
+} from "../bundle.js";
 
 const MAX_BYTES_PER_PAGE = 700;
 const PAGE_HEAD_RE = /==ROSTER\s+(FULL|DIFF)\s+(\d+)\/(\d+)\s+(\S+)==/g;
@@ -39,21 +43,27 @@ export function canDeleteORule(rule) { return canEditORule(rule); }
 // ============================
 // Payload schema
 //
-// Plaintext (before encryption) for FULL:
-//   {"kind":"full","rosterId":"...","ts":...,"baseTs":...,"base":{...view...},"commits":[...]}
+// The QR payload is a Bundle (subset). Two transfer kinds reuse the same
+// envelope structure:
 //
-// Plaintext for DIFF:
-//   {"kind":"diff","rosterId":"...","fromTs":...,"toTs":...,"commits":[...]}
+//   COPY (formerly "FULL"): sections.roster + sections.history.baseSnapshot.
+//     Encrypted with the user-chosen 合言葉. Embeds rosterId at the top so
+//     receivers can authenticate subsequent diffs without a passphrase.
+//   DIFF:                     sections.history.commits.
+//     Encrypted with rosterId itself — only terminals that already hold the
+//     same roster can decrypt these without a prompt.
 //
-// Encrypted (base64) is then split across pages with header:
+// The encrypted base64 is then split across pages with a header:
 //   ==ROSTER FULL p/n <rosterId>==
 //   <payload chunk>
 //   ==ROSTER FULL p/n <rosterId>==
 //   <next chunk>
+//
+// Older versions emitted a flat {kind:"full"|"diff", rosterId, base, commits}
+// envelope. The parser below accepts both.
 // ============================
 
 function chunkString(s, maxBytes) {
-  // Split by approximate byte size; tolerate that re-joined chunks restore the original
   const out = [];
   let i = 0;
   while (i < s.length) {
@@ -72,49 +82,75 @@ function makePages(kind, encryptedBody, rosterId) {
   return safe.map((c, i) => `==ROSTER ${kind} ${i + 1}/${total} ${rosterId}==\n${c}`);
 }
 
+function nowIso() {
+  try { return new Date().toISOString(); } catch (_) { return ""; }
+}
+
+function rosterCopyBundle(view, baseTs) {
+  return {
+    format: BUNDLE_FORMAT,
+    schema: BUNDLE_SCHEMA,
+    appVersion: BUNDLE_APP_VERSION,
+    exportedAt: nowIso(),
+    owner: { deviceId: settings.deviceId || "", label: "" },
+    rosterId: rosterState?.rosterId || "",
+    sections: {
+      roster: {
+        patients: view.patients.map(p => ({ ...p, tags: (p.tags || []).slice() })),
+        tags: (view.tags || []).slice(),
+      },
+      history: {
+        baseSnapshot: { ts: baseTs, ...view },
+        commits: [],
+        head: null,
+      },
+    },
+  };
+}
+
+function rosterDiffBundle(commits) {
+  return {
+    format: BUNDLE_FORMAT,
+    schema: BUNDLE_SCHEMA,
+    appVersion: BUNDLE_APP_VERSION,
+    exportedAt: nowIso(),
+    owner: { deviceId: settings.deviceId || "", label: "" },
+    rosterId: rosterState?.rosterId || "",
+    sections: {
+      history: {
+        baseSnapshot: null,
+        commits,
+        head: commits.length ? commits[commits.length - 1].id : null,
+      },
+    },
+  };
+}
+
 // ============================
 // Build pages (originator / admin terminal side)
 // ============================
-//
-// COPY (旧フルダンプ) is encrypted with the user-chosen 合言葉.
-// The roster's authentication code (rosterId) is embedded inside the encrypted payload.
-// DIFF is encrypted with the rosterId itself, so only terminals that have already received
-// a copy can decrypt subsequent diffs—no passphrase prompt on every sync.
 
 export async function buildCopyPages(secret) {
-  ensureRoster();
+  ensureRosterState();
   flushCommit();
   const view = rebuildRoster();
-  const body = {
-    kind: "full",
-    rosterId: appState.rosterId,
-    ts: Date.now(),
-    baseTs: appState.baseSnapshot?.ts || 0,
-    base: view,
-    commits: [],
-  };
-  const plaintext = JSON.stringify(body);
+  const bundle = rosterCopyBundle(view, Date.now());
+  const plaintext = JSON.stringify(bundle);
   const enc = await encryptText(plaintext, secret, "ROSTER-COPY");
-  return { pages: makePages("FULL", enc, appState.rosterId), bytes: utf8ByteLength(enc) };
+  return { pages: makePages("FULL", enc, rosterState.rosterId), bytes: utf8ByteLength(enc) };
 }
 // Back-compat alias
 export const buildFullPages = buildCopyPages;
 
 export async function buildDiffPages(_unused, windowDays = ROSTER_DIFF_WINDOW_DAYS) {
-  ensureRoster();
+  ensureRosterState();
   flushCommit();
   const commits = getCommitsWithinWindow(windowDays);
-  const body = {
-    kind: "diff",
-    rosterId: appState.rosterId,
-    fromTs: commits.length ? commits[0].ts : Date.now(),
-    toTs: Date.now(),
-    commits,
-  };
-  const plaintext = JSON.stringify(body);
+  const bundle = rosterDiffBundle(commits);
+  const plaintext = JSON.stringify(bundle);
   // Use rosterId as the symmetric key for diff QRs—same roster terminals can decrypt automatically.
-  const enc = await encryptText(plaintext, appState.rosterId, "ROSTER-DIFF");
-  return { pages: makePages("DIFF", enc, appState.rosterId), bytes: utf8ByteLength(enc), count: commits.length };
+  const enc = await encryptText(plaintext, rosterState.rosterId, "ROSTER-DIFF");
+  return { pages: makePages("DIFF", enc, rosterState.rosterId), bytes: utf8ByteLength(enc), count: commits.length };
 }
 
 // ============================
@@ -138,7 +174,7 @@ export function parseRosterPages(text) {
   }
   if (!markers.length) return { ok: false, error: "名簿QRが見つかりません" };
 
-  const groups = new Map(); // rosterId -> { kind, total, pages: Map<page, body> }
+  const groups = new Map();
   for (let i = 0; i < markers.length; i++) {
     const mk = markers[i];
     const start = mk.end;
@@ -150,7 +186,6 @@ export function parseRosterPages(text) {
     g.total = Math.max(g.total, mk.total);
     g.pages.set(mk.page, body);
   }
-  // Take the first roster group (single roster per session expected)
   const [rosterId, g] = groups.entries().next().value;
   const missing = [];
   for (let p = 1; p <= g.total; p++) if (!g.pages.has(p)) missing.push(p);
@@ -173,7 +208,33 @@ export async function decodeRosterPayload(parsed, secret) {
   let body;
   try { body = JSON.parse(plaintext); }
   catch (_) { return { ok: false, error: "ペイロード解析失敗" }; }
-  return { ok: true, body };
+  return { ok: true, body: normalizeRosterPayload(body, parsed.kind) };
+}
+
+// Convert either a bundle payload or the legacy flat envelope to a unified
+// shape: { kind: "full"|"diff", rosterId, base?, commits?, baseTs? }
+function normalizeRosterPayload(body, pageKind) {
+  if (body && body.format === BUNDLE_FORMAT) {
+    if (hasSection(body, SECTION.ROSTER)) {
+      const roster = getSection(body, SECTION.ROSTER);
+      const history = getSection(body, SECTION.HISTORY) || {};
+      return {
+        kind: "full",
+        rosterId: body.rosterId,
+        base: { patients: roster.patients || [], tags: roster.tags || [] },
+        baseTs: history.baseSnapshot?.ts || 0,
+        commits: [],
+      };
+    }
+    const history = getSection(body, SECTION.HISTORY) || {};
+    return {
+      kind: "diff",
+      rosterId: body.rosterId,
+      commits: Array.isArray(history.commits) ? history.commits : [],
+    };
+  }
+  // Legacy flat envelope (kind: "full" | "diff").
+  return body;
 }
 
 // ============================
@@ -181,22 +242,23 @@ export async function decodeRosterPayload(parsed, secret) {
 // ============================
 
 export function applyFullPayload(body) {
-  ensureRoster();
-  appState.rosterId = body.rosterId;
-  appState.baseSnapshot = {
-    ts: body.baseTs || body.ts || Date.now(),
-    patients: body.base.patients.map(p => ({ ...p, tags: (p.tags || []).slice() })),
-    tags: (body.base.tags || []).slice(),
-  };
-  appState.commits = [];
-  appState.head = null;
+  setRosterState({
+    rosterId: body.rosterId,
+    baseSnapshot: {
+      ts: body.baseTs || Date.now(),
+      patients: body.base.patients.map(p => ({ ...p, tags: (p.tags || []).slice() })),
+      tags: (body.base.tags || []).slice(),
+    },
+    commits: [],
+    head: null,
+  });
   applyRosterView(body.base);
   saveNow();
 }
 
 export function applyDiffPayload(body) {
-  ensureRoster();
-  if (body.rosterId !== appState.rosterId) {
+  ensureRosterState();
+  if (body.rosterId !== rosterState.rosterId) {
     return { ok: false, error: "別の名簿のQRです（ID不一致）。フルダンプから取込んでください。" };
   }
   const fresh = commitsToApply(body.commits || []);

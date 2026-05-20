@@ -1,6 +1,6 @@
 "use strict";
 
-import { settings, appState, saveSettings, ensurePatientsHaveAllOKeys } from "../store.js";
+import { settings, appState, rosterState, saveSettings, ensurePatientsHaveAllOKeys } from "../store.js";
 import { DEFAULT_O_RULES, DEFAULT_TAGS, clone } from "../constants.js";
 import { canEditORule, canDeleteORule, isAdminEnabled, isAdminTerminal, isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
@@ -90,7 +90,7 @@ function renderAdminExtras() {
   const passInp = document.getElementById("rosterPassphraseInput");
   if (passInp) passInp.value = String(settings.rosterPassphrase || "");
   const idLabel = document.getElementById("rosterIdLabel");
-  if (idLabel) idLabel.textContent = appState.rosterId ? appState.rosterId.slice(0, 18) : "—";
+  if (idLabel) idLabel.textContent = rosterState?.rosterId ? rosterState.rosterId.slice(0, 18) : "—";
 }
 
 function renderAdminToggles() {
@@ -106,19 +106,6 @@ function renderAdminToggles() {
   renderToggleIcon(termIcon, !!settings.adminTerminal);
   renderToggleIcon(importIcon, !!settings.adminImportOnly);
   if (body) body.style.display = on ? "" : "none";
-}
-
-function renderRoomToggleIcon() {
-  const card = document.getElementById("roomCard");
-  const icon = document.getElementById("roomToggleIcon");
-  if (!card || !icon) return;
-  const on = !!settings.roomEnabled;
-  card.classList.toggle("disabled", !on);
-  if (on) {
-    icon.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5" fill="${getComputedStyle(document.documentElement).getPropertyValue('--status-green-bg') || '#14b8a6'}" stroke="currentColor"/><circle cx="16" cy="12" r="3" fill="#ffffff" stroke="currentColor"/>`;
-  } else {
-    icon.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/>`;
-  }
 }
 
 function renderTagGroupingToggleIcon() {
@@ -299,19 +286,6 @@ function openGroupMembershipPicker(groupId, anchor) {
   document.body.appendChild(overlay);
 }
 
-function renderTagsToggleIcon() {
-  const card = document.getElementById("tagsCard");
-  const icon = document.getElementById("tagsToggleIcon");
-  if (!card || !icon) return;
-  const on = !!settings.tagsEnabled;
-  card.classList.toggle("disabled", !on);
-  if (on) {
-    icon.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5" fill="${getComputedStyle(document.documentElement).getPropertyValue('--status-green-bg') || '#14b8a6'}" stroke="currentColor"/><circle cx="16" cy="12" r="3" fill="#ffffff" stroke="currentColor"/>`;
-  } else {
-    icon.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/>`;
-  }
-}
-
 // ============================
 // Tag list (chip-based UI with tap-to-edit, long-press to delete/drag)
 // ============================
@@ -439,8 +413,6 @@ export function renderSettings() {
   renderClearTargets();
   renderAdminToggles();
   renderAdminExtras();
-  renderRoomToggleIcon();
-  renderTagsToggleIcon();
   renderTagGroupingToggleIcon();
   renderTagsList();
   renderTagGroups();
@@ -562,7 +534,6 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
   const resetORulesBtn = document.getElementById("resetORulesBtn");
   const addTagBtn = document.getElementById("addTagBtn");
   const resetTagsBtn = document.getElementById("resetTagsBtn");
-  const tagsEnableBtn = document.getElementById("tagsEnableBtn");
 
   if (setSDefault) setSDefault.addEventListener("input", () => {
     settings.defaults.s = String(setSDefault.value ?? "");
@@ -606,16 +577,6 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
     if (_renderQrFn) _renderQrFn();
   });
 
-  const roomEnableBtn = document.getElementById("roomEnableBtn");
-  if (roomEnableBtn) roomEnableBtn.addEventListener("click", () => {
-    if (isNonAdminTerminal()) { alert("管理機能ONの非管理端末では変更できません"); return; }
-    if (isAdminTerminal() && settings.roomEnabled) { alert("管理端末では部屋番号機能は必須です"); return; }
-    settings.roomEnabled = !settings.roomEnabled;
-    saveSettings();
-    renderRoomToggleIcon();
-    if (_renderPatientUIFn) _renderPatientUIFn();
-  });
-
   const adminEnableBtn = document.getElementById("adminEnableBtn");
   if (adminEnableBtn) adminEnableBtn.addEventListener("click", () => {
     if (settings.adminEnabled) {
@@ -632,8 +593,6 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
     saveSettings();
     renderAdminToggles();
     renderAdminExtras();
-    renderTagsToggleIcon();
-    renderRoomToggleIcon();
     renderTagsList();
     if (_renderPatientUIFn) _renderPatientUIFn();
   });
@@ -648,8 +607,6 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
       if (!confirm("この端末を管理端末にします。管理端末は同じ病棟・チーム内で1台のみにしてください。\nよろしいですか？")) return;
       settings.adminTerminal = true;
       settings.adminImportOnly = false; // mutual exclusivity
-      settings.roomEnabled = true;
-      settings.tagsEnabled = true;
       if (!settings.rosterPassphrase) {
         const phrase = prompt("名簿コピーに使う「合言葉」を設定してください。\n日本語・英語など自由。受信側にも口頭などで共有してください。");
         if (phrase && phrase.trim()) settings.rosterPassphrase = phrase.trim();
@@ -658,8 +615,6 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
     saveSettings();
     renderAdminToggles();
     renderAdminExtras();
-    renderRoomToggleIcon();
-    renderTagsToggleIcon();
     renderTagsList();
     if (_renderPatientUIFn) _renderPatientUIFn();
   });
@@ -678,21 +633,10 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
     } else {
       settings.adminImportOnly = true;
       settings.adminTerminal = false; // mutual exclusivity
-      settings.roomEnabled = true;
-      settings.tagsEnabled = true;
     }
     saveSettings();
     renderAdminToggles();
-    renderRoomToggleIcon();
-    renderTagsToggleIcon();
     renderTagsList();
-    if (_renderPatientUIFn) _renderPatientUIFn();
-  });
-
-  if (tagsEnableBtn) tagsEnableBtn.addEventListener("click", () => {
-    settings.tagsEnabled = !settings.tagsEnabled;
-    saveSettings();
-    renderTagsToggleIcon();
     if (_renderPatientUIFn) _renderPatientUIFn();
   });
 
@@ -706,12 +650,11 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
 
   const tagGroupingEnableBtn = document.getElementById("tagGroupingEnableBtn");
   if (tagGroupingEnableBtn) tagGroupingEnableBtn.addEventListener("click", () => {
-    if (!settings.tagsEnabled) { alert("先にタグ機能をONにしてください"); return; }
     if (settings.tagGroupingEnabled) {
-      if (!confirm("カテゴライズ機能をオフにします。グループ定義は保持されますが、タグはフラット表示に戻ります。よろしいですか？")) return;
+      if (!confirm("グループタグ機能をオフにします。グループ定義は保持されますが、タグはフラット表示に戻ります。よろしいですか？")) return;
       settings.tagGroupingEnabled = false;
     } else {
-      if (!confirm("⚠ カテゴライズ機能を有効にします。\n\nタグをグループに分け、各グループで単選択／複数選択を切り替えられるようになります。\nスクリーニングはグループ間AND、グループ内ORで評価されます。\n\nよろしいですか？")) return;
+      if (!confirm("⚠ グループタグ機能を有効にします。\n\nタグをグループに分け、各グループで単選択／複数選択を切り替えられるようになります。\nスクリーニングはグループ間AND、グループ内ORで評価されます。\n\nよろしいですか？")) return;
       settings.tagGroupingEnabled = true;
     }
     saveSettings();

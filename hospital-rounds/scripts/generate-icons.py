@@ -2,6 +2,10 @@
 
 回診PWA用のアイコン: 青背景に白いクリップボード（十字なし）。
 各アプリで固有の形を持たせ、医療カテゴリと混同しないようにする。
+
+NOTE: 本番（青）アイコンは別途手動調整されているため、このスクリプトは
+**テスト用（slate）アイコンのみを再生成**する。本番アイコンを再生成したい
+場合は VARIANTS の BLUE 行のコメントを外すこと。
 """
 import struct
 import zlib
@@ -60,13 +64,22 @@ def make_png_clipboard(width: int, height: int, bg, fg) -> bytes:
 
 
 BLUE = (37, 99, 235)
+SLATE = (71, 85, 105)  # slate-600 — テスト環境用（snishi-code.com トップのロゴ背景と同色）
 WHITE = (255, 255, 255)
 
 os.makedirs("public/icons", exist_ok=True)
 
-for size, name in [(192, "icon-192.png"), (512, "icon-512.png"), (180, "apple-touch-icon.png")]:
-    data = make_png_clipboard(size, size, BLUE, WHITE)
-    path = f"public/icons/{name}"
-    with open(path, "wb") as f:
-        f.write(data)
-    print(f"Created {path} ({size}x{size}, {len(data)} bytes)")
+VARIANTS = [
+    # (出力ファイル接尾辞, 背景色)
+    # ("", BLUE),       # 本番（青）— 手動調整されているため通常は再生成しない
+    ("-test", SLATE), # テスト（スレートグレー）
+]
+
+for suffix, bg in VARIANTS:
+    for size, base in [(192, "icon-192"), (512, "icon-512"), (180, "apple-touch-icon")]:
+        name = f"{base}{suffix}.png"
+        data = make_png_clipboard(size, size, bg, WHITE)
+        path = f"public/icons/{name}"
+        with open(path, "wb") as f:
+            f.write(data)
+        print(f"Created {path} ({size}x{size}, {len(data)} bytes)")
