@@ -214,15 +214,15 @@ function updateRecvStatus(text) {
 }
 
 // 受信側に同名タグがある場合、衝突を避けるためサフィックス付きで一意化
-// （A → A1 → A2 …）。元の名前と衝突しないだけでなく、当バッチで既に
-// 採用済みの名前とも被らないようにする。
+// （A → A(1) → A(2) …、ファイルコピーの慣習に合わせる）。元の名前と
+// 衝突しないだけでなく、当バッチで既に採用済みの名前とも被らないようにする。
 function uniqueTagName(name, existing) {
   if (!existing.includes(name)) return name;
   for (let i = 1; i < 10000; i++) {
-    const cand = name + i;
+    const cand = `${name}(${i})`;
     if (!existing.includes(cand)) return cand;
   }
-  return name + Date.now().toString(36);
+  return `${name}(${Date.now().toString(36)})`;
 }
 
 function applyRosterPayload(payload) {
@@ -308,7 +308,7 @@ function applyRosterPayload(payload) {
     const msgs = [`${added.length} 件を末尾に追加しました。`];
     if (tagsAdded) {
       msgs.push(tagsRenamed
-        ? `新規タグ ${tagsAdded} 件を追加（うち ${tagsRenamed} 件は同名衝突のため A1/A2 形式に改名）`
+        ? `新規タグ ${tagsAdded} 件を追加（うち ${tagsRenamed} 件は同名衝突のため A(1)/A(2) 形式に改名）`
         : `新規タグ ${tagsAdded} 件を追加しました。`);
     }
     alert(msgs.join("\n"));
