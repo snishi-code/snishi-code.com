@@ -123,7 +123,7 @@ initSettingsView(doRenderDetail, renderQrIfNeeded, refreshPatientUI);
 // Detail event bindings
 // ============================
 
-initDetailEvents(doRenderHome, syncDetailMemoDisplay);
+initDetailEvents(doRenderHome);
 initStatusButtons(doRenderHome);
 initQrNavButtons();
 

@@ -10,6 +10,8 @@ import { makeRoomInput } from "../features/room.js";
 import { isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
 
+let qrVisible = false;
+
 // ============================
 // QR generation helpers
 // ============================
@@ -113,13 +115,22 @@ function clearQrError() {
   if (qrError) { qrError.style.display = "none"; qrError.textContent = ""; }
 }
 
+function syncQrToggleButtons() {
+  const ids = ["qrToggleBtn", "qrToggleBtnBottom"];
+  for (const id of ids) {
+    const b = document.getElementById(id);
+    if (!b) continue;
+    b.classList.toggle("editActive", qrVisible);
+    b.setAttribute("aria-pressed", qrVisible ? "true" : "false");
+  }
+}
+
 export function renderQrIfNeeded() {
-  const p = appState.patients[selectedNo - 1];
   const qrWrap = document.getElementById("qrWrap");
   if (!qrWrap) return;
-  const show = p.status === STATUS.GREEN;
-  qrWrap.classList.toggle("active", show);
-  if (!show) return;
+  qrWrap.classList.toggle("active", qrVisible);
+  syncQrToggleButtons();
+  if (!qrVisible) return;
 
   const qrTextPreview = document.getElementById("qrTextPreview");
   const qrCanvas = document.getElementById("qrCanvas");
@@ -243,6 +254,7 @@ export function setSelectedStatusButtons(status) {
 // ============================
 
 export function renderDetail(syncDetailMemoDisplay) {
+  qrVisible = false;
   const p = appState.patients[selectedNo - 1];
   const detailTitle = document.getElementById("detailTitle");
   const sText = document.getElementById("sText");
@@ -327,31 +339,7 @@ export function renderDetail(syncDetailMemoDisplay) {
 // Detail event bindings
 // ============================
 
-function doClear(renderHomeFn, syncMemoFn) {
-  const p = appState.patients[selectedNo - 1];
-  const ct = settings.clearTargets;
-  if (ct.memo) p.memo = "";
-  if (ct.s) p.s = "";
-  if (ct.o) {
-    p.o = makeEmptyOByRules();
-    p.oFree = "";
-    p.vitals = { spo2: "", spo2_memo: "", rr: "", bp_sys: "", bp_dia: "", pr: "", bt: "" };
-  }
-  if (ct.a) p.a = { text: "" };
-  if (ct.p) p.p = { text: "" };
-  if (ct.shared) p.shared = "";
-  if (p.status === STATUS.YELLOW && ct.statusYellow) p.status = STATUS.NONE;
-  else if (p.status === STATUS.GREEN && ct.statusGreen) p.status = STATUS.NONE;
-  else if (p.status === STATUS.GRAY && ct.statusGray) p.status = STATUS.NONE;
-  else if (p.status === STATUS.BLUE && ct.statusBlue) p.status = STATUS.NONE;
-  markUpdated(selectedNo);
-  scheduleSave();
-  renderDetail(syncMemoFn);
-  if (renderHomeFn) renderHomeFn();
-  renderQrIfNeeded();
-}
-
-export function initDetailEvents(renderHomeFn, syncMemoFn) {
+export function initDetailEvents(renderHomeFn) {
   const detailTitle = document.getElementById("detailTitle");
   const detailMemoText = document.getElementById("detailMemoText");
   const sText = document.getElementById("sText");
@@ -446,14 +434,14 @@ export function initDetailEvents(renderHomeFn, syncMemoFn) {
     renderQrIfNeeded();
   });
 
-  const clearBtn = document.getElementById("clearBtn");
-  const clearBtnBottom = document.getElementById("clearBtnBottom");
-  const onClear = () => {
-    if (!confirm("対象項目をクリアします。よろしいですか？")) return;
-    doClear(renderHomeFn, syncMemoFn);
+  const qrToggleBtn = document.getElementById("qrToggleBtn");
+  const qrToggleBtnBottom = document.getElementById("qrToggleBtnBottom");
+  const onQrToggle = () => {
+    qrVisible = !qrVisible;
+    renderQrIfNeeded();
   };
-  if (clearBtn) clearBtn.addEventListener("click", onClear);
-  if (clearBtnBottom) clearBtnBottom.addEventListener("click", onClear);
+  if (qrToggleBtn) qrToggleBtn.addEventListener("click", onQrToggle);
+  if (qrToggleBtnBottom) qrToggleBtnBottom.addEventListener("click", onQrToggle);
 }
 
 export function initStatusButtons(renderHomeFn) {
