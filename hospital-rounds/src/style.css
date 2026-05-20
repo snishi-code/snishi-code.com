@@ -216,7 +216,9 @@
       color: var(--text);
     }
 
-    .appTitleInput:focus {
+    /* フォーカスの装飾は編集モード時だけ。readonly でフォーカスが残った場合に
+       白背景が居残るのを防ぐ。 */
+    .appTitleInput:not([readonly]):focus {
       border-color: rgba(37, 99, 235, 0.6);
       background: #fff;
       box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
