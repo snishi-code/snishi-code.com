@@ -24,6 +24,7 @@ import { DOCS_BUNDLE } from "./docs-bundle.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initImportExport } from "./features/import-export.js";
 import { initSharedQr, refreshSharedQrIfActive, initMemoQr, refreshMemoQrIfActive } from "./features/qr-shared.js";
+import { initHomeQr, refreshHomeQrIfActive } from "./features/qr-home.js";
 import { createPrintFlow } from "./features/print.js";
 import { sortPatientsByRoom, invalidateSortSnapshot } from "./features/room.js";
 import { initAdminUI, refreshAdminAvailability, setAdminAppliedHandler } from "./features/admin-ui.js";
@@ -102,6 +103,8 @@ setDataChangeHandler(() => {
   else if (viewId === "memoView") doRenderMemo();
   else if (viewId === "sharedView") doRenderShared();
   updateCountChip();
+  // 名簿が変わったらホームQRも追随
+  refreshHomeQrIfActive();
 });
 
 // ============================
@@ -117,6 +120,7 @@ function refreshPatientUI() {
   else if (viewId === "homeView") doRenderHome();
   refreshSharedQrIfActive();
   refreshMemoQrIfActive();
+  refreshHomeQrIfActive();
 }
 
 initSettingsView(doRenderDetail, renderQrIfNeeded, refreshPatientUI);
@@ -318,6 +322,7 @@ initActionMenu();
 
 initSharedQr();
 initMemoQr();
+initHomeQr();
 initAdminUI();
 setAdminAppliedHandler(() => {
   doRenderHome();

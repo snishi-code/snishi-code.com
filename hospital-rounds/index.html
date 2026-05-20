@@ -79,6 +79,41 @@
         <button class="iconBtn" id="homeRoomSortBtn" type="button" title="部屋番号順に並び替え" aria-label="部屋番号順に並び替え" style="display:none;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="13" y2="6"/><line x1="3" y1="12" x2="11" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/><polyline points="13 14 17 18 21 14"/><line x1="17" y1="8" x2="17" y2="18"/></svg>
         </button>
+        <button class="iconBtn" id="homeShowQrBtn" type="button" title="ホームQR表示" aria-label="ホームQR表示" style="margin-left:auto;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="5" y="5" width="3" height="3" fill="currentColor"/><rect x="16" y="5" width="3" height="3" fill="currentColor"/><rect x="5" y="16" width="3" height="3" fill="currentColor"/><rect x="14" y="14" width="3" height="3" fill="currentColor"/><rect x="19" y="14" width="2" height="2" fill="currentColor"/><rect x="14" y="19" width="2" height="2" fill="currentColor"/><rect x="19" y="19" width="2" height="2" fill="currentColor"/></svg>
+        </button>
+      </div>
+      <div class="card qrWrap" id="homeQrWrap">
+        <div class="cardHead">
+          <div class="label">ホームQR（名簿）</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="qrHint">
+              <span class="mono" id="homeQrPageMeta"></span>
+              <span class="mono" id="homeQrRecvStatus" style="margin-left:8px;color:var(--green,#14b8a6);"></span>
+            </span>
+            <button class="iconBtn" id="homeQrScanBtn" type="button" title="カメラで QR を読む" aria-label="カメラで QR を読む">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="cardBody">
+          <div class="qrHint">
+            <div class="mono" id="homeQrTextPreview" style="margin-top:6px;word-break:break-all;white-space:pre-wrap"></div>
+          </div>
+        </div>
+        <div
+          style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border-top:1px solid var(--line);background:#fafafa;flex-wrap:wrap">
+          <div class="qrHint">複数QRは順不同でOK。全ページ揃った瞬間に自動反映します。</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="secondary" id="homeQrPrevBtn" type="button" title="前" aria-label="前">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button class="secondary" id="homeQrNextBtn" type="button" title="次" aria-label="次">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <canvas id="homeQrCanvas" width="800" height="800"></canvas>
       </div>
       <div class="grid" id="homeGrid"></div>
     </section>

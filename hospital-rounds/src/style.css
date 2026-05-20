@@ -669,6 +669,21 @@
       display: block
     }
 
+    /* スキャン成功時の緑フラッシュ / 重複時の黄フラッシュ。
+       JS で一度クラスを付け直して再生する。 */
+    @keyframes qrScanFlashOk {
+      0%   { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0); }
+      20%  { box-shadow: 0 0 0 6px rgba(20, 184, 166, 0.55); }
+      100% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0); }
+    }
+    @keyframes qrScanFlashDup {
+      0%   { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+      20%  { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.55); }
+      100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+    }
+    .qrWrap.scanFlashOk  { animation: qrScanFlashOk  0.5s ease-out; }
+    .qrWrap.scanFlashDup { animation: qrScanFlashDup 0.5s ease-out; }
+
     canvas {
       display: block;
       width: 100%;
