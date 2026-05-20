@@ -17,11 +17,13 @@ APP_DIR    = SCRIPT_DIR.parent              # hospital-rounds/
 SRC          = APP_DIR / "docs-src"                                # gitignored Obsidian vault
 SHARED_CSS   = APP_DIR / "shared.css"                              # app-local copy
 BUNDLE_DEST  = APP_DIR / "src" / "docs-bundle.js"                  # in-app embed bundle
-IMAGE_DEST   = APP_DIR / "public" / "docs-images"                  # served at /hospital-rounds/docs-images/
+IMAGE_DEST   = APP_DIR / "public" / "docs-images"                  # served at <base>/docs-images/
 PRECACHE_DEST = IMAGE_DEST / "precache-list.json"                  # SW reads from same dir
 
-# Absolute URL where docs images are served from (under the app scope).
-IMG_BASE = "/hospital-rounds/docs-images"
+# Image URLs use a `__BASE__/` placeholder that main.js replaces with
+# `import.meta.env.BASE_URL` at runtime. This lets the same bundle work
+# both on prod (base=/hospital-rounds/) and test (base=/) without rebuilding.
+IMG_BASE = "__BASE__/docs-images"
 
 PAGES = [
     ("01_はじめに.md",                              "はじめに"),
@@ -383,12 +385,13 @@ def main():
         bundle[out_name] = page_html(title, body, prev_page, next_page, shared_css)
         print(f"✓ {out_name}")
 
-    # SW precache list: only image URLs (HTML lives inside the bundle JS).
+    # SW precache list: filenames only. sw.js builds the URL relative to its scope
+    # (works on prod=/hospital-rounds/ and test=/ alike). HTML lives inside the bundle JS.
     precache = []
     if IMAGE_DEST.exists():
         for img in sorted(IMAGE_DEST.iterdir()):
             if img.suffix.lower() == ".webp":
-                precache.append(f"{IMG_BASE}/{img.name}")
+                precache.append(img.name)
 
     PRECACHE_DEST.write_text(
         json.dumps(precache, ensure_ascii=False, indent=2), encoding="utf-8"

@@ -204,12 +204,19 @@ if (headerSharedBtn) headerSharedBtn.addEventListener("click", navToShared);
 if (headerHomeBtn) headerHomeBtn.addEventListener("click", navToHome);
 if (headerSettingsBtn) headerSettingsBtn.addEventListener("click", navToSettings);
 // Docs are bundled into the app (DOCS_BUNDLE) so the help view works offline
-// without any network or service-worker cache hits.
+// without any network or service-worker cache hits. Image URLs inside the
+// bundle use a `__BASE__/` placeholder so the same bundle works under any
+// deployment base (prod: /hospital-rounds/, test サブドメイン: /). The actual
+// path is derived from the current page URL — `import.meta.env.BASE_URL` is
+// not used because vite-plugin-singlefile rewrites it to `./` regardless of
+// the configured base.
+const DOCS_BASE = new URL("./", document.baseURI).pathname;
 function openDocsPage(pageName) {
   const iframe = document.getElementById("docsIframe");
   if (!iframe) return;
   const key = pageName.endsWith(".html") ? pageName : pageName + ".html";
-  const html = DOCS_BUNDLE[key] || DOCS_BUNDLE["index.html"] || "";
+  const html = (DOCS_BUNDLE[key] || DOCS_BUNDLE["index.html"] || "")
+    .replaceAll("__BASE__/", DOCS_BASE);
   iframe.srcdoc = html;
   showView("docs");
 }

@@ -1,8 +1,12 @@
 import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
 
-export default defineConfig(({ command }) => ({
-  base: command === "serve" ? "/" : "/hospital-rounds/",
+// base パス:
+//   - dev (vite serve):       "/"
+//   - test (vite build --mode test): "/"   ← hospital-rounds.snishi-code.com ルート配信
+//   - prod (vite build):      "/hospital-rounds/" ← snishi-code.com/hospital-rounds/ 配下
+export default defineConfig(({ command, mode }) => ({
+  base: command === "serve" || mode === "test" ? "/" : "/hospital-rounds/",
   plugins: [viteSingleFile()],
   build: {
     outDir: "dist",
