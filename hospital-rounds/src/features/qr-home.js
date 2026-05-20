@@ -1,6 +1,6 @@
 "use strict";
 
-import { appState, settings, makeDefaultPatient } from "../store.js";
+import { appState, settings, makeDefaultPatient, saveSettings } from "../store.js";
 import { qrcodegen } from "../libs/qrcodegen.js";
 import { utf8ByteLength } from "../payload.js";
 import { scanQRStream, isScannerSupported } from "./qr-scan.js";
@@ -39,11 +39,17 @@ const KIND = "HM";
 // pipe `|` / `\` / 改行 は qr-protocol の共通エスケープで安全化。
 // ============================
 
+// 各タグは 1 行 `T:<escaped name>` で送信側が出す。患者行のタグ index は
+// この T 行リストへの 1-based 参照になる（受信側で名前に再解決）。
 function encodeRoster() {
+  const lines = [];
+  for (const t of (settings.tags || [])) {
+    lines.push("T:" + escapeField(t));
+  }
+
   const tagIdxByName = new Map();
   (settings.tags || []).forEach((t, i) => tagIdxByName.set(t, i + 1));
 
-  const lines = [];
   let emptyRun = 0;
   const flushRun = () => {
     if (emptyRun > 0) { lines.push("_" + emptyRun); emptyRun = 0; }
@@ -65,13 +71,18 @@ function encodeRoster() {
 }
 
 function decodeRoster(payload) {
-  const out = [];
+  const tagNames = [];
+  const patients = [];
   for (const raw of String(payload || "").split("\n")) {
     const line = raw.trim();
     if (!line) continue;
+    if (line.startsWith("T:")) {
+      tagNames.push(unescapeField(line.slice(2)));
+      continue;
+    }
     if (line.startsWith("_")) {
       const n = parseInt(line.slice(1), 10) || 0;
-      for (let i = 0; i < n; i++) out.push({ room: "", name: "", tagIdxs: [] });
+      for (let i = 0; i < n; i++) patients.push({ room: "", name: "", tagIdxs: [] });
       continue;
     }
     const parts = splitEscapedPipe(line);
@@ -81,9 +92,9 @@ function decodeRoster(payload) {
     const tagIdxs = tagsRaw
       ? tagsRaw.split(",").map(s => parseInt(s.trim(), 10)).filter(v => Number.isFinite(v))
       : [];
-    out.push({ room, name, tagIdxs });
+    patients.push({ room, name, tagIdxs });
   }
-  return out;
+  return { tagNames, patients };
 }
 
 // ============================
@@ -202,8 +213,20 @@ function updateRecvStatus(text) {
   if (el) el.textContent = text;
 }
 
+// 受信側に同名タグがある場合、衝突を避けるためサフィックス付きで一意化
+// （A → A1 → A2 …）。元の名前と衝突しないだけでなく、当バッチで既に
+// 採用済みの名前とも被らないようにする。
+function uniqueTagName(name, existing) {
+  if (!existing.includes(name)) return name;
+  for (let i = 1; i < 10000; i++) {
+    const cand = name + i;
+    if (!existing.includes(cand)) return cand;
+  }
+  return name + Date.now().toString(36);
+}
+
 function applyRosterPayload(payload) {
-  const roster = decodeRoster(payload);
+  const { tagNames: senderTagNames, patients: roster } = decodeRoster(payload);
   if (roster.length === 0) {
     alert("取込内容が空でした。");
     return;
@@ -215,10 +238,12 @@ function applyRosterPayload(payload) {
     (!p?.tags || p.tags.length === 0)
   );
 
-  const resolveTag = (idx) => settings.tags?.[idx - 1] || null;
-
   if (isEmpty) {
-    // reflect モード: slot 1..N に上書き、必要なら拡張
+    // reflect モード: 受信側はデフォルト状態。設定タグも丸ごと送信側のものに差し替え
+    settings.tags = senderTagNames.slice();
+    saveSettings();
+    const resolveTag = (idx) => settings.tags[idx - 1] || null;
+
     while (appState.patients.length < roster.length) {
       const p = makeDefaultPatient();
       appState.patients.push(p);
@@ -237,9 +262,35 @@ function applyRosterPayload(payload) {
     }
     finishDataChange();
     closeHomeQr();
-    alert(`${roster.length} 件の名簿を反映しました。`);
+    const msg = senderTagNames.length
+      ? `${roster.length} 件の名簿と ${senderTagNames.length} 件のタグを反映しました。`
+      : `${roster.length} 件の名簿を反映しました。`;
+    alert(msg);
   } else {
-    // append モード: 空患者を除いて末尾に追加
+    // append モード: 既存名簿には触れず、送信側タグを衝突回避しつつ追加。
+    // patient の tag index は受信側の renamed 名にマップして当てる。
+    const existing = (settings.tags || []).slice();
+    const senderIdxToReceiverName = []; // 1-based; [0] unused
+    senderIdxToReceiverName[0] = null;
+    let tagsAdded = 0;
+    let tagsRenamed = 0;
+    for (let i = 0; i < senderTagNames.length; i++) {
+      const name = senderTagNames[i];
+      if (existing.includes(name)) {
+        // 同名既存 → そのまま使う（追加もリネームも不要）
+        senderIdxToReceiverName[i + 1] = name;
+      } else {
+        const unique = uniqueTagName(name, existing);
+        existing.push(unique);
+        settings.tags.push(unique);
+        senderIdxToReceiverName[i + 1] = unique;
+        tagsAdded++;
+        if (unique !== name) tagsRenamed++;
+      }
+    }
+    if (tagsAdded > 0) saveSettings();
+    const resolveTag = (idx) => senderIdxToReceiverName[idx] || null;
+
     const added = [];
     for (const r of roster) {
       if (!r.room && !r.name && r.tagIdxs.length === 0) continue;
@@ -254,7 +305,13 @@ function applyRosterPayload(payload) {
     }
     finishDataChange();
     closeHomeQr();
-    alert(`${added.length} 件を末尾に追加しました。`);
+    const msgs = [`${added.length} 件を末尾に追加しました。`];
+    if (tagsAdded) {
+      msgs.push(tagsRenamed
+        ? `新規タグ ${tagsAdded} 件を追加（うち ${tagsRenamed} 件は同名衝突のため A1/A2 形式に改名）`
+        : `新規タグ ${tagsAdded} 件を追加しました。`);
+    }
+    alert(msgs.join("\n"));
   }
 }
 
@@ -290,7 +347,7 @@ function startScan() {
       if (recvPages.size === recvTotal) {
         const full = [];
         for (let i = 1; i <= recvTotal; i++) full.push(recvPages.get(i));
-        const payload = full.join("\n");
+        const payload = full.join("");
         resetRecv();
         ctrl.setStatus(`全 ${recvTotal} ページ受信完了`);
         // スキャナを閉じた後に apply（alert が前面に出るように間を置く）

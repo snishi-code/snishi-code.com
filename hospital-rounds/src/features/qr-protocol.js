@@ -69,26 +69,42 @@ export function splitEscapedPipe(line) {
 
 // ============================
 // Page chunking + headers
+//
+// payload を `budget` バイト以下に分割。可能な限り `\n` 境界で切り、
+// 改行が無い payload（設定 JSON など）もコードポイント境界で分割する。
+// チャンクは境界の `\n` を保持するので、受信側は ""（空文字）で連結すれば
+// 元の payload に戻る。
 // ============================
 
-// 改行を尊重しつつ payload を `budget` バイト以下のチャンクに分割
 function chunkPayload(payload, budget) {
-  const lines = payload.split("\n");
+  if (utf8ByteLength(payload) <= budget) return [payload];
+
   const chunks = [];
-  let cur = "";
-  let curBytes = 0;
-  for (const line of lines) {
-    const lineBytes = utf8ByteLength(line) + 1;
-    if (cur && curBytes + lineBytes > budget) {
-      chunks.push(cur);
-      cur = line;
-      curBytes = lineBytes;
-    } else {
-      cur = cur ? cur + "\n" + line : line;
-      curBytes += lineBytes;
+  let i = 0;
+  const len = payload.length;
+  while (i < len) {
+    let chunkBytes = 0;
+    let lastNewlineEnd = -1;
+    let j = i;
+    while (j < len) {
+      const code = payload.codePointAt(j);
+      const cpBytes = code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4;
+      if (chunkBytes + cpBytes > budget) break;
+      chunkBytes += cpBytes;
+      const cpUtf16 = code >= 0x10000 ? 2 : 1;
+      if (payload[j] === "\n") lastNewlineEnd = j + 1;
+      j += cpUtf16;
     }
+    if (j === i) {
+      // 1 文字でも budget を超える病的ケース。これ以上分割できないので強制送出
+      chunks.push(payload.slice(i, i + 1));
+      i += 1;
+      continue;
+    }
+    const splitJ = lastNewlineEnd > i ? lastNewlineEnd : j;
+    chunks.push(payload.slice(i, splitJ));
+    i = splitJ;
   }
-  if (cur) chunks.push(cur);
   return chunks.length === 0 ? [""] : chunks;
 }
 

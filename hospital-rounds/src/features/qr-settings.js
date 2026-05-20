@@ -232,7 +232,7 @@ function startScan() {
       if (recvPages.size === recvTotal) {
         const full = [];
         for (let i = 1; i <= recvTotal; i++) full.push(recvPages.get(i));
-        const payload = full.join("\n");
+        const payload = full.join("");
         resetRecv();
         ctrl.setStatus(`全 ${recvTotal} ページ受信完了`);
         setTimeout(() => applySettings(decodePayload(payload)), 100);
