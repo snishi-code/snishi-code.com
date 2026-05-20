@@ -24,6 +24,7 @@ import { DOCS_BUNDLE } from "./docs-bundle.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initImportExport } from "./features/import-export.js";
 import { initSharedQr, refreshSharedQrIfActive, initMemoQr, refreshMemoQrIfActive } from "./features/qr-shared.js";
+import { createPrintFlow } from "./features/print.js";
 import { sortPatientsByRoom, invalidateSortSnapshot } from "./features/room.js";
 import { initAdminUI, refreshAdminAvailability, setAdminAppliedHandler } from "./features/admin-ui.js";
 import { scanQR, isScannerSupported } from "./features/qr-scan.js";
@@ -262,39 +263,38 @@ if (sharedEditBtn) sharedEditBtn.addEventListener("click", () => {
 // Print buttons
 // ============================
 
-const memoPrintBtn = document.getElementById("memoPrintBtn");
-const sharedPrintBtn = document.getElementById("sharedPrintBtn");
 const overviewBtn = document.getElementById("overviewBtn");
-const overviewPrintBtn = document.getElementById("overviewPrintBtn");
-
 if (overviewBtn) overviewBtn.addEventListener("click", () => {
   renderOverviewScreen();
   showView("overview");
 });
 
-if (memoPrintBtn) memoPrintBtn.addEventListener("click", () => {
-  const limit = lastMemoNo();
-  doRenderMemo({ limit: limit || appState.patients.length });
-  requestAnimationFrame(() => window.print());
+// 印刷フローはターゲットごとに createPrintFlow のインスタンスを作る。
+// prepare で印刷向けに整え（メモ/共有は最後の入力位置で打ち切り、その他は
+// 単に再描画）、restore で通常表示に戻す。新しい印刷対象を足したいときは
+// このリストに 1 つ instance を増やすだけ。
+const memoPrintFlow = createPrintFlow({
+  viewName: "memo",
+  prepare: () => doRenderMemo({ limit: lastMemoNo() || appState.patients.length }),
+  restore: () => doRenderMemo(),
+});
+const sharedPrintFlow = createPrintFlow({
+  viewName: "shared",
+  prepare: () => doRenderShared({ limit: lastSharedNo() || appState.patients.length }),
+  restore: () => doRenderShared(),
+});
+const overviewPrintFlow = createPrintFlow({
+  viewName: "overview",
+  prepare: () => renderOverviewScreen(),
+});
+const settingsPrintFlow = createPrintFlow({
+  viewName: "settings",
 });
 
-if (sharedPrintBtn) sharedPrintBtn.addEventListener("click", () => {
-  const limit = lastSharedNo();
-  doRenderShared({ limit: limit || appState.patients.length });
-  requestAnimationFrame(() => window.print());
-});
-
-window.addEventListener("afterprint", () => {
-  const memoView = document.getElementById("memoView");
-  const sharedView = document.getElementById("sharedView");
-  if (memoView && memoView.classList.contains("active")) doRenderMemo();
-  if (sharedView && sharedView.classList.contains("active")) doRenderShared();
-});
-
-if (overviewPrintBtn) overviewPrintBtn.addEventListener("click", () => {
-  renderOverviewScreen();
-  requestAnimationFrame(() => window.print());
-});
+document.getElementById("memoPrintBtn")?.addEventListener("click", memoPrintFlow.print);
+document.getElementById("sharedPrintBtn")?.addEventListener("click", sharedPrintFlow.print);
+document.getElementById("overviewPrintBtn")?.addEventListener("click", overviewPrintFlow.print);
+document.getElementById("settingsPrintBtn")?.addEventListener("click", settingsPrintFlow.print);
 
 // ============================
 // Import / Export

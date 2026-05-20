@@ -149,7 +149,6 @@ export function initImportExport(callbacks) {
   const settingsImportFile = document.getElementById("settingsImportFile");
   const settingsImportBtn = document.getElementById("settingsImportBtn");
   const settingsExportBtn = document.getElementById("settingsExportBtn");
-  const settingsPrintBtn = document.getElementById("settingsPrintBtn");
 
   let lastExportUrl = null;
 
@@ -294,9 +293,4 @@ export function initImportExport(callbacks) {
     });
   }
 
-  if (settingsPrintBtn) {
-    settingsPrintBtn.addEventListener("click", () => {
-      requestAnimationFrame(() => window.print());
-    });
-  }
 }
