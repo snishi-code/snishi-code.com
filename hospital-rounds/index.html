@@ -103,7 +103,7 @@
           </button>
         </div>
         <div class="detailTopActions">
-          <button class="iconBtn" id="memoShowPasteBtn" type="button" title="受信メモを開く" aria-label="受信メモを開く">
+          <button class="iconBtn" id="memoShowQrBtn" type="button" title="メモQR表示" aria-label="メモQR表示">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="5" y="5" width="3" height="3" fill="currentColor"/><rect x="16" y="5" width="3" height="3" fill="currentColor"/><rect x="5" y="16" width="3" height="3" fill="currentColor"/><rect x="14" y="14" width="3" height="3" fill="currentColor"/><rect x="19" y="14" width="2" height="2" fill="currentColor"/><rect x="14" y="19" width="2" height="2" fill="currentColor"/><rect x="19" y="19" width="2" height="2" fill="currentColor"/></svg>
           </button>
           <button class="iconBtn" id="memoPrintBtn" type="button" title="印刷" aria-label="印刷">
@@ -111,22 +111,43 @@
           </button>
         </div>
       </div>
-      <div class="card qrWrap" id="memoPasteCard">
+      <div class="card qrWrap" id="memoQrWrap">
         <div class="cardHead">
-          <div class="label">受信メモ</div>
+          <div class="label">メモQR</div>
           <div style="display:flex;align-items:center;gap:8px;">
-            <div class="qrHint">他端末で読み取ったテキストをここに貼り付けて確認できます</div>
-            <button class="iconBtn" id="memoPasteCloseBtn" type="button" title="閉じる" aria-label="閉じる">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <span class="qrHint"><span class="mono" id="memoQrPageMeta"></span></span>
+            <button class="iconBtn" id="memoQrScanBtn" type="button" title="カメラで QR を読む" aria-label="カメラで QR を読む">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             </button>
           </div>
         </div>
         <div class="cardBody">
-          <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-            <button class="iconBtn" id="memoPasteScanBtn" type="button" title="カメラで QR を読む" aria-label="カメラで QR を読む">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <div class="qrHint">
+            <div class="mono" id="memoQrTextPreview" style="margin-top:6px;word-break:break-all;white-space:pre-wrap"></div>
+          </div>
+        </div>
+        <div
+          style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border-top:1px solid var(--line);background:#fafafa;flex-wrap:wrap">
+          <div class="qrHint">複数QRの場合は順番に読み取ってください。対象患者は上部のタグフィルターで絞り込めます。</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="secondary" id="memoQrPrevBtn" type="button" title="前" aria-label="前">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button class="secondary" id="memoQrNextBtn" type="button" title="次" aria-label="次">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           </div>
+        </div>
+        <canvas id="memoQrCanvas" width="800" height="800"></canvas>
+      </div>
+      <div class="card qrWrap" id="memoPasteCard">
+        <div class="cardHead">
+          <div class="label">受信メモ</div>
+          <button class="iconBtn" id="memoPasteCloseBtn" type="button" title="閉じる" aria-label="閉じる">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="cardBody">
           <textarea id="memoPasteArea" style="min-height: 160px;"></textarea>
         </div>
       </div>

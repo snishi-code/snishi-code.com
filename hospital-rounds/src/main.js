@@ -23,7 +23,7 @@ import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./fea
 import { DOCS_BUNDLE } from "./docs-bundle.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initImportExport } from "./features/import-export.js";
-import { initSharedQr, refreshSharedQrIfActive, buildTimestampHeader } from "./features/qr-shared.js";
+import { initSharedQr, refreshSharedQrIfActive, initMemoQr, refreshMemoQrIfActive } from "./features/qr-shared.js";
 import { sortPatientsByRoom, invalidateSortSnapshot } from "./features/room.js";
 import { initAdminUI, refreshAdminAvailability, setAdminAppliedHandler } from "./features/admin-ui.js";
 import { scanQR, isScannerSupported } from "./features/qr-scan.js";
@@ -115,6 +115,7 @@ function refreshPatientUI() {
   else if (viewId === "detailView") doRenderDetail();
   else if (viewId === "homeView") doRenderHome();
   refreshSharedQrIfActive();
+  refreshMemoQrIfActive();
 }
 
 initSettingsView(doRenderDetail, renderQrIfNeeded, refreshPatientUI);
@@ -320,6 +321,7 @@ initActionMenu();
 // ============================
 
 initSharedQr();
+initMemoQr();
 initAdminUI();
 setAdminAppliedHandler(() => {
   doRenderHome();
@@ -353,32 +355,35 @@ if (memoRoomSortBtn) memoRoomSortBtn.addEventListener("click", doSortByRoom);
 if (sharedRoomSortBtn) sharedRoomSortBtn.addEventListener("click", doSortByRoom);
 
 // ============================
-// Shared / Memo paste card close buttons
+// Paste card close buttons
 // ============================
 
-function wireCloseButton(btnId, cardId) {
-  const btn = document.getElementById(btnId);
-  if (!btn) return;
-  btn.addEventListener("click", () => {
-    const card = document.getElementById(cardId);
+// 共有画面：×でそのまま閉じる（受信内容を続きでスキャンするケースに備え確認なし）
+const sharedPasteCloseBtn = document.getElementById("sharedPasteCloseBtn");
+if (sharedPasteCloseBtn) {
+  sharedPasteCloseBtn.addEventListener("click", () => {
+    const card = document.getElementById("sharedPasteCard");
     if (card) card.classList.remove("active");
   });
 }
-wireCloseButton("sharedPasteCloseBtn", "sharedPasteCard");
-wireCloseButton("memoPasteCloseBtn", "memoPasteCard");
+
+// メモ画面：受信メモはスキャン直後のスクラッチ表示で、閉じると内容も破棄する。
+// 誤タップでスキャン結果を失わないよう確認を入れる。
+const memoPasteCloseBtn = document.getElementById("memoPasteCloseBtn");
+if (memoPasteCloseBtn) {
+  memoPasteCloseBtn.addEventListener("click", () => {
+    const area = document.getElementById("memoPasteArea");
+    const hasContent = !!(area && String(area.value || "").trim());
+    if (hasContent && !confirm("受信メモを閉じます。表示中の内容は消去されます。よろしいですか？")) return;
+    const card = document.getElementById("memoPasteCard");
+    if (card) card.classList.remove("active");
+    if (area) area.value = "";
+  });
+}
 
 // カメラ QR スキャナ。読み取り結果を該当 textarea に追記してから input イベントを起こす
 // （既存の貼付ハンドラはこれで普通に発火する）。
-function appendScannedToTextarea(area, text, opts = {}) {
-  if (!area || !text) return;
-  const cur = area.value || "";
-  const sep = cur && !cur.endsWith("\n") ? "\n" : "";
-  const entry = opts.withTimestamp ? buildTimestampHeader() + "\n" + text : text;
-  area.value = cur + sep + entry;
-  area.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
-function wireScanButton(btnId, areaId, opts = {}) {
+function wireScanButton(btnId, areaId) {
   const btn = document.getElementById(btnId);
   if (!btn) return;
   if (!isScannerSupported()) {
@@ -389,30 +394,17 @@ function wireScanButton(btnId, areaId, opts = {}) {
     const text = await scanQR();
     if (text == null) return;
     const area = document.getElementById(areaId);
-    appendScannedToTextarea(area, text, { withTimestamp: opts.withTimestamp });
-    if (opts.openCardId) {
-      const card = document.getElementById(opts.openCardId);
-      if (card) card.classList.add("active");
-    }
+    if (!area) return;
+    const cur = area.value || "";
+    const sep = cur && !cur.endsWith("\n") ? "\n" : "";
+    area.value = cur + sep + text;
+    area.dispatchEvent(new Event("input", { bubbles: true }));
   });
 }
 
 // Paste-card camera handles continuation scans (text accumulates in the area).
 wireScanButton("sharedPasteScanBtn", "sharedPasteArea");
 wireScanButton("adminImportScanBtn", "adminImportArea");
-// Memo view: in-card camera reads QR and appends with a timestamp prefix.
-wireScanButton("memoPasteScanBtn", "memoPasteArea", { withTimestamp: true });
-
-// Memo view: toolbar QR button toggles the 受信メモ card open/closed
-// (mirrors 共有画面の sharedShowQrBtn → sharedQrWrap toggle).
-const memoShowPasteBtn = document.getElementById("memoShowPasteBtn");
-if (memoShowPasteBtn) {
-  memoShowPasteBtn.addEventListener("click", () => {
-    const card = document.getElementById("memoPasteCard");
-    if (!card) return;
-    card.classList.toggle("active");
-  });
-}
 
 // ============================
 // Reset

@@ -6,6 +6,7 @@ import { syncDetailMemoDisplay } from "../features/navigation.js";
 import { makePatientTagPicker, makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
 import { makeRoomInput, formatPatientLabel, isRoomSortActive } from "../features/room.js";
 import { isNonAdminTerminal } from "../features/admin.js";
+import { refreshMemoQrIfActive } from "../features/qr-shared.js";
 import { recordOp } from "../features/roster.js";
 import { statusClass } from "./home.js";
 
@@ -31,6 +32,8 @@ function renderMemoSortBtn() {
 export function renderMemoScreen(renderHomeFn, opts, navigateToPatientFn) {
   const rerender = () => renderMemoScreen(renderHomeFn, opts, navigateToPatientFn);
   renderMemoTagFilter(rerender);
+  // 上のタグフィルターが変わったらメモQRの対象も追随させる。
+  refreshMemoQrIfActive();
   renderMemoSortBtn();
   const memoListHost = document.getElementById("memoListHost");
   if (!memoListHost) return;
