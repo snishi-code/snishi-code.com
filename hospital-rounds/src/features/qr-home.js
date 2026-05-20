@@ -32,7 +32,48 @@ const KIND = "HM";
 
 // ============================
 // Encode / Decode payload
+//
+// 各患者は 1 行 `部屋|名前|タグidx,...` の pipe 区切り。サイズ最優先で
+// 位置依存（key 名は持たない）。後ろが空のフィールドは pipe ごと省略可能。
+// 連続空患者は `_N` で RLE。
+//
+// pipe `|` / バックスラッシュ `\` / 改行 `\n` が値に含まれる可能性を考慮し、
+// それぞれ `\|` / `\\` / `\n`（2文字）にエスケープする。
 // ============================
+
+function escapeField(s) {
+  return String(s).replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\n/g, "\\n");
+}
+function unescapeField(s) {
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "\\" && i + 1 < s.length) {
+      const c = s[i + 1];
+      out += c === "n" ? "\n" : c;
+      i++;
+    } else {
+      out += s[i];
+    }
+  }
+  return out;
+}
+function splitEscapedPipe(line) {
+  const parts = [];
+  let cur = "";
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === "\\" && i + 1 < line.length) {
+      cur += line[i] + line[i + 1];
+      i++;
+    } else if (line[i] === "|") {
+      parts.push(cur);
+      cur = "";
+    } else {
+      cur += line[i];
+    }
+  }
+  parts.push(cur);
+  return parts;
+}
 
 function encodeRoster() {
   const tagIdxByName = new Map();
@@ -51,11 +92,9 @@ function encodeRoster() {
       .filter(v => typeof v === "number");
     if (!room && !name && tagIdxs.length === 0) { emptyRun++; continue; }
     flushRun();
-    const obj = {};
-    if (room) obj.r = room;
-    if (name) obj.n = name;
-    if (tagIdxs.length) obj.t = tagIdxs;
-    lines.push(JSON.stringify(obj));
+    const parts = [escapeField(room), escapeField(name), tagIdxs.join(",")];
+    while (parts.length > 1 && parts[parts.length - 1] === "") parts.pop();
+    lines.push(parts.join("|"));
   }
   // 末尾の連続空は反映時に無意味なので捨てる
   return lines.join("\n");
@@ -71,16 +110,14 @@ function decodeRoster(payload) {
       for (let i = 0; i < n; i++) out.push({ room: "", name: "", tagIdxs: [] });
       continue;
     }
-    try {
-      const o = JSON.parse(line);
-      out.push({
-        room: String(o.r || ""),
-        name: String(o.n || ""),
-        tagIdxs: Array.isArray(o.t) ? o.t.filter(v => typeof v === "number") : [],
-      });
-    } catch (_) {
-      console.warn("home QR: skip malformed line", line);
-    }
+    const parts = splitEscapedPipe(line);
+    const room = unescapeField(parts[0] || "");
+    const name = unescapeField(parts[1] || "");
+    const tagsRaw = parts[2] || "";
+    const tagIdxs = tagsRaw
+      ? tagsRaw.split(",").map(s => parseInt(s.trim(), 10)).filter(v => Number.isFinite(v))
+      : [];
+    out.push({ room, name, tagIdxs });
   }
   return out;
 }

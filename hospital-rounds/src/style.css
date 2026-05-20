@@ -85,7 +85,7 @@
       background: rgba(255, 255, 255, 0.12);
     }
 
-    html[data-env="test"] header .appTitleInput:focus {
+    html[data-env="test"] header .appTitleInput:not([readonly]):focus {
       background: rgba(255, 255, 255, 0.95);
       color: var(--text);
       border-color: rgba(255, 255, 255, 0.6);
