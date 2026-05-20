@@ -226,6 +226,11 @@
       background: rgba(0, 0, 0, 0.05);
     }
 
+    /* 普段は readonly でホームボタン代替。クリック可能であることを示す。 */
+    .appTitleInput[readonly] {
+      cursor: pointer;
+    }
+
     .appTitle .sub {
       font-size: 12px;
       color: var(--muted)
@@ -1445,4 +1450,19 @@
 
     .popupMenu button:last-child {
       margin-bottom: 0;
+    }
+
+    /* アイコン専用メニュー（ヘッダーのハンバーガー等）。ボタンを横並びにし、
+       タッチ目標を 44px 以上に確保する。 */
+    .popupMenu.menuIcons {
+      width: auto;
+      display: flex;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .popupMenu.menuIcons button {
+      width: 48px;
+      height: 48px;
+      margin: 0;
     }

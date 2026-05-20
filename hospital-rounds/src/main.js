@@ -188,8 +188,6 @@ function navToHome() {
 
 const headerMemoBtn = document.getElementById("headerMemoBtn");
 const headerSharedBtn = document.getElementById("headerSharedBtn");
-const headerHomeBtn = document.getElementById("headerHomeBtn");
-const headerSettingsBtn = document.getElementById("headerSettingsBtn");
 const headerHelpBtn = document.getElementById("headerHelpBtn");
 
 function navToSettings() {
@@ -203,8 +201,6 @@ function navToSettings() {
 
 if (headerMemoBtn) headerMemoBtn.addEventListener("click", navToMemo);
 if (headerSharedBtn) headerSharedBtn.addEventListener("click", navToShared);
-if (headerHomeBtn) headerHomeBtn.addEventListener("click", navToHome);
-if (headerSettingsBtn) headerSettingsBtn.addEventListener("click", navToSettings);
 // Docs are bundled into the app (DOCS_BUNDLE) so the help view works offline
 // without any network or service-worker cache hits. Image URLs inside the
 // bundle use a `__BASE__/` placeholder so the same bundle works under any
@@ -481,7 +477,31 @@ setMarkUpdatedHandler(() => invalidateSortSnapshot());
 window.addEventListener("beforeunload", () => { try { flushCommit(); } catch (_) {} });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") { try { flushCommit(); } catch (_) {} } });
 
+// タイトル入力欄はメモ/共有画面と同じ「普段は表示・鉛筆で編集モード」の
+// パターン。readonly のときはタップでホームへ戻るボタン代替として動かす。
 const appTitleInput = document.getElementById("appTitleInput");
+const headerEditTitleBtn = document.getElementById("headerEditTitleBtn");
+let titleEditing = false;
+
+function setTitleEditing(on) {
+  titleEditing = !!on;
+  if (appTitleInput) {
+    appTitleInput.readOnly = !titleEditing;
+    if (titleEditing) {
+      appTitleInput.focus();
+      appTitleInput.select();
+    } else {
+      appTitleInput.blur();
+    }
+  }
+  if (headerEditTitleBtn) {
+    headerEditTitleBtn.classList.toggle("editActive", titleEditing);
+    headerEditTitleBtn.innerHTML = titleEditing ? CHECK_SVG : PENCIL_SVG;
+    headerEditTitleBtn.title = titleEditing ? "完了" : "タイトル編集";
+    headerEditTitleBtn.setAttribute("aria-label", titleEditing ? "完了" : "タイトル編集");
+  }
+}
+
 if (appTitleInput) {
   appTitleInput.value = appState.title;
   updateAppTitle(appState.title);
@@ -489,7 +509,55 @@ if (appTitleInput) {
     updateAppTitle(e.target.value);
     scheduleSave();
   });
+  // readonly 中のクリックはホーム遷移として扱う（編集中は通常通り入力に集中）
+  appTitleInput.addEventListener("click", () => {
+    if (!titleEditing) navToHome();
+  });
+  // 編集中に Enter を押したら確定して readonly に戻る
+  appTitleInput.addEventListener("keydown", (e) => {
+    if (titleEditing && e.key === "Enter") {
+      e.preventDefault();
+      setTitleEditing(false);
+    }
+  });
 }
+if (headerEditTitleBtn) {
+  headerEditTitleBtn.addEventListener("click", () => setTitleEditing(!titleEditing));
+}
+
+// ハンバーガーメニュー（設定・印刷・取込・保存）。ヘッダー右の ☰ で開閉し、
+// 各アイコンをタップしたらメニューを閉じてから実行する。取込/保存は
+// import-export.js が既存の settingsImportBtn / settingsExportBtn を見ている
+// ので、その隠しボタンへ click を委譲して再利用する。
+const headerMenuBtn = document.getElementById("headerMenuBtn");
+const headerMenuOverlay = document.getElementById("headerMenuOverlay");
+function closeHeaderMenu() {
+  if (headerMenuOverlay) headerMenuOverlay.classList.remove("active");
+}
+function openHeaderMenu() {
+  if (headerMenuOverlay) headerMenuOverlay.classList.add("active");
+}
+if (headerMenuBtn) headerMenuBtn.addEventListener("click", () => {
+  if (headerMenuOverlay?.classList.contains("active")) closeHeaderMenu();
+  else openHeaderMenu();
+});
+if (headerMenuOverlay) headerMenuOverlay.addEventListener("click", (e) => {
+  if (e.target === headerMenuOverlay) closeHeaderMenu();
+});
+
+document.getElementById("menuSettingsBtn")?.addEventListener("click", () => {
+  closeHeaderMenu();
+  navToSettings();
+});
+document.getElementById("menuPrintBtn")?.addEventListener("click", () => {
+  closeHeaderMenu();
+  overviewPrintFlow.print();
+});
+// 取込・保存ボタンは settingsImportBtn / settingsExportBtn の ID のまま
+// ハンバーガー内に置いてあり、import-export.js が click を拾って実処理する。
+// ここではメニューを閉じるだけ追加で行う。
+document.getElementById("settingsImportBtn")?.addEventListener("click", closeHeaderMenu);
+document.getElementById("settingsExportBtn")?.addEventListener("click", closeHeaderMenu);
 
 const storageKeyLabel = document.getElementById("storageKeyLabel");
 if (storageKeyLabel) storageKeyLabel.textContent = STORAGE_KEYS.bundle;
