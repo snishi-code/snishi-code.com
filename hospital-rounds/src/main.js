@@ -400,10 +400,19 @@ function wireScanButton(btnId, areaId, opts = {}) {
 // Paste-card camera handles continuation scans (text accumulates in the area).
 wireScanButton("sharedPasteScanBtn", "sharedPasteArea");
 wireScanButton("adminImportScanBtn", "adminImportArea");
-// Memo view: toolbar camera opens the 受信メモ card with a timestamp-prefixed
-// entry; in-card camera appends additional timestamp-prefixed scans.
-wireScanButton("memoShowScanBtn", "memoPasteArea", { openCardId: "memoPasteCard", withTimestamp: true });
+// Memo view: in-card camera reads QR and appends with a timestamp prefix.
 wireScanButton("memoPasteScanBtn", "memoPasteArea", { withTimestamp: true });
+
+// Memo view: toolbar QR button toggles the 受信メモ card open/closed
+// (mirrors 共有画面の sharedShowQrBtn → sharedQrWrap toggle).
+const memoShowPasteBtn = document.getElementById("memoShowPasteBtn");
+if (memoShowPasteBtn) {
+  memoShowPasteBtn.addEventListener("click", () => {
+    const card = document.getElementById("memoPasteCard");
+    if (!card) return;
+    card.classList.toggle("active");
+  });
+}
 
 // ============================
 // Reset
