@@ -1,4 +1,4 @@
-const CACHE = 'hospital-rounds-v7';
+const CACHE = 'hospital-rounds-v8';
 
 // SW のスコープ（=sw.js が置かれているディレクトリ）。本番では '/hospital-rounds/'、
 // テスト(サブドメイン)では '/' になる。相対URL は self.registration.scope を起点に解決。
@@ -16,11 +16,10 @@ const SHELL = [
 async function precacheAll() {
   const cache = await caches.open(CACHE);
   await Promise.allSettled(SHELL.map((u) => cache.add(u)));
-  // 説明書の precache list は snishi-code.com 本番の /docs/hospital-rounds/ 配下にのみ存在。
-  // テスト環境では 404 となるが try/catch で無視される（説明書は src/docs-bundle.js に
-  // インライン化されているため、画像が無くてもアプリ動作には支障なし）。
+  // 説明書画像の precache list はアプリ自身が同梱（public/docs-images/precache-list.json）。
+  // 取得に失敗してもアプリ本体・説明書HTMLは src/docs-bundle.js にインライン化されているため動作に支障なし。
   try {
-    const res = await fetch('/docs/hospital-rounds/precache-list.json', { cache: 'no-cache' });
+    const res = await fetch(new URL('./docs-images/precache-list.json', SCOPE).href, { cache: 'no-cache' });
     if (res && res.ok) {
       const list = await res.json();
       if (Array.isArray(list)) {
