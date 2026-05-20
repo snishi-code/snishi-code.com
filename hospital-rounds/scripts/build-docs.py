@@ -1,12 +1,27 @@
 #!/usr/bin/env python3
-"""Generate docs HTML from Markdown (Obsidian-flavoured)."""
-import os, re, json, shutil, html as htmllib
+"""Generate the in-app docs bundle from Markdown (Obsidian-flavoured).
+
+This script lives inside the hospital-rounds app and every input/output
+also lives inside ``hospital-rounds/`` so the manual stays fully
+self-contained. The Markdown source is a gitignored Obsidian vault at
+``hospital-rounds/docs-src/`` — open that folder in Obsidian to edit
+the manual, then re-run this script to refresh the in-app bundle.
+"""
+import json, re, shutil, html as htmllib
 from pathlib import Path
 
-SRC          = Path("docs-src/hospital-rounds")
-DEST         = Path("docs/hospital-rounds")
-SHARED_CSS   = Path("shared.css")
-BUNDLE_DEST  = Path("hospital-rounds/src/docs-bundle.js")
+# ── Paths (resolved relative to this script) ───────────────────────────────
+SCRIPT_DIR = Path(__file__).resolve().parent
+APP_DIR    = SCRIPT_DIR.parent              # hospital-rounds/
+
+SRC          = APP_DIR / "docs-src"                                # gitignored Obsidian vault
+SHARED_CSS   = APP_DIR / "shared.css"                              # app-local copy
+BUNDLE_DEST  = APP_DIR / "src" / "docs-bundle.js"                  # in-app embed bundle
+IMAGE_DEST   = APP_DIR / "public" / "docs-images"                  # served at /hospital-rounds/docs-images/
+PRECACHE_DEST = IMAGE_DEST / "precache-list.json"                  # SW reads from same dir
+
+# Absolute URL where docs images are served from (under the app scope).
+IMG_BASE = "/hospital-rounds/docs-images"
 
 PAGES = [
     ("01_はじめに.md",                              "はじめに"),
@@ -22,9 +37,6 @@ PAGES = [
 ]
 
 # ── Inline transformations ─────────────────────────────────────────────────
-
-IMG_BASE = "/docs/hospital-rounds/images"
-
 
 def inline(text):
     # Obsidian image: ![[name.webp|WxH]] → absolute path (works in iframe srcdoc too)
@@ -226,53 +238,38 @@ DOCS_CSS = """
 .docs-toc .toc-num { font-size: .75rem; color: var(--muted); width: 20px; }
 .docs-toc .toc-title { font-weight: 600; }
 .docs-toc .toc-arrow { margin-left: auto; color: var(--muted); }
-/* Embedded mode: hide site chrome + neutralise external links */
-.docs-embedded header, .docs-embedded footer { display: none !important; }
-.docs-embedded main { padding-top: 0 !important; }
-.docs-embedded .docs-wrap { padding-top: 12px !important; }
-.docs-embedded .docs-breadcrumb { margin-bottom: 16px !important; }
-.docs-extlink-text { color: inherit; }
+/* Docs are always rendered inside the in-app iframe (srcdoc); no need for outer chrome. */
 """
 
+# Intercept intra-docs clicks and hand them to the parent so the bundled HTML
+# can be swapped without any network roundtrip. Absolute paths and external
+# URLs are flattened to plain text since standalone docs no longer exist.
 EMBED_SCRIPT = """
-    if (window !== window.parent) {
-      document.documentElement.classList.add('docs-embedded');
-      document.addEventListener('DOMContentLoaded', function() {
-        // External links (snishi-code logo, /medical/, etc.) → render as plain text.
-        document.querySelectorAll('a[href]').forEach(function(a) {
-          var href = a.getAttribute('href') || '';
-          var external = /^https?:\\/\\//.test(href) || (href.charAt(0) === '/' && href.indexOf('/docs/hospital-rounds/') !== 0);
-          if (!external) return;
-          var span = document.createElement('span');
-          span.className = 'docs-extlink-text';
-          span.innerHTML = a.innerHTML;
-          a.parentNode.replaceChild(span, a);
-        });
-      });
-      // Intra-docs navigation → ask the parent to swap the bundled HTML
-      // (no network roundtrip — works fully offline). Registered in the capture
-      // phase so the link's default navigation never fires.
-      document.addEventListener('click', function(e) {
-        var t = e.target;
-        var a = (t && t.closest) ? t.closest('a[href]') : null;
-        if (!a) return;
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('a[href]').forEach(function(a) {
         var href = a.getAttribute('href') || '';
-        if (/^https?:\\/\\//.test(href)) return;
-        // Pull the bare file name. Accepts: foo.html | path/foo.html | /docs/hospital-rounds/[foo.html] | docs index path
-        var page = null;
-        if (/\\.html(?:[#?]|$)/.test(href)) {
-          page = href.split('/').pop().split('#')[0].split('?')[0];
-        } else if (href === '/docs/hospital-rounds/' || href === '/docs/hospital-rounds') {
-          page = 'index.html';
-        } else if (href.indexOf('/docs/hospital-rounds/') === 0) {
-          page = href.split('/').pop() || 'index.html';
-        }
-        if (!page) return;
-        e.preventDefault();
-        e.stopPropagation();
+        // Internal docs links are bare *.html — anything else is external and shouldn't navigate.
+        var isInternal = /^[^/#?]+\\.html(?:[#?]|$)/.test(href);
+        if (isInternal) return;
+        var span = document.createElement('span');
+        span.className = 'docs-extlink-text';
+        span.innerHTML = a.innerHTML;
+        a.parentNode.replaceChild(span, a);
+      });
+    });
+    document.addEventListener('click', function(e) {
+      var t = e.target;
+      var a = (t && t.closest) ? t.closest('a[href]') : null;
+      if (!a) return;
+      var href = a.getAttribute('href') || '';
+      if (!/^[^/#?]+\\.html(?:[#?]|$)/.test(href)) return;
+      var page = href.split('#')[0].split('?')[0];
+      e.preventDefault();
+      e.stopPropagation();
+      if (window.parent && window.parent !== window) {
         window.parent.postMessage({ type: 'docs-nav', page: page }, '*');
-      }, true);
-    }
+      }
+    }, true);
 """
 
 def page_html(title, content_html, prev_page, next_page, shared_css, app_name="回診"):
@@ -290,38 +287,20 @@ def page_html(title, content_html, prev_page, next_page, shared_css, app_name="�
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{title} — {app_name} 説明書</title>
-  <base href="/docs/hospital-rounds/">
   <style>{shared_css}
 {DOCS_CSS}</style>
   <script>{EMBED_SCRIPT}</script>
 </head>
 <body>
-  <header>
-    <div class="header-inner">
-      <div class="header-left">
-        <a class="logo-mark" href="/">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-        </a>
-        <a class="site-name" href="/" style="text-decoration:none;color:inherit;font-weight:600;font-size:.95rem;">snishi-code</a>
-      </div>
+  <div class="docs-wrap">
+    <div class="docs-breadcrumb">
+      <a href="index.html">{app_name} 説明書</a> › {title}
     </div>
-  </header>
-  <main>
-    <div class="docs-wrap">
-      <div class="docs-breadcrumb">
-        <a href="/medical/">医療用ツール</a> › <a href="index.html">{app_name} 説明書</a> › {title}
-      </div>
-      <article class="docs-body">
-        {content_html}
-      </article>
-      {page_nav}
-    </div>
-  </main>
-  <footer>
-    <div class="footer-inner">
-      <span>© 2026 snishi-code. All rights reserved.</span>
-    </div>
-  </footer>
+    <article class="docs-body">
+      {content_html}
+    </article>
+    {page_nav}
+  </div>
 </body>
 </html>"""
 
@@ -343,74 +322,45 @@ def index_html(pages, shared_css):
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>回診 説明書</title>
-  <base href="/docs/hospital-rounds/">
   <style>{shared_css}
 {DOCS_CSS}</style>
   <script>{EMBED_SCRIPT}</script>
 </head>
 <body>
-  <header>
-    <div class="header-inner">
-      <div class="header-left">
-        <a class="logo-mark" href="/">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-        </a>
-        <a class="site-name" href="/" style="text-decoration:none;color:inherit;font-weight:600;font-size:.95rem;">snishi-code</a>
-      </div>
-    </div>
-  </header>
-  <main>
-    <div class="docs-wrap">
-      <div class="docs-breadcrumb">
-        <a href="/medical/">医療用ツール</a> › 回診 説明書
-      </div>
-      <article class="docs-body">
-        <h1>回診 — 説明書</h1>
-        <p>各機能の使い方を説明します。</p>
-        <ul class="docs-toc">
+  <div class="docs-wrap">
+    <article class="docs-body">
+      <h1>回診 — 説明書</h1>
+      <p>各機能の使い方を説明します。</p>
+      <ul class="docs-toc">
     {items}</ul>
-      </article>
-    </div>
-  </main>
-  <footer>
-    <div class="footer-inner">
-      <span>© 2026 snishi-code. All rights reserved.</span>
-    </div>
-  </footer>
+    </article>
+  </div>
 </body>
 </html>"""
 
 # ── Main ───────────────────────────────────────────────────────────────────
 
 def main():
-    DEST.mkdir(parents=True, exist_ok=True)
+    if not SRC.exists():
+        raise SystemExit(f"docs-src not found: {SRC} — place the Obsidian vault here before running.")
+
     BUNDLE_DEST.parent.mkdir(parents=True, exist_ok=True)
+    IMAGE_DEST.mkdir(parents=True, exist_ok=True)
 
     shared_css = SHARED_CSS.read_text(encoding="utf-8") if SHARED_CSS.exists() else ""
 
-    # Sync images (replace folder atomically)
+    # Sync images into the app's public/ tree (vite will ship them at /hospital-rounds/docs-images/)
     src_images = SRC / "images"
-    dest_images = DEST / "images"
     if src_images.exists():
-        if dest_images.exists():
-            shutil.rmtree(dest_images)
-        shutil.copytree(src_images, dest_images)
-        print(f"✓ images/ ({sum(1 for _ in dest_images.iterdir())} files)")
+        if IMAGE_DEST.exists():
+            shutil.rmtree(IMAGE_DEST)
+        shutil.copytree(src_images, IMAGE_DEST)
+        print(f"✓ images/ ({sum(1 for _ in IMAGE_DEST.iterdir())} files) → {IMAGE_DEST.relative_to(APP_DIR)}")
 
     # Bundle of HTML strings for in-app (offline) embedding via iframe srcdoc
-    bundle = {}
-
-    # Write index
-    index_content = index_html(PAGES, shared_css)
-    (DEST / "index.html").write_text(index_content, encoding="utf-8")
-    bundle["index.html"] = index_content
+    bundle = {"index.html": index_html(PAGES, shared_css)}
     print("✓ index.html")
 
-    # Collect URLs for service-worker pre-cache (images only — HTML is bundled in app)
-    base = f"/{DEST.as_posix()}"
-    precache = []
-
-    # Write each page
     for idx, (fname, title) in enumerate(PAGES):
         src_path = SRC / fname
         if not src_path.exists():
@@ -430,30 +380,25 @@ def main():
             next_page = (nf.replace('.md', ''), nt)
 
         out_name = fname.replace('.md', '.html')
-        html = page_html(title, body, prev_page, next_page, shared_css)
-        (DEST / out_name).write_text(html, encoding="utf-8")
-        bundle[out_name] = html
+        bundle[out_name] = page_html(title, body, prev_page, next_page, shared_css)
         print(f"✓ {out_name}")
 
-    # Add all webp images to SW precache (HTML is bundled in app, doesn't need SW)
-    if dest_images.exists():
-        for img in sorted(dest_images.iterdir()):
+    # SW precache list: only image URLs (HTML lives inside the bundle JS).
+    precache = []
+    if IMAGE_DEST.exists():
+        for img in sorted(IMAGE_DEST.iterdir()):
             if img.suffix.lower() == ".webp":
-                precache.append(f"{base}/images/{img.name}")
+                precache.append(f"{IMG_BASE}/{img.name}")
 
-    (DEST / "precache-list.json").write_text(
+    PRECACHE_DEST.write_text(
         json.dumps(precache, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    print(f"✓ precache-list.json ({len(precache)} image entries)")
+    print(f"✓ {PRECACHE_DEST.relative_to(APP_DIR)} ({len(precache)} image entries)")
 
-    # Write in-app docs bundle (read by hospital-rounds main.js at vite build time)
     bundle_js = "// Auto-generated by scripts/build-docs.py. Do not edit.\n"
     bundle_js += "export const DOCS_BUNDLE = " + json.dumps(bundle, ensure_ascii=False) + ";\n"
     BUNDLE_DEST.write_text(bundle_js, encoding="utf-8")
-    bundle_kb = len(bundle_js) // 1024
-    print(f"✓ {BUNDLE_DEST} ({len(bundle)} pages, {bundle_kb} KB)")
-
-    print(f"\nDone → {DEST}/")
+    print(f"✓ {BUNDLE_DEST.relative_to(APP_DIR)} ({len(bundle)} pages, {len(bundle_js) // 1024} KB)")
 
 if __name__ == "__main__":
     main()
