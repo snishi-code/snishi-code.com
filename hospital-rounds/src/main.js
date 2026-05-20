@@ -25,6 +25,7 @@ import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initImportExport } from "./features/import-export.js";
 import { initSharedQr, refreshSharedQrIfActive, initMemoQr, refreshMemoQrIfActive } from "./features/qr-shared.js";
 import { initHomeQr, refreshHomeQrIfActive } from "./features/qr-home.js";
+import { initSettingsQr, refreshSettingsQrIfActive, setOnSettingsApplied } from "./features/qr-settings.js";
 import { createPrintFlow } from "./features/print.js";
 import { sortPatientsByRoom, invalidateSortSnapshot } from "./features/room.js";
 import { initAdminUI, refreshAdminAvailability, setAdminAppliedHandler } from "./features/admin-ui.js";
@@ -121,6 +122,7 @@ function refreshPatientUI() {
   refreshSharedQrIfActive();
   refreshMemoQrIfActive();
   refreshHomeQrIfActive();
+  refreshSettingsQrIfActive();
 }
 
 initSettingsView(doRenderDetail, renderQrIfNeeded, refreshPatientUI);
@@ -323,6 +325,9 @@ initActionMenu();
 initSharedQr();
 initMemoQr();
 initHomeQr();
+initSettingsQr();
+// 設定QR受信後はビュー全体を再描画して反映を即時に見せる
+setOnSettingsApplied(() => refreshPatientUI());
 initAdminUI();
 setAdminAppliedHandler(() => {
   doRenderHome();

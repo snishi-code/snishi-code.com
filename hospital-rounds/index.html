@@ -325,7 +325,36 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </button>
         </div>
+        <div class="detailTopActions">
+          <button class="iconBtn" id="settingsShowQrBtn" type="button" title="設定QR表示" aria-label="設定QR表示">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="5" y="5" width="3" height="3" fill="currentColor"/><rect x="16" y="5" width="3" height="3" fill="currentColor"/><rect x="5" y="16" width="3" height="3" fill="currentColor"/><rect x="14" y="14" width="3" height="3" fill="currentColor"/><rect x="19" y="14" width="2" height="2" fill="currentColor"/><rect x="14" y="19" width="2" height="2" fill="currentColor"/><rect x="19" y="19" width="2" height="2" fill="currentColor"/></svg>
+          </button>
+        </div>
         <input type="file" id="settingsImportFile" accept=".json" style="display:none" />
+      </div>
+      <div class="card qrWrap" id="settingsQrWrap">
+        <div class="cardHead">
+          <div class="label">設定QR</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="qrHint"><span class="mono" id="settingsQrPageMeta"></span></span>
+            <button class="iconBtn" id="settingsQrScanBtn" type="button" title="カメラで QR を読む" aria-label="カメラで QR を読む">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </button>
+          </div>
+        </div>
+        <div
+          style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border-top:1px solid var(--line);background:#fafafa;flex-wrap:wrap">
+          <div class="qrHint">受信側では現在の設定を確認の上で上書きします。管理機能・端末固有値は維持されます。</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="secondary" id="settingsQrPrevBtn" type="button" title="前" aria-label="前">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button class="secondary" id="settingsQrNextBtn" type="button" title="次" aria-label="次">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <canvas id="settingsQrCanvas" width="800" height="800"></canvas>
       </div>
 
       <div class="card">
