@@ -168,7 +168,7 @@ function navToHome() {
 
 const headerMemoBtn = document.getElementById("headerMemoBtn");
 const headerSharedBtn = document.getElementById("headerSharedBtn");
-const headerHelpBtn = document.getElementById("headerHelpBtn");
+const headerSettingsBtn = document.getElementById("headerSettingsBtn");
 
 function navToSettings() {
   renderSettings();
@@ -177,6 +177,7 @@ function navToSettings() {
 
 if (headerMemoBtn) headerMemoBtn.addEventListener("click", navToMemo);
 if (headerSharedBtn) headerSharedBtn.addEventListener("click", navToShared);
+if (headerSettingsBtn) headerSettingsBtn.addEventListener("click", navToSettings);
 // Docs are bundled into the app (DOCS_BUNDLE) so the help view works offline
 // without any network or service-worker cache hits. Image URLs inside the
 // bundle use a `__BASE__/` placeholder so the same bundle works under any
@@ -194,8 +195,6 @@ function openDocsPage(pageName) {
   iframe.srcdoc = html;
   showView("docs");
 }
-
-if (headerHelpBtn) headerHelpBtn.addEventListener("click", () => openDocsPage("index"));
 
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".helpLinkBtn");
@@ -536,10 +535,6 @@ if (headerMenuOverlay) headerMenuOverlay.addEventListener("click", (e) => {
   if (e.target === headerMenuOverlay) closeHeaderMenu();
 });
 
-document.getElementById("menuSettingsBtn")?.addEventListener("click", () => {
-  closeHeaderMenu();
-  navToSettings();
-});
 document.getElementById("menuPrintBtn")?.addEventListener("click", () => {
   closeHeaderMenu();
   overviewPrintFlow.print();
