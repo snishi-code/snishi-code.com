@@ -35,41 +35,55 @@ const SAFE_FIELDS = [
 // ============================
 // QR wire 形式
 //
-// 受信側もアプリ構造を知っているので、key 名や positional な意味は両側で
-// 共有して JSON のオーバーヘッドを削る:
-//   - defaults: ["s_text","a_text","p_text"] の固定3要素配列
-//   - oRules: [[key, label, normalText, fromAdmin?], ...] の位置依存配列
-//     fromAdmin が true のときだけ 4 要素目 1 を付ける
-//   - clearTargets: 10桁のビット列 "0110001110"（フィールド順固定）
-//   - tagGroups: [[id, name, mode("s"|"m")], ...]
-//   - その他 (tags / tagGroupingEnabled / tagGroupAssign) はそのまま
+// 位置依存セクションが順序変更や項目追加で壊れないよう、wire 自体に
+// スキーマ宣言 `ks` を埋め込む。受信側は `ks` を見て decode するので、
+// アプリ側の field 順が将来変わっても古い QR を正しく解釈できる。
+//
+//   - ks: 各セクションのフィールド順を宣言する辞書
+//   - d: defaults を ks.d 順の文字列配列で
+//   - o: oRules を ks.o 順の配列の配列で（fromAdmin が true の時だけ末尾に 1）
+//   - c: clearTargets を ks.c 順のビット列 "0110001110" で
+//   - tg: tagGroups を ks.tg 順の配列の配列で
+//   - t / tge / tga はそのまま（位置依存ではない）
 // ============================
 
 const WIRE_V = 2;
-const CLEAR_TARGET_ORDER = [
-  "memo", "s", "o", "a", "p", "shared",
-  "statusYellow", "statusGreen", "statusGray", "statusBlue",
-];
+const SCHEMAS = {
+  d: ["s", "a", "p"],
+  o: ["key", "label", "normalText", "fromAdmin"],
+  c: [
+    "memo", "s", "o", "a", "p", "shared",
+    "statusYellow", "statusGreen", "statusGray", "statusBlue",
+  ],
+  tg: ["id", "name", "mode"],
+};
+const BOOL_FIELDS = new Set(["fromAdmin"]);
 
 function serializeForWire(s) {
-  const out = { v: WIRE_V };
+  const out = { v: WIRE_V, ks: SCHEMAS };
   if (s.defaults) {
-    out.d = [s.defaults.s || "", s.defaults.a || "", s.defaults.p || ""];
+    out.d = SCHEMAS.d.map(f => String(s.defaults[f] || ""));
   }
   if (Array.isArray(s.oRules)) {
     out.o = s.oRules.map(r => {
-      const arr = [String(r.key || ""), String(r.label || ""), String(r.normalText || "")];
-      if (r.fromAdmin) arr.push(1);
+      const arr = [];
+      for (let i = 0; i < SCHEMAS.o.length; i++) {
+        const f = SCHEMAS.o[i];
+        if (BOOL_FIELDS.has(f)) arr.push(r[f] ? 1 : 0);
+        else arr.push(String(r[f] || ""));
+      }
+      // 末尾の falsy（boolean=0 / 空文字）を削って bytes 節約
+      while (arr.length > 1 && (arr[arr.length - 1] === "" || arr[arr.length - 1] === 0)) arr.pop();
       return arr;
     });
   }
   if (s.clearTargets) {
-    out.c = CLEAR_TARGET_ORDER.map(f => s.clearTargets[f] ? "1" : "0").join("");
+    out.c = SCHEMAS.c.map(f => s.clearTargets[f] ? "1" : "0").join("");
   }
   if (Array.isArray(s.tags)) out.t = s.tags;
   if (typeof s.tagGroupingEnabled === "boolean") out.tge = s.tagGroupingEnabled;
   if (Array.isArray(s.tagGroups)) {
-    out.tg = s.tagGroups.map(g => [String(g.id || ""), String(g.name || ""), g.mode === "single" ? "s" : "m"]);
+    out.tg = s.tagGroups.map(g => SCHEMAS.tg.map(f => String(g[f] || "")));
   }
   if (s.tagGroupAssign && Object.keys(s.tagGroupAssign).length) {
     out.tga = s.tagGroupAssign;
@@ -79,42 +93,62 @@ function serializeForWire(s) {
 
 function deserializeFromWire(wire) {
   if (!wire || typeof wire !== "object" || wire.v !== WIRE_V) return null;
+  // ks が wire に含まれていればそれを優先、なければ現行の SCHEMAS をフォールバック
+  const ks = (wire.ks && typeof wire.ks === "object") ? wire.ks : SCHEMAS;
   const out = {};
-  if (Array.isArray(wire.d) && wire.d.length >= 3) {
-    out.defaults = { s: String(wire.d[0] || ""), a: String(wire.d[1] || ""), p: String(wire.d[2] || "") };
+
+  if (Array.isArray(wire.d) && Array.isArray(ks.d)) {
+    out.defaults = {};
+    for (let i = 0; i < ks.d.length; i++) {
+      const f = ks.d[i];
+      const val = wire.d[i];
+      if (val !== undefined) out.defaults[f] = String(val || "");
+    }
   }
-  if (Array.isArray(wire.o)) {
+
+  if (Array.isArray(wire.o) && Array.isArray(ks.o)) {
     out.oRules = wire.o.map(arr => {
-      const r = {
-        key: String(arr[0] || ""),
-        label: String(arr[1] || ""),
-        normalText: String(arr[2] || ""),
-      };
-      if (arr[3] === 1) r.fromAdmin = true;
+      const r = {};
+      for (let i = 0; i < ks.o.length; i++) {
+        const f = ks.o[i];
+        const val = arr[i];
+        if (val === undefined) continue;
+        if (BOOL_FIELDS.has(f)) r[f] = !!val;
+        else r[f] = String(val || "");
+      }
       return r;
     });
   }
-  if (typeof wire.c === "string" && wire.c.length >= CLEAR_TARGET_ORDER.length) {
+
+  if (typeof wire.c === "string" && Array.isArray(ks.c)) {
     out.clearTargets = {};
-    for (let i = 0; i < CLEAR_TARGET_ORDER.length; i++) {
-      out.clearTargets[CLEAR_TARGET_ORDER[i]] = wire.c[i] === "1";
+    for (let i = 0; i < ks.c.length; i++) {
+      out.clearTargets[ks.c[i]] = wire.c[i] === "1";
     }
   }
+
   if (Array.isArray(wire.t)) out.tags = wire.t.filter(x => typeof x === "string");
   if (typeof wire.tge === "boolean") out.tagGroupingEnabled = wire.tge;
-  if (Array.isArray(wire.tg)) {
-    out.tagGroups = wire.tg.map(arr => ({
-      id: String(arr[0] || ""),
-      name: String(arr[1] || ""),
-      mode: arr[2] === "s" ? "single" : "multi",
-    }));
+
+  if (Array.isArray(wire.tg) && Array.isArray(ks.tg)) {
+    out.tagGroups = wire.tg.map(arr => {
+      const g = {};
+      for (let i = 0; i < ks.tg.length; i++) {
+        const f = ks.tg[i];
+        const val = arr[i];
+        if (val !== undefined) g[f] = String(val || "");
+      }
+      return g;
+    });
   }
+
   if (wire.tga && typeof wire.tga === "object") {
     out.tagGroupAssign = {};
     for (const [k, v] of Object.entries(wire.tga)) {
       if (typeof k === "string" && typeof v === "string") out.tagGroupAssign[k] = v;
     }
   }
+
   return out;
 }
 
