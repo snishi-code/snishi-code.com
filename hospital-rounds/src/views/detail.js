@@ -10,7 +10,7 @@ import { makeRoomInput } from "../features/room.js";
 import { isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
 import { scanQR, isScannerSupported } from "../features/qr-scan.js";
-import { buildTimestampHeader } from "../features/qr-shared.js";
+import { buildTimestampHeader } from "../features/qr-protocol.js";
 
 let qrVisible = false;
 

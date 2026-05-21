@@ -1,6 +1,21 @@
 "use strict";
 
+import { appState } from "../store.js";
 import { utf8ByteLength } from "../payload.js";
+
+// 共有QR・メモQR・JSON保存のファイル名・detail.js の受信タイムスタンプで
+// 再利用するアプリ共通のタイムスタンプ文字列
+//   ${title}_YYYY_MMDD_HHMM
+export function buildTimestampHeader() {
+  const d = new Date();
+  const titleSafe = (appState.title || "回診").replace(/[\\/:*?"<>|]/g, "_");
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return `${titleSafe}_${yyyy}_${mm}${dd}_${hh}${min}`;
+}
 
 // ============================
 // 多ページ QR 共通プロトコル
