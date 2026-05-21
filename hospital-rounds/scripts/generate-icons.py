@@ -4,13 +4,14 @@
 「医者が患者を診て回る」道具をシンボル化し、紙系アプリ（問診票など）と
 形で確実に区別できるようにしている。
 
-- 形: 耳ピース 2 つ → Y 字チューブ → 短い茎 → チェストピース（円盤）
+- 形: 上端の U 字ループ（耳バンド）+ 端の耳ピース 2 つ + 集約する管 +
+       下端のチェストピース（円盤）
 - 色: 本番 = 青 (BLUE)、テスト = スレートグレー (SLATE)
 - 安全マージン: 全パーツが画像中心から半径 40% の円内に収まるよう設計
   （maskable PWA アイコンとしてもクロップされない）
 
-スクリプトは依存パッケージ無しで動かしたいので、外周はアンチエイリアスせず
-ピクセル単位のしきい値判定。サイズ 192/512 程度であれば許容範囲。
+依存パッケージ無しで動かす設計なので、輪郭はアンチエイリアスせず
+ピクセル単位のしきい値判定。192/512 程度なら許容範囲。
 """
 import struct
 import zlib
@@ -43,27 +44,40 @@ def in_thick_segment(x, y, x1, y1, x2, y2, half):
     return (x - px) ** 2 + (y - py) ** 2 <= half * half
 
 
+def in_top_arc(x, y, cx, cy, r_outer, r_inner):
+    """円 (cx, cy) の上半分（y < cy）の環状帯 (r_inner..r_outer) に入っているか。
+    U 字ループのアーチ部分の描画に使う。"""
+    dx, dy = x - cx, y - cy
+    if dy >= 0:
+        return False
+    d2 = dx * dx + dy * dy
+    return r_inner * r_inner <= d2 <= r_outer * r_outer
+
+
 def make_png_stethoscope(width: int, height: int, bg, fg) -> bytes:
     cx = width / 2.0
 
-    # 耳ピース
-    ear_r = width * 0.06
-    ear_x_off = width * 0.22
-    ear_y = height * 0.20
-    left_ear = (cx - ear_x_off, ear_y)
-    right_ear = (cx + ear_x_off, ear_y)
+    # U 字ループ（耳バンド）
+    u_cy = height * 0.32
+    u_outer = width * 0.20
+    u_inner = width * 0.14
+    # アーチ厚みの中点に耳ピースを置く
+    arc_mid = (u_outer + u_inner) / 2.0
+    ear_radius = width * 0.04
+    left_ear = (cx - arc_mid, u_cy)
+    right_ear = (cx + arc_mid, u_cy)
 
-    # Y 字の合流点
-    joint = (cx, height * 0.55)
+    # チューブが合流する点
+    joint = (cx, height * 0.58)
 
     # チェストピース（聴診面）
-    chest_cy = height * 0.78
-    chest_r = width * 0.15
+    chest_cy = height * 0.80
+    chest_r = width * 0.11
 
-    # チューブの半径（線の太さの半分）
-    tube = width * 0.035
+    # チューブ半径（線の太さの半分）
+    tube = width * 0.026
 
-    # 茎: 合流点 → チェストピース上端のすぐ内側まで
+    # 茎: 合流点 → チェストピース上端
     stem_top = joint
     stem_bot = (cx, chest_cy - chest_r + tube)
 
@@ -72,8 +86,9 @@ def make_png_stethoscope(width: int, height: int, bg, fg) -> bytes:
         raw.append(0)  # filter: None
         for x in range(width):
             on_shape = (
-                in_circle(x, y, left_ear[0], left_ear[1], ear_r)
-                or in_circle(x, y, right_ear[0], right_ear[1], ear_r)
+                in_top_arc(x, y, cx, u_cy, u_outer, u_inner)
+                or in_circle(x, y, left_ear[0], left_ear[1], ear_radius)
+                or in_circle(x, y, right_ear[0], right_ear[1], ear_radius)
                 or in_thick_segment(x, y, left_ear[0], left_ear[1], joint[0], joint[1], tube)
                 or in_thick_segment(x, y, right_ear[0], right_ear[1], joint[0], joint[1], tube)
                 or in_thick_segment(x, y, stem_top[0], stem_top[1], stem_bot[0], stem_bot[1], tube)
