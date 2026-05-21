@@ -1,14 +1,17 @@
 """PNG アイコン生成スクリプト（依存パッケージなし）
 
-回診PWA用のアイコン: 色付き背景に白い聴診器（十字なし）。
-「医者が患者を診て回る」道具をシンボル化し、紙系アプリ（問診票など）と
-形で確実に区別できるようにしている。
+回診PWA用のアイコン: 色付き背景に白いベッド（病棟ベッドサイドを象徴）。
+紙系アプリ（問診票など）と形で確実に区別できるよう、ベッドのシルエット
+を採用。
 
-- 形: 上端の U 字ループ（耳バンド）+ 端の耳ピース 2 つ + 集約する管 +
-       下端のチェストピース（円盤）
-- 色: 本番 = 青 (BLUE)、テスト = スレートグレー (SLATE)
-- 安全マージン: 全パーツが画像中心から半径 40% の円内に収まるよう設計
-  （maskable PWA アイコンとしてもクロップされない）
+形は lucide-icons の `bed` を参考にした側面ビュー:
+  - 左に背の高いヘッドボード（縦線）
+  - マットレス上下の横線、右上に曲がり角の小円弧
+  - 内部に短い縦線（枕とマットレスの仕切り）
+  - 床まで届く左右の縦線（脚に見立てる）
+
+色: 本番 = 青 (BLUE)、テスト = スレートグレー (SLATE)
+安全マージン: 全パーツが画像中心から半径 40% 内に収まる（maskable 対応）
 
 依存パッケージ無しで動かす設計なので、輪郭はアンチエイリアスせず
 ピクセル単位のしきい値判定。192/512 程度なら許容範囲。
@@ -21,11 +24,6 @@ import os
 def make_chunk(tag: bytes, data: bytes) -> bytes:
     crc = zlib.crc32(tag + data) & 0xFFFFFFFF
     return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", crc)
-
-
-def in_circle(x, y, cx, cy, r):
-    dx, dy = x - cx, y - cy
-    return dx * dx + dy * dy <= r * r
 
 
 def in_thick_segment(x, y, x1, y1, x2, y2, half):
@@ -44,55 +42,61 @@ def in_thick_segment(x, y, x1, y1, x2, y2, half):
     return (x - px) ** 2 + (y - py) ** 2 <= half * half
 
 
-def in_top_arc(x, y, cx, cy, r_outer, r_inner):
-    """円 (cx, cy) の上半分（y < cy）の環状帯 (r_inner..r_outer) に入っているか。
-    U 字ループのアーチ部分の描画に使う。"""
-    dx, dy = x - cx, y - cy
-    if dy >= 0:
+def in_arc_quadrant(x, y, cx, cy, r, half, *, right=True, top=True):
+    """円 (cx, cy, r) の指定 4 分円上に半径 `half` の輪郭が乗っているか。
+    右上 (right=True, top=True) など。"""
+    if right and x < cx:
         return False
+    if not right and x > cx:
+        return False
+    if top and y > cy:
+        return False
+    if not top and y < cy:
+        return False
+    dx, dy = x - cx, y - cy
     d2 = dx * dx + dy * dy
-    return r_inner * r_inner <= d2 <= r_outer * r_outer
+    inner = max(0.0, r - half)
+    outer = r + half
+    return inner * inner <= d2 <= outer * outer
 
 
-def make_png_stethoscope(width: int, height: int, bg, fg) -> bytes:
-    cx = width / 2.0
+def make_png_bed(width: int, height: int, bg, fg) -> bytes:
+    # lucide bed の 24-grid 座標をそのままスケール
+    s = width / 24.0
+    half = width * 0.04  # 線の半径（線の太さは 8% ≒ lucide stroke-width 2 相当）
 
-    # U 字ループ（耳バンド）
-    u_cy = height * 0.32
-    u_outer = width * 0.20
-    u_inner = width * 0.14
-    # アーチ厚みの中点に耳ピースを置く
-    arc_mid = (u_outer + u_inner) / 2.0
-    ear_radius = width * 0.04
-    left_ear = (cx - arc_mid, u_cy)
-    right_ear = (cx + arc_mid, u_cy)
+    # キーポイント
+    left_x = 2 * s
+    headboard_top_y = 4 * s
+    mattress_top_y = 8 * s
+    mattress_bot_y = 17 * s
+    floor_y = 20 * s
+    right_x_inner = 20 * s    # 上辺の水平線が終わる x
+    right_x_outer = 22 * s    # コーナー後の右縦線の x
+    pillow_x = 6 * s          # 枕とマットレスの仕切り
 
-    # チューブが合流する点
-    joint = (cx, height * 0.58)
-
-    # チェストピース（聴診面）
-    chest_cy = height * 0.80
-    chest_r = width * 0.11
-
-    # チューブ半径（線の太さの半分）
-    tube = width * 0.026
-
-    # 茎: 合流点 → チェストピース上端
-    stem_top = joint
-    stem_bot = (cx, chest_cy - chest_r + tube)
+    # 右上コーナーの円弧（中心 (20s, 10s)、半径 2s、右上 1/4）
+    arc_cx = 20 * s
+    arc_cy = 10 * s
+    arc_r = 2 * s
 
     raw = bytearray()
     for y in range(height):
         raw.append(0)  # filter: None
         for x in range(width):
             on_shape = (
-                in_top_arc(x, y, cx, u_cy, u_outer, u_inner)
-                or in_circle(x, y, left_ear[0], left_ear[1], ear_radius)
-                or in_circle(x, y, right_ear[0], right_ear[1], ear_radius)
-                or in_thick_segment(x, y, left_ear[0], left_ear[1], joint[0], joint[1], tube)
-                or in_thick_segment(x, y, right_ear[0], right_ear[1], joint[0], joint[1], tube)
-                or in_thick_segment(x, y, stem_top[0], stem_top[1], stem_bot[0], stem_bot[1], tube)
-                or in_circle(x, y, cx, chest_cy, chest_r)
+                # 左縦線（ヘッドボード上端から床まで）
+                in_thick_segment(x, y, left_x, headboard_top_y, left_x, floor_y, half)
+                # マットレス上辺の水平線
+                or in_thick_segment(x, y, left_x, mattress_top_y, right_x_inner, mattress_top_y, half)
+                # 右上コーナーの円弧
+                or in_arc_quadrant(x, y, arc_cx, arc_cy, arc_r, half, right=True, top=True)
+                # コーナー後の右縦線（床まで）
+                or in_thick_segment(x, y, right_x_outer, arc_cy, right_x_outer, floor_y, half)
+                # マットレス底辺
+                or in_thick_segment(x, y, left_x, mattress_bot_y, right_x_outer, mattress_bot_y, half)
+                # 枕の仕切り
+                or in_thick_segment(x, y, pillow_x, mattress_top_y, pillow_x, mattress_bot_y, half)
             )
             r, g, b = fg if on_shape else bg
             raw += bytes([r, g, b])
@@ -119,7 +123,7 @@ VARIANTS = [
 for suffix, bg in VARIANTS:
     for size, base in [(192, "icon-192"), (512, "icon-512"), (180, "apple-touch-icon")]:
         name = f"{base}{suffix}.png"
-        data = make_png_stethoscope(size, size, bg, WHITE)
+        data = make_png_bed(size, size, bg, WHITE)
         path = f"public/icons/{name}"
         with open(path, "wb") as f:
             f.write(data)
