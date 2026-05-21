@@ -3,20 +3,28 @@
 // 説明書ビュー上部のインタラクティブデモバー。
 //
 // 設計方針:
-//   - state は本モジュール内の `_state` (メモリのみ) で管理。
-//     localStorage は触らないので実患者データ・実 settings に一切影響しない。
-//   - 説明書を抜けた時点で `resetDocsDemo()` を呼び、デフォルトに戻す。
-//   - 説明書ページ間の遷移 (showView は変えず srcdoc 差し替え) では維持。
+//   - state は本モジュール内の `_state` (メモリのみ) で管理。localStorage は
+//     一切触らないので実患者データ・実 settings から完全に分離されている。
+//   - 説明書ビューを抜けた時点で `resetDocsDemo()` を呼びデフォルトに戻す
+//     (main.js の MutationObserver で検知)。
+//   - 説明書ページ間の遷移 (srcdoc 差し替え) では state を維持。
 //   - 患者数は DEMO_PATIENT_COUNT で集中管理 (将来 N 変更時はここだけ)。
 
 import { STATUS } from "../constants.js";
 import { bindTapOrLongPress, nextStatusInCycle, statusOnLongPress } from "../views/detail.js";
 import { statusClass } from "../views/home.js";
 import { formatPatientLabel } from "./room.js";
+import { createEditToggle } from "./edit-toggle.js";
 
 const DEMO_PATIENT_COUNT = 3;
+const STATUS_PREFIX = "__status:";
+const STATUS_TAGS = [
+  { key: STATUS.YELLOW, label: "黄", cls: "status-yellow" },
+  { key: STATUS.GREEN, label: "緑", cls: "status-green" },
+  { key: STATUS.GRAY, label: "灰", cls: "status-gray" },
+  { key: STATUS.BLUE, label: "青", cls: "status-blue" },
+];
 
-// test/fixtures/bundle.json と同形の placeholder データ。
 function defaultDemoState() {
   return {
     patients: [
@@ -26,15 +34,18 @@ function defaultDemoState() {
     ].slice(0, DEMO_PATIENT_COUNT),
     tags: ["A", "B"],
     editMode: false,
-    tagFilter: [],       // 選択中のタグ (AND マッチ)
+    tagFilter: [],         // 選択中の filter 値 (ユーザータグ or "__status:yellow" 等)
+    tagFilterMode: "and",  // "and" | "or"
     sortByRoom: false,
   };
 }
 
 let _state = null;
-let _openPopup = null; // 同時に開けるピッカーは 1 つ
+let _openPopup = null;     // 同時に開ける popup は 1 つ
+let _editToggle = null;    // createEditToggle のハンドル
 
 export function resetDocsDemo() {
+  if (_editToggle) _editToggle.exit();
   _state = defaultDemoState();
   closeOpenPopup();
 }
@@ -65,24 +76,39 @@ function roomCompare(a, b) {
   return 0;
 }
 
+function matchesFilter(p, state) {
+  if (state.tagFilter.length === 0) return true;
+  const preds = state.tagFilter.map(t => {
+    if (t.startsWith(STATUS_PREFIX)) {
+      const s = t.slice(STATUS_PREFIX.length);
+      return (q) => q.status === s;
+    }
+    return (q) => (q.tags || []).includes(t);
+  });
+  return state.tagFilterMode === "or"
+    ? preds.some(fn => fn(p))
+    : preds.every(fn => fn(p));
+}
+
 function visiblePatients(state) {
-  let list = state.patients;
-  if (state.tagFilter.length > 0) {
-    list = list.filter(p => state.tagFilter.every(t => (p.tags || []).includes(t)));
-  }
-  if (state.sortByRoom) {
-    list = list.slice().sort(roomCompare);
-  }
+  let list = state.patients.filter(p => matchesFilter(p, state));
+  if (state.sortByRoom) list = list.slice().sort(roomCompare);
   return list;
 }
 
 // ============================================================
-// タグピッカー (popup 形式)
-//   - trigger: クリックでトグル
-//   - popup: チップで多選択 (selected = filter に含む)
-//   - 同時に開く popup は 1 つ (_openPopup を閉じる)
+// タグピッカー
+//   - withModeToggle: AND/OR + クリア × を上段に
+//   - withStatusTags: ステータス仮想タグを含める
+//   - withAddTag:    「+ 新規タグ」入力欄を popup 下段に
 // ============================================================
-function makeDemoTagPicker({ getSelected, setSelected, tags, label }) {
+function makeDemoTagPicker({
+  getSelected, setSelected, getTags, label,
+  withModeToggle = false,
+  withStatusTags = false,
+  withAddTag = false,
+  state = null, // mode toggle / add tag が触る state
+}) {
   const wrap = document.createElement("span");
   wrap.style.position = "relative";
   wrap.style.display = "inline-flex";
@@ -92,34 +118,22 @@ function makeDemoTagPicker({ getSelected, setSelected, tags, label }) {
   trigger.className = "iconBtn";
   trigger.title = label;
   trigger.setAttribute("aria-label", label);
-  const selected = getSelected();
-  const hasAny = selected.length > 0;
-  trigger.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${hasAny ? '#2563eb' : 'currentColor'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
+  const refreshTriggerColor = () => {
+    const hasAny = getSelected().length > 0;
+    trigger.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${hasAny ? '#2563eb' : 'currentColor'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
+  };
+  refreshTriggerColor();
 
   trigger.addEventListener("click", (e) => {
     e.stopPropagation();
-    if (_openPopup && _openPopup.parentElement === wrap) {
-      closeOpenPopup();
-      return;
-    }
+    if (_openPopup && _openPopup.parentElement === wrap) { closeOpenPopup(); return; }
     closeOpenPopup();
-    const popup = document.createElement("div");
-    popup.className = "docsDemoTagPopup";
-    for (const t of tags) {
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className = "chip" + (getSelected().includes(t) ? " selected" : "");
-      chip.textContent = t;
-      chip.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        const cur = getSelected().slice();
-        const idx = cur.indexOf(t);
-        if (idx >= 0) cur.splice(idx, 1); else cur.push(t);
-        setSelected(cur);
-        renderDocsDemo();
-      });
-      popup.appendChild(chip);
-    }
+    const popup = buildPopup({
+      getSelected, setSelected, getTags,
+      withModeToggle, withStatusTags, withAddTag,
+      state,
+      onChange: () => { refreshTriggerColor(); renderDocsDemo(); },
+    });
     wrap.appendChild(popup);
     _openPopup = popup;
   });
@@ -128,12 +142,120 @@ function makeDemoTagPicker({ getSelected, setSelected, tags, label }) {
   return wrap;
 }
 
-// document クリックで popup を閉じる (デモバー内に閉じ込める)
-document.addEventListener("click", (e) => {
-  if (!_openPopup) return;
-  if (_openPopup.contains(e.target)) return;
-  closeOpenPopup();
-});
+function buildPopup({ getSelected, setSelected, getTags, withModeToggle, withStatusTags, withAddTag, state, onChange }) {
+  const popup = document.createElement("div");
+  popup.className = "docsDemoTagPopup";
+  popup.addEventListener("click", (e) => e.stopPropagation());
+
+  const rerender = () => {
+    popup.textContent = "";
+    fillPopup();
+  };
+
+  function fillPopup() {
+    // AND/OR + clear ×
+    if (withModeToggle && state) {
+      const modeRow = document.createElement("div");
+      modeRow.className = "modeRow";
+      const mkMode = (mode, label) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "modeBtn" + (state.tagFilterMode === mode ? " selected" : "");
+        b.textContent = label;
+        b.addEventListener("click", (e) => {
+          e.stopPropagation();
+          state.tagFilterMode = mode;
+          onChange();
+          rerender();
+        });
+        return b;
+      };
+      modeRow.appendChild(mkMode("and", "AND"));
+      modeRow.appendChild(mkMode("or", "OR"));
+      const clear = document.createElement("button");
+      clear.type = "button";
+      clear.className = "modeBtn clear";
+      clear.textContent = "×";
+      clear.title = "選択をすべて解除";
+      clear.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setSelected([]);
+        onChange();
+        rerender();
+      });
+      modeRow.appendChild(clear);
+      popup.appendChild(modeRow);
+    }
+
+    // ステータス仮想タグ
+    if (withStatusTags) {
+      for (const s of STATUS_TAGS) {
+        popup.appendChild(makeChip({
+          value: STATUS_PREFIX + s.key,
+          label: s.label,
+          extraCls: s.cls,
+          getSelected, setSelected,
+          onChange: () => { onChange(); rerender(); },
+        }));
+      }
+    }
+
+    // ユーザータグ
+    const userTags = getTags();
+    for (const t of userTags) {
+      popup.appendChild(makeChip({
+        value: t, label: t,
+        getSelected, setSelected,
+        onChange: () => { onChange(); rerender(); },
+      }));
+    }
+
+    // 「+ 新規タグ」入力
+    if (withAddTag && state) {
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.className = "addTagInput";
+      inp.placeholder = "+ 新規タグ";
+      const commit = () => {
+        const v = inp.value.trim();
+        if (!v) return;
+        if (!state.tags.includes(v)) state.tags.push(v);
+        inp.value = "";
+        onChange();
+        rerender();
+      };
+      inp.addEventListener("keydown", (e) => {
+        e.stopPropagation();
+        if (e.key === "Enter") { e.preventDefault(); commit(); }
+        else if (e.key === "Escape") { e.preventDefault(); inp.value = ""; inp.blur(); }
+      });
+      inp.addEventListener("blur", commit);
+      popup.appendChild(inp);
+    }
+  }
+
+  fillPopup();
+  return popup;
+}
+
+function makeChip({ value, label, extraCls, getSelected, setSelected, onChange }) {
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.className = "chip" + (extraCls ? " " + extraCls : "") + (getSelected().includes(value) ? " selected" : "");
+  chip.textContent = label;
+  chip.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const cur = getSelected().slice();
+    const idx = cur.indexOf(value);
+    if (idx >= 0) cur.splice(idx, 1); else cur.push(value);
+    setSelected(cur);
+    onChange();
+  });
+  return chip;
+}
+
+// 外側クリックで popup を閉じる
+document.addEventListener("click", () => closeOpenPopup());
 
 // ============================================================
 // 描画
@@ -177,12 +299,13 @@ function renderEditRow(p, state) {
   nameInp.addEventListener("input", () => { p.name = nameInp.value; });
   row.appendChild(nameInp);
 
-  // この患者のタグを直接編集する picker
   row.appendChild(makeDemoTagPicker({
     getSelected: () => p.tags || [],
     setSelected: (next) => { p.tags = next; },
-    tags: state.tags,
+    getTags: () => state.tags,
     label: "患者のタグ",
+    withAddTag: true,
+    state,
   }));
 
   return row;
@@ -195,15 +318,17 @@ function renderTagFilterSlot(state) {
   slot.appendChild(makeDemoTagPicker({
     getSelected: () => state.tagFilter,
     setSelected: (next) => { state.tagFilter = next; },
-    tags: state.tags,
+    getTags: () => state.tags,
     label: "タグで絞り込み",
+    withModeToggle: true,
+    withStatusTags: true,
+    withAddTag: true,
+    state,
   }));
 }
 
 function updateToolbarHighlight(state) {
-  const editBtn = document.getElementById("docsDemoEditBtn");
   const sortBtn = document.getElementById("docsDemoSortBtn");
-  if (editBtn) editBtn.classList.toggle("editActive", !!state.editMode);
   if (sortBtn) sortBtn.classList.toggle("editActive", !!state.sortByRoom);
 }
 
@@ -215,7 +340,6 @@ export function renderDocsDemo() {
   renderTagFilterSlot(state);
 
   grid.textContent = "";
-  // 編集モードでは grid を 1 列にして 1 行 1 患者 (入力欄が並ぶため)
   grid.style.gridTemplateColumns = state.editMode ? "minmax(0, 1fr)" : "";
 
   const list = visiblePatients(state);
@@ -228,25 +352,38 @@ export function renderDocsDemo() {
 // 初期化
 // ============================================================
 export function initDocsDemo() {
+  const bar = document.getElementById("docsDemoBar");
   const reloadBtn = document.getElementById("docsDemoReloadBtn");
+  const editBtn = document.getElementById("docsDemoEditBtn");
+  const sortBtn = document.getElementById("docsDemoSortBtn");
+
   if (reloadBtn) reloadBtn.addEventListener("click", () => {
     resetDocsDemo();
     renderDocsDemo();
   });
 
-  const editBtn = document.getElementById("docsDemoEditBtn");
-  if (editBtn) editBtn.addEventListener("click", () => {
-    const state = ensureState();
-    state.editMode = !state.editMode;
-    closeOpenPopup();
-    renderDocsDemo();
-  });
-
-  const sortBtn = document.getElementById("docsDemoSortBtn");
   if (sortBtn) sortBtn.addEventListener("click", () => {
     const state = ensureState();
     state.sortByRoom = !state.sortByRoom;
     closeOpenPopup();
     renderDocsDemo();
+  });
+
+  // 編集は createEditToggle で管理。外側 (デモバー以外) クリックで自動 exit。
+  _editToggle = createEditToggle({
+    triggerBtn: editBtn,
+    container: bar,
+    onEnter: () => {
+      const state = ensureState();
+      state.editMode = true;
+      closeOpenPopup();
+      renderDocsDemo();
+    },
+    onExit: () => {
+      const state = ensureState();
+      state.editMode = false;
+      closeOpenPopup();
+      renderDocsDemo();
+    },
   });
 }
