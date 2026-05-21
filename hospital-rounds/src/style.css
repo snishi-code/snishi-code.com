@@ -92,9 +92,22 @@
       box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
     }
 
+    /* ヘッダー右側のアイコンボタンは普段は囲み無し。
+       ホバー / 現在ビューのハイライトでだけ枠と背景を見せる。
+       test 環境はホバー色を白系に上書き（下の :hover ルール参照）。 */
+    header button.secondary {
+      background: transparent;
+      border-color: transparent;
+    }
+
+    header button.secondary:hover {
+      background: rgba(0, 0, 0, 0.06);
+      border-color: var(--line);
+    }
+
     html[data-env="test"] header button.secondary {
-      background: rgba(255, 255, 255, 0.12);
-      border-color: rgba(255, 255, 255, 0.18);
+      background: transparent;
+      border-color: transparent;
     }
 
     /* 現在ビューに対応するヘッダーボタンを青枠でハイライト。
@@ -677,11 +690,9 @@
       color: var(--status-green-fg);
     }
 
-    /* Reset (全消去) icon button — keeps the red colour from .danger */
+    /* 全消去アイコン: 普段は赤色だけ。囲みはホバー時のみ。 */
     .iconBtn.dangerIcon {
       color: #b91c1c;
-      border-color: #fee2e2;
-      background: #fef2f2;
     }
     .iconBtn.dangerIcon:hover {
       border-color: #b91c1c;
@@ -1144,6 +1155,22 @@
 
     .tagPickerTrigger:hover {
       border-color: rgba(37, 99, 235, 0.6);
+    }
+
+    /* ホーム・メモ・共有のフィルタ用タグピッカーは囲み無し。
+       タグ未選択時は単独の .iconBtn と同じ見た目になる。
+       詳細画面の患者タグピッカーはここでは触らない。 */
+    #homeTagFilterSlot .tagPickerTrigger,
+    #memoTagFilterSlot .tagPickerTrigger,
+    #sharedTagFilterSlot .tagPickerTrigger {
+      border-color: transparent;
+      background: transparent;
+    }
+    #homeTagFilterSlot .tagPickerTrigger:hover,
+    #memoTagFilterSlot .tagPickerTrigger:hover,
+    #sharedTagFilterSlot .tagPickerTrigger:hover {
+      background: rgba(0, 0, 0, 0.06);
+      border-color: var(--line);
     }
 
     .tagPickerIcon {
