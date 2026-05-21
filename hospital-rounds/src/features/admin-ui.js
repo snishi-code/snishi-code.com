@@ -4,7 +4,7 @@ import { qrcodegen } from "../libs/qrcodegen.js";
 import { utf8ByteLength } from "../payload.js";
 import { settings, rosterState } from "../store.js";
 import {
-  isAdminEnabled, isAdminTerminal, isAdminImportOnly,
+  isAdminEnabled, isAdminTerminal,
   buildCopyPages, buildDiffPages,
   parseRosterPages, decodeRosterPayload, applyFullPayload, applyDiffPayload,
 } from "./admin.js";
@@ -136,8 +136,9 @@ function applyModeUI() {
 }
 
 function pickDefaultMode() {
-  if (isAdminTerminal() || isAdminImportOnly()) return "qr-diff";
-  return "paste";
+  // 管理端末: 配布/出力 (差分 QR) がデフォルト
+  // 被管理端末: 取込 (paste) がデフォルト
+  return isAdminTerminal() ? "qr-diff" : "paste";
 }
 
 export function toggleAdminPanel() {

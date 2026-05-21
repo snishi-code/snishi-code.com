@@ -85,7 +85,7 @@ function renderToggleIcon(iconEl, on) {
 
 function renderAdminExtras() {
   const wrap = document.getElementById("rosterPassphraseWrap");
-  // Show passphrase field only when this device is an admin terminal
+  // 合言葉入力欄は管理端末のときだけ表示
   if (wrap) wrap.style.display = (settings.adminEnabled && settings.adminTerminal) ? "" : "none";
   const passInp = document.getElementById("rosterPassphraseInput");
   if (passInp) passInp.value = String(settings.rosterPassphrase || "");
@@ -97,14 +97,10 @@ function renderAdminToggles() {
   const card = document.getElementById("adminCard");
   const body = document.getElementById("adminBody");
   const adminIcon = document.getElementById("adminToggleIcon");
-  const termIcon = document.getElementById("adminTerminalToggleIcon");
-  const importIcon = document.getElementById("adminImportOnlyToggleIcon");
   if (!card) return;
   const on = !!settings.adminEnabled;
   card.classList.toggle("disabled", !on);
   renderToggleIcon(adminIcon, on);
-  renderToggleIcon(termIcon, !!settings.adminTerminal);
-  renderToggleIcon(importIcon, !!settings.adminImportOnly);
   if (body) body.style.display = on ? "" : "none";
 }
 
@@ -575,33 +571,20 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
   const adminEnableBtn = document.getElementById("adminEnableBtn");
   if (adminEnableBtn) adminEnableBtn.addEventListener("click", () => {
     if (settings.adminEnabled) {
-      if (!confirm("管理機能をオフにします。よろしいですか？")) return;
+      // 被管理端末は脱出不可（管理端末から名簿を受け取った時点で固定）。
+      // 単に管理機能を切りたいなら、管理機能オフの端末から名簿を取り直すこと。
       if (isNonAdminTerminal()) {
-        if (!confirm("この端末は非管理端末です。管理端末の保持者に確認してから無効化してください。\n本当にオフにしますか？")) return;
+        alert("この端末は管理端末から名簿を受け取っているためオフにできません。\n管理から外れたい場合は、管理機能オフの端末から名簿を取り直してください。");
+        return;
       }
+      if (!confirm("管理機能をオフにします。よろしいですか？")) return;
       settings.adminEnabled = false;
       settings.adminTerminal = false;
-      settings.adminImportOnly = false;
     } else {
+      // トグルをオン → この端末が管理端末に。
+      if (!confirm("この端末を管理端末にします。同じ病棟・チーム内で 1 台のみにしてください。\nよろしいですか？")) return;
       settings.adminEnabled = true;
-    }
-    saveSettings();
-    renderAdminToggles();
-    renderAdminExtras();
-    renderTagsList();
-    if (_renderPatientUIFn) _renderPatientUIFn();
-  });
-
-  const adminTerminalBtn = document.getElementById("adminTerminalBtn");
-  if (adminTerminalBtn) adminTerminalBtn.addEventListener("click", () => {
-    if (!settings.adminEnabled) { alert("管理機能をONにしてください"); return; }
-    if (settings.adminTerminal) {
-      if (!confirm("この端末を管理端末から外します。よろしいですか？")) return;
-      settings.adminTerminal = false;
-    } else {
-      if (!confirm("この端末を管理端末にします。管理端末は同じ病棟・チーム内で1台のみにしてください。\nよろしいですか？")) return;
       settings.adminTerminal = true;
-      settings.adminImportOnly = false; // mutual exclusivity
       if (!settings.rosterPassphrase) {
         const phrase = prompt("名簿コピーに使う「合言葉」を設定してください。\n日本語・英語など自由。受信側にも口頭などで共有してください。");
         if (phrase && phrase.trim()) settings.rosterPassphrase = phrase.trim();
@@ -618,21 +601,6 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
   if (rosterPassphraseInput) rosterPassphraseInput.addEventListener("input", () => {
     settings.rosterPassphrase = String(rosterPassphraseInput.value ?? "");
     saveSettings();
-  });
-
-  const adminImportOnlyBtn = document.getElementById("adminImportOnlyBtn");
-  if (adminImportOnlyBtn) adminImportOnlyBtn.addEventListener("click", () => {
-    if (!settings.adminEnabled) { alert("管理機能をONにしてください"); return; }
-    if (settings.adminImportOnly) {
-      settings.adminImportOnly = false;
-    } else {
-      settings.adminImportOnly = true;
-      settings.adminTerminal = false; // mutual exclusivity
-    }
-    saveSettings();
-    renderAdminToggles();
-    renderTagsList();
-    if (_renderPatientUIFn) _renderPatientUIFn();
   });
 
   if (addTagBtn) addTagBtn.addEventListener("click", () => {

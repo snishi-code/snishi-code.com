@@ -3,7 +3,7 @@
 import {
   DEFAULT_PATIENT_COUNT, STATUS,
   DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS,
-  DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL, DEFAULT_ADMIN_IMPORT_ONLY,
+  DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL,
   DEFAULT_ROSTER_PASSPHRASE, DEFAULT_TAG_GROUPING_ENABLED,
   clone,
 } from "./constants.js";
@@ -27,7 +27,6 @@ export function defaultSettings() {
     tags: clone(DEFAULT_TAGS),
     adminEnabled: DEFAULT_ADMIN_ENABLED,
     adminTerminal: DEFAULT_ADMIN_TERMINAL,
-    adminImportOnly: DEFAULT_ADMIN_IMPORT_ONLY,
     rosterPassphrase: DEFAULT_ROSTER_PASSPHRASE,
     deviceId: "",
     tagGroupingEnabled: DEFAULT_TAG_GROUPING_ENABLED,
@@ -86,7 +85,9 @@ function normalizeSettings(raw) {
   }
   if (typeof raw.adminEnabled === "boolean") out.adminEnabled = raw.adminEnabled;
   if (typeof raw.adminTerminal === "boolean") out.adminTerminal = raw.adminTerminal;
-  if (typeof raw.adminImportOnly === "boolean") out.adminImportOnly = raw.adminImportOnly;
+  // 旧 adminImportOnly フラグは v2.4 で廃止。読み捨て (true なら adminTerminal を有効化して
+  // 編集可能な状態を維持し、ユーザー体験の後退を防ぐ。)
+  if (raw.adminImportOnly === true) out.adminTerminal = true;
   if (typeof raw.rosterPassphrase === "string") out.rosterPassphrase = raw.rosterPassphrase;
   if (typeof raw.deviceId === "string") out.deviceId = raw.deviceId;
   if (typeof raw.tagGroupingEnabled === "boolean") out.tagGroupingEnabled = raw.tagGroupingEnabled;

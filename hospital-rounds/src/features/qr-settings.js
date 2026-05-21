@@ -29,8 +29,8 @@ import { createQrFlow } from "./qr-flow.js";
 //     （フィールド追加に強い）
 //   - tagGroups: id/name/mode は in-memory 同名（数が少ないので短縮メリット薄い）
 //
-// 管理機能 (adminEnabled, adminTerminal, adminImportOnly, rosterPassphrase)
-// と端末固有値 (deviceId) は載せない。受信側でも上書きされない。
+// 管理機能 (adminEnabled, adminTerminal, rosterPassphrase) と端末固有値
+// (deviceId) は載せない。受信側でも上書きされない。
 // ============================
 
 const WIRE_V = 2;

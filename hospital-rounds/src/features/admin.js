@@ -23,19 +23,18 @@ const PAGE_HEAD_RE = /==ROSTER\s+(FULL|DIFF)\s+(\d+)\/(\d+)\s+(\S+)==/g;
 
 export function isAdminEnabled() { return !!settings.adminEnabled; }
 export function isAdminTerminal() { return !!settings.adminTerminal; }
-export function isAdminImportOnly() { return !!settings.adminImportOnly; }
+// 「被管理端末」= 管理機能 ON だが当端末は管理側ではない（受信側）。脱出不可。
 export function isNonAdminTerminal() {
-  return isAdminEnabled() && !isAdminTerminal() && !isAdminImportOnly();
+  return isAdminEnabled() && !isAdminTerminal();
 }
 
 export function canEditPatientFields() {
   if (!isAdminEnabled()) return true;
-  if (isAdminTerminal() || isAdminImportOnly()) return true;
-  return false;
+  return isAdminTerminal();
 }
 export function canFillEmptyName() { return true; }
 export function canEditORule(rule) {
-  if (!isAdminEnabled() || isAdminTerminal() || isAdminImportOnly()) return true;
+  if (!isAdminEnabled() || isAdminTerminal()) return true;
   return !rule?.fromAdmin;
 }
 export function canDeleteORule(rule) { return canEditORule(rule); }
@@ -253,6 +252,13 @@ export function applyFullPayload(body) {
     head: null,
   });
   applyRosterView(body.base);
+  // 管理端末から名簿コピーを受け取ったら、自端末を被管理端末に固定する
+  // （adminTerminal は false のまま、adminEnabled は true）。脱出不可。
+  // 既に管理端末の場合は降格しない。
+  if (!settings.adminTerminal) {
+    settings.adminEnabled = true;
+    saveSettings();
+  }
   saveNow();
 }
 
