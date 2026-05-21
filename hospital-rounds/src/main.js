@@ -33,6 +33,7 @@ import { initAdminUI, refreshAdminAvailability, setAdminAppliedHandler } from ".
 import { scanQR, isScannerSupported } from "./features/qr-scan.js";
 import { isAdminTerminal, isNonAdminTerminal, isAdminEnabled, findIncompleteAdminPatients, clearIncompleteAdminPatients } from "./features/admin.js";
 import { flushCommit } from "./features/roster.js";
+import { initDocsDemo, renderDocsDemo, resetDocsDemo } from "./features/docs-demo.js";
 
 // ============================
 // Wrappers that capture current context
@@ -194,6 +195,9 @@ function openDocsPage(pageName) {
     .replaceAll("__BASE__/", DOCS_BASE);
   iframe.srcdoc = html;
   showView("docs");
+  // 上部のインタラクティブデモバーを描画。state は別ページ間で維持される
+  // (説明書を抜けると MutationObserver 経由で resetDocsDemo() が走る)。
+  renderDocsDemo();
 }
 
 document.addEventListener("click", (e) => {
@@ -549,6 +553,22 @@ const storageKeyLabel = document.getElementById("storageKeyLabel");
 if (storageKeyLabel) storageKeyLabel.textContent = STORAGE_KEYS.bundle;
 
 requestStoragePersistence();
+
+// 説明書ビューのインタラクティブデモバーを初期化 (リロード btn 紐づけ)。
+// state は docs-demo.js 内のメモリのみ。実患者・実 settings に影響なし。
+initDocsDemo();
+
+// 説明書 (data-view="docs") を抜けた瞬間にデモ state をリセット。
+// MutationObserver で疎結合に検知 (showView や navToXxx を改造せずに済む)。
+{
+  let _prevView = document.documentElement.dataset.view;
+  const obs = new MutationObserver(() => {
+    const cur = document.documentElement.dataset.view;
+    if (_prevView === "docs" && cur !== "docs") resetDocsDemo();
+    _prevView = cur;
+  });
+  obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-view"] });
+}
 
 doRenderHome();
 setSelectedNo(1);

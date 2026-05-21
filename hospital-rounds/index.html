@@ -294,6 +294,13 @@
 
 <!-- Docs (embedded HTML manual) -->
     <section class="view" id="docsView" aria-label="説明書">
+      <div id="docsDemoBar" aria-label="操作デモ">
+        <div class="docsDemoLabel">試してみる:</div>
+        <div class="grid docsDemoGrid" id="docsDemoGrid"></div>
+        <button class="iconBtn" id="docsDemoReloadBtn" type="button" title="デモをリセット" aria-label="デモをリセット">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.46"/></svg>
+        </button>
+      </div>
       <iframe id="docsIframe" title="説明書" src=""></iframe>
     </section>
 
