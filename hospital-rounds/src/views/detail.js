@@ -20,6 +20,9 @@ let qrVisible = false;
 
 const MAX_BYTES_PER_QR = 800;
 
+// 患者画面 QR は EMR に接続された QR スキャナで「そのまま打鍵」される用途
+// なので、各ページの内容は SOAP テキストそのままにする。多ページ時のページ
+// 番号は QR カード UI 側 (qrPageMeta) に出すだけで、ペイロードには埋め込まない。
 function splitTextToFitQr(raw, ecl) {
   const s = String(raw ?? "");
   if (utf8ByteLength(s) <= MAX_BYTES_PER_QR) {
@@ -52,18 +55,7 @@ function splitTextToFitQr(raw, ecl) {
     pages.push(cps.slice(pos, best).join(""));
     pos = best;
   }
-
-  const total = pages.length;
-  const out = [];
-  for (let i = 0; i < pages.length; i++) {
-    const head = `RND2 ${i + 1}/${total}\n`;
-    out.push(head + pages[i]);
-  }
-  for (const t of out) {
-    try { qrcodegen.QrCode.encodeText(t, ecl); }
-    catch (_) { return pages; }
-  }
-  return out;
+  return pages;
 }
 
 function drawQrToCanvas(qr, canvas) {
