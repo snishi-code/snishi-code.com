@@ -205,7 +205,7 @@ export function moveTag(fromIdx, toIdx) {
   // Tag order change doesn't need its own op type; recipients use admin sync if needed.
 }
 
-function setPatientTags(patientIndex, tags) {
+export function setPatientTags(patientIndex, tags) {
   const p = appState.patients[patientIndex];
   if (!p) return;
   const next = tags.slice();
@@ -350,6 +350,29 @@ function buildGroupSection(group, entries, getSelected, setSelected, onChange, r
 }
 
 // opts: { getSelected, setSelected, entries: [{value,label,color?}], onChange, fillWidth, withModeToggle, includeStatus, forPatient }
+// 全タグピッカー（患者用・共有フィルター用）共通の「＋ 新規タグ」ボタン。
+// タップ → prompt → addNewTag で settings.tags に登録 → popup を再描画。
+function appendAddTagButton(popup, refreshPopup, refreshTrigger) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "tagPickerAddBtn";
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>新規タグ</span>`;
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const raw = prompt("新規タグ名");
+    if (raw == null) return; // cancel
+    const name = String(raw).trim();
+    if (!name) return;
+    if (!addNewTag(name)) {
+      alert("そのタグは既に存在します。");
+      return;
+    }
+    refreshPopup();
+    refreshTrigger();
+  });
+  popup.appendChild(btn);
+}
+
 export function makeTagPicker(opts) {
   const {
     getSelected,
@@ -457,6 +480,7 @@ export function makeTagPicker(opts) {
         sectionsHost.appendChild(buildGroupSection(unGroup, unEntries, getSelected, setSelected, onChange, refreshTrigger, refreshPopup));
       }
       popup.appendChild(sectionsHost);
+      appendAddTagButton(popup, refreshPopup, refreshTrigger);
       return;
     }
 
@@ -466,6 +490,7 @@ export function makeTagPicker(opts) {
       empty.className = "tagPickerEmpty";
       empty.textContent = "（タグ未登録）";
       popup.appendChild(empty);
+      appendAddTagButton(popup, refreshPopup, refreshTrigger);
       return;
     }
     const current = new Set(getSelected());
@@ -498,6 +523,7 @@ export function makeTagPicker(opts) {
       }
       popup.appendChild(lbl);
     }
+    appendAddTagButton(popup, refreshPopup, refreshTrigger);
   }
 
   trigger.addEventListener("click", (e) => {

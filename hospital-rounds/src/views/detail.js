@@ -5,7 +5,7 @@ import { STATUS } from "../constants.js";
 import { buildTabPayload } from "../payload.js";
 import { utf8ByteLength } from "../payload.js";
 import { qrcodegen } from "../libs/qrcodegen.js";
-import { makePatientTagPicker } from "../features/tags.js";
+import { makePatientTagPicker, getPatientTags, setPatientTags } from "../features/tags.js";
 import { makeRoomInput, formatPatientLabel } from "../features/room.js";
 import { isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
@@ -323,13 +323,15 @@ export function renderDetail(syncDetailMemoDisplay) {
   const detailDoctorSlot = document.getElementById("detailDoctorSlot");
   if (detailDoctorSlot) {
     detailDoctorSlot.textContent = "";
-    const picker = makePatientTagPicker(selectedNo - 1);
+    const picker = makePatientTagPicker(selectedNo - 1, () => renderInlineTags());
     if (nonAdmin) {
       const trigger = picker.querySelector(".tagPickerTrigger");
       if (trigger) { trigger.disabled = true; trigger.style.cursor = "default"; trigger.style.background = "#f9fafb"; }
     }
     detailDoctorSlot.appendChild(picker);
   }
+
+  renderInlineTags();
 
   if (sText) sText.value = p.s;
   if (aText) aText.value = p.a.text;
@@ -496,6 +498,58 @@ export function initDetailEvents(renderHomeFn) {
       scheduleSave();
     });
   }
+}
+
+// 患者ヘッダーのインラインタグを描画する。
+// - 表示順は設定タグ配列の順
+// - 長押しでそのタグを患者から外す（共通ヘルパ bindTapOrLongPress を流用）
+// - はみ出し分は CSS の `.overflowing::after` で「…」を表示
+function renderInlineTags() {
+  const host = document.getElementById("detailInlineTags");
+  if (!host) return;
+  host.textContent = "";
+  const p = appState.patients[selectedNo - 1];
+  if (!p) return;
+  const settingsOrder = settings.tags || [];
+  const tagSet = new Set(getPatientTags(selectedNo - 1));
+  const ordered = settingsOrder.filter(t => tagSet.has(t));
+
+  for (const tagName of ordered) {
+    const chip = document.createElement("span");
+    chip.className = "inlineTagChip";
+    chip.textContent = tagName;
+    chip.title = `${tagName}（長押しで外す）`;
+    bindTapOrLongPress(
+      chip,
+      () => { /* タップ単独は何もしない（誤タップ保護） */ },
+      () => {
+        const cur = getPatientTags(selectedNo - 1).filter(t => t !== tagName);
+        setPatientTags(selectedNo - 1, cur);
+        renderInlineTags();
+      }
+    );
+    host.appendChild(chip);
+  }
+  recomputeInlineTagsOverflow();
+  setupInlineTagsResizeObserver();
+}
+
+function recomputeInlineTagsOverflow() {
+  const host = document.getElementById("detailInlineTags");
+  if (!host) return;
+  requestAnimationFrame(() => {
+    const overflowing = host.scrollWidth > host.clientWidth + 1;
+    host.classList.toggle("overflowing", overflowing);
+  });
+}
+
+let _inlineTagsRO = null;
+function setupInlineTagsResizeObserver() {
+  if (_inlineTagsRO) return;
+  const host = document.getElementById("detailInlineTags");
+  if (!host || typeof ResizeObserver === "undefined") return;
+  _inlineTagsRO = new ResizeObserver(() => recomputeInlineTagsOverflow());
+  _inlineTagsRO.observe(host);
 }
 
 // 詳細画面の表示モード ↔ 編集モード切替。共通 createEditToggle を使う。

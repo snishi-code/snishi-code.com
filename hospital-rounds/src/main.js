@@ -462,11 +462,20 @@ const headerEditTitleBtn = document.getElementById("headerEditTitleBtn");
 const appTitleRow = document.querySelector(".appTitleRow");
 let titleToggle = null;
 
+// field-sizing 未対応ブラウザ向けの size 属性同期。
+function syncAppTitleSize() {
+  if (!appTitleInput) return;
+  const len = (appTitleInput.value || "").length || 1;
+  appTitleInput.size = Math.max(2, Math.min(20, len));
+}
+
 if (appTitleInput) {
   appTitleInput.value = appState.title;
   updateAppTitle(appState.title);
+  syncAppTitleSize();
   appTitleInput.addEventListener("input", (e) => {
     updateAppTitle(e.target.value);
+    syncAppTitleSize();
     scheduleSave();
   });
   // readonly 中のクリックはホーム遷移として扱う

@@ -450,20 +450,23 @@
     <!-- Detail view -->
     <section class="view" id="detailView" aria-label="詳細入力画面">
       <div class="detailTop noprint">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div class="detailHeaderRow">
           <!-- 表示モード: ステータス色つきの患者名ボタン -->
           <button class="patientBtn" id="detailNameBtn" type="button" aria-label="ステータス切替"></button>
+          <!-- 編集モード: 部屋番号 / 名前 (既定 hidden) -->
+          <div class="detailEditInputs" id="detailEditRow" style="display:none;">
+            <span id="detailRoomSlot"></span>
+            <input type="text" class="detailTitle" id="detailTitle"
+              style="border:1px solid var(--line); background:#fff; outline:none; margin:0; padding:6px 8px; border-radius:8px; width:140px; color:inherit; font-family:inherit;"
+              value="" />
+          </div>
           <button class="iconBtn" id="detailEditBtn" type="button" title="編集" aria-label="編集">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           </button>
-          <!-- 編集モード: 部屋番号 / 名前 / タグ入力（既定 hidden） -->
-          <div class="nameDoctorRow" id="detailEditRow" style="display:none;flex:1;max-width:380px;">
-            <span id="detailRoomSlot"></span>
-            <input type="text" class="detailTitle" id="detailTitle"
-              style="border:1px solid var(--line); background:#fff; outline:none; margin:0; padding:6px 8px; border-radius:8px; width:100%; max-width:180px; color:inherit; font-family:inherit;"
-              value="" />
-            <span id="detailDoctorSlot"></span>
-          </div>
+          <!-- タグピッカートリガー（タグアイコン）の差込先 -->
+          <span id="detailDoctorSlot"></span>
+          <!-- 患者についてるタグをインライン表示。長押しで外せる。空きスペース次第で末尾を ... 表示 -->
+          <div id="detailInlineTags" class="inlineTagsRow"></div>
         </div>
         <div class="detailTopActions">
           <button class="iconBtn" id="qrToggleBtn" type="button" title="QRコード表示" aria-label="QRコード表示" aria-pressed="false">
