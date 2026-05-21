@@ -1209,12 +1209,12 @@
       font-size: 12px;
     }
 
-    /* タグピッカー popup の「+ 新規タグ」ボタン。
-       設定画面に切り替えなくても、ピッカーから直接タグを追加できる。 */
+    /* タグピッカー popup の「+」ボタン。タップでその場が入力欄に変わり、
+       Enter または別の場所をタップで登録（設定画面と同じインライン UX）。 */
     .tagPickerAddBtn {
       display: flex;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
       width: 100%;
       padding: 6px 10px;
       margin-top: 6px;
@@ -1223,13 +1223,22 @@
       border-radius: 8px;
       cursor: pointer;
       color: var(--muted);
-      font-weight: 700;
-      font-size: 12px;
     }
     .tagPickerAddBtn:hover {
       background: rgba(0, 0, 0, 0.04);
       color: var(--text);
       border-color: var(--text);
+    }
+    .tagPickerAddInput {
+      width: 100%;
+      padding: 6px 10px;
+      margin-top: 6px;
+      border: 1px solid var(--focus);
+      border-radius: 8px;
+      outline: none;
+      font-size: 13px;
+      background: #fff;
+      color: var(--text);
     }
 
     /* AND/OR mode toggle inside filter popup */

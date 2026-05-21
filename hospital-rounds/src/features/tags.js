@@ -350,25 +350,51 @@ function buildGroupSection(group, entries, getSelected, setSelected, onChange, r
 }
 
 // opts: { getSelected, setSelected, entries: [{value,label,color?}], onChange, fillWidth, withModeToggle, includeStatus, forPatient }
-// 全タグピッカー（患者用・共有フィルター用）共通の「＋ 新規タグ」ボタン。
-// タップ → prompt → addNewTag で settings.tags に登録 → popup を再描画。
+// 全タグピッカー（患者用・共有フィルター用）共通の「+」ボタン。
+// 設定画面と同じインライン入力 UX: タップ → その場で入力欄が現れて、
+// 別の場所をタップ（or Enter）で登録、Escape でキャンセル。
 function appendAddTagButton(popup, refreshPopup, refreshTrigger) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "tagPickerAddBtn";
-  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>新規タグ</span>`;
+  btn.title = "新規タグ";
+  btn.setAttribute("aria-label", "新規タグ");
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
-    const raw = prompt("新規タグ名");
-    if (raw == null) return; // cancel
-    const name = String(raw).trim();
-    if (!name) return;
-    if (!addNewTag(name)) {
-      alert("そのタグは既に存在します。");
-      return;
+    // インライン入力欄に差し替え
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.className = "tagPickerAddInput";
+    inp.placeholder = "タグ名";
+    if (btn.parentNode) btn.parentNode.replaceChild(inp, btn);
+    inp.focus();
+
+    let committed = false;
+    function commit() {
+      if (committed) return;
+      committed = true;
+      const name = String(inp.value || "").trim();
+      if (!name) {
+        refreshPopup();
+        return;
+      }
+      if (addNewTag(name)) {
+        refreshPopup();
+        refreshTrigger();
+      } else {
+        alert("そのタグは既に存在します。");
+        refreshPopup();
+      }
     }
-    refreshPopup();
-    refreshTrigger();
+    inp.addEventListener("blur", commit);
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); commit(); }
+      else if (e.key === "Escape") { e.preventDefault(); committed = true; refreshPopup(); }
+    });
+    // popup を閉じる側の document click ハンドラに拾われないように伝播停止
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("mousedown", (e) => e.stopPropagation());
   });
   popup.appendChild(btn);
 }
@@ -383,6 +409,7 @@ export function makeTagPicker(opts) {
     withModeToggle = false,
     grouped = false,           // group sections when true (forces grouping mode)
     forPatient = false,        // patient picker: hide status group entirely
+    iconOnly = false,          // trigger に選択チップを出さず、アイコンだけ表示する
   } = opts;
 
   const wrap = document.createElement("div");
@@ -400,8 +427,8 @@ export function makeTagPicker(opts) {
   function refreshTrigger() {
     const selected = getSelected();
     const list = (typeof entries === "function" ? entries() : entries) || [];
-    // When grouping is enabled, show only the tag icon (and a dot indicating selection)
-    if (grouped && isTagGroupingEnabled()) {
+    // iconOnly か grouping ON のときはアイコンのみ表示
+    if (iconOnly || (grouped && isTagGroupingEnabled())) {
       const hasAny = selected.length > 0;
       trigger.innerHTML = `<span class="tagPickerIcon" style="color:${hasAny ? '#2563eb' : 'var(--muted)'};">${TAG_SVG}</span>`;
       trigger.classList.toggle("hasSelected", hasAny);
@@ -552,6 +579,9 @@ export function makePatientTagPicker(patientIndex, onChange) {
     onChange,
     grouped: true,
     forPatient: true,
+    // 患者ピッカーは選択タグを外側 (inlineTagsRow) に出すので、トリガーは
+    // アイコンのみ。チップが二重に出ないようにする。
+    iconOnly: true,
   });
 }
 
