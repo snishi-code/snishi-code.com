@@ -18,7 +18,9 @@ export function finishDataChange() {
 // Drag and Drop & Long Press
 // ============================
 
-export function bindLongPressAndDrag(el, getIndexFn, onDrop, onMenu, onTap) {
+// dragSelector: ドロップ候補要素の CSS セレクタ (省略時は active view から自動推定)
+//   docs デモなど、ビュー自動推定が効かない場所で使う。
+export function bindLongPressAndDrag(el, getIndexFn, onDrop, onMenu, onTap, dragSelector) {
   let startX = 0, startY = 0;
   let mode = 0;
   let localTimer = null;
@@ -41,7 +43,7 @@ export function bindLongPressAndDrag(el, getIndexFn, onDrop, onMenu, onTap) {
       e.preventDefault();
       if (mode === 2 && dist > 8) {
         mode = 3;
-        startCustomDrag(el, getIndexFn(), pt.clientX, pt.clientY);
+        startCustomDrag(el, getIndexFn(), pt.clientX, pt.clientY, dragSelector);
       }
       if (mode === 3) {
         moveCustomDrag(pt.clientX, pt.clientY);
@@ -119,17 +121,21 @@ let dragSourceIdx = -1;
 let dragOverIdx = -1;
 let dragElements = [];
 
-function startCustomDrag(sourceEl, sourceIdx, clientX, clientY) {
+function startCustomDrag(sourceEl, sourceIdx, clientX, clientY, dragSelector) {
   dragSourceIdx = sourceIdx;
   dragOverIdx = sourceIdx;
   dragElements = [];
-  const viewId = document.querySelector(".view.active")?.id;
   let query = "";
-  if (viewId === "homeView") query = ".patientBtn";
-  else if (viewId === "memoView") query = "#memoView .memoRow";
-  else if (viewId === "sharedView") query = "#sharedView .memoRow";
-  else if (viewId === "settingsView" && sourceEl.closest(".tagSettingList"))
-    query = ".tagSettingList .tagSettingChip";
+  if (dragSelector) {
+    query = dragSelector;
+  } else {
+    const viewId = document.querySelector(".view.active")?.id;
+    if (viewId === "homeView") query = ".patientBtn";
+    else if (viewId === "memoView") query = "#memoView .memoRow";
+    else if (viewId === "sharedView") query = "#sharedView .memoRow";
+    else if (viewId === "settingsView" && sourceEl.closest(".tagSettingList"))
+      query = ".tagSettingList .tagSettingChip";
+  }
 
   if (query) {
     document.querySelectorAll(query).forEach((el, i) => {

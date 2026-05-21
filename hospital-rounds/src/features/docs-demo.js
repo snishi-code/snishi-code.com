@@ -11,10 +11,11 @@
 //   - 患者数は DEMO_PATIENT_COUNT で集中管理 (将来 N 変更時はここだけ)。
 
 import { STATUS } from "../constants.js";
-import { bindTapOrLongPress, nextStatusInCycle, statusOnLongPress } from "../views/detail.js";
+import { nextStatusInCycle } from "../views/detail.js";
 import { statusClass } from "../views/home.js";
 import { formatPatientLabel } from "./room.js";
 import { createEditToggle } from "./edit-toggle.js";
+import { bindLongPressAndDrag } from "./drag.js";
 
 const DEMO_PATIENT_COUNT = 3;
 const STATUS_PREFIX = "__status:";
@@ -48,6 +49,7 @@ export function resetDocsDemo() {
   if (_editToggle) _editToggle.exit();
   _state = defaultDemoState();
   closeOpenPopup();
+  closeActiveMenuOverlay();
 }
 
 function ensureState() {
@@ -260,23 +262,102 @@ document.addEventListener("click", () => closeOpenPopup());
 // ============================================================
 // 描画
 // ============================================================
-function renderViewBtn(p) {
+function renderViewBtn(p, state) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "patientBtn " + statusClass(p.status);
   const label = formatPatientLabel(p, "—");
   btn.textContent = label;
   btn.setAttribute("aria-label", label);
-  const applyStatus = (next) => {
-    p.status = next;
-    btn.className = "patientBtn " + statusClass(next);
-  };
-  bindTapOrLongPress(
+  bindLongPressAndDrag(
     btn,
-    () => applyStatus(nextStatusInCycle(p.status)),
-    () => applyStatus(statusOnLongPress(p.status))
+    () => state.patients.indexOf(p),
+    (fromIdx, toIdx) => onDemoPatientDrop(fromIdx, toIdx, state),
+    (idx) => openDemoActionMenu(idx, state),
+    () => {
+      // 短タップ: ステータスサイクル (本番ホームの「タップ＝詳細遷移」はデモ
+      // では飛ばないので、代わりにサイクルを割り当てている)。
+      const next = nextStatusInCycle(p.status);
+      p.status = next;
+      btn.className = "patientBtn " + statusClass(next);
+    },
+    "#docsDemoGrid .patientBtn"
   );
   return btn;
+}
+
+function onDemoPatientDrop(fromIdx, toIdx, state) {
+  if (fromIdx === toIdx) return;
+  const item = state.patients.splice(fromIdx, 1)[0];
+  state.patients.splice(toIdx, 0, item);
+  renderDocsDemo();
+}
+
+function makeNewDemoPatient() {
+  return { status: STATUS.NONE, name: "", room: "", tags: [] };
+}
+
+// ============================================================
+// アクションメニュー (長押し → 追加 / 削除 / キャンセル)
+// 3 件上限を超える追加は専用 popup で拒否。
+// ============================================================
+let _activeMenuOverlay = null;
+function closeActiveMenuOverlay() {
+  if (_activeMenuOverlay) {
+    _activeMenuOverlay.remove();
+    _activeMenuOverlay = null;
+  }
+}
+
+function openDemoActionMenu(idx, state) {
+  closeActiveMenuOverlay();
+  const overlay = document.createElement("div");
+  overlay.className = "popupMenuOverlay active";
+  const title = formatPatientLabel(state.patients[idx], String(idx + 1));
+  overlay.innerHTML = `
+    <div class="popupMenu">
+      <div class="popupTitle">${title} の操作</div>
+      <button class="secondary" data-action="add">1人追加（下へ）</button>
+      <button class="danger" data-action="delete">削除</button>
+      <div style="height:12px;"></div>
+      <button class="secondary" data-action="cancel">キャンセル</button>
+    </div>
+  `;
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) { closeActiveMenuOverlay(); return; }
+    const action = e.target.closest("[data-action]")?.dataset.action;
+    if (!action) return;
+    if (action === "add") {
+      if (state.patients.length >= DEMO_PATIENT_COUNT) {
+        closeActiveMenuOverlay();
+        openDemoMaxPopup();
+        return;
+      }
+      state.patients.splice(idx + 1, 0, makeNewDemoPatient());
+    } else if (action === "delete") {
+      state.patients.splice(idx, 1);
+    }
+    closeActiveMenuOverlay();
+    renderDocsDemo();
+  });
+  document.body.appendChild(overlay);
+  _activeMenuOverlay = overlay;
+}
+
+function openDemoMaxPopup() {
+  closeActiveMenuOverlay();
+  const overlay = document.createElement("div");
+  overlay.className = "popupMenuOverlay active";
+  overlay.innerHTML = `
+    <div class="popupMenu">
+      <div class="popupTitle">これ以上追加できません</div>
+      <div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:12px;">デモは ${DEMO_PATIENT_COUNT} 件までです。<br>先に削除してから追加してください。</div>
+      <button class="secondary" data-action="close">OK</button>
+    </div>
+  `;
+  overlay.addEventListener("click", () => closeActiveMenuOverlay());
+  document.body.appendChild(overlay);
+  _activeMenuOverlay = overlay;
 }
 
 function renderEditRow(p, state) {
@@ -344,7 +425,7 @@ export function renderDocsDemo() {
 
   const list = visiblePatients(state);
   for (const p of list) {
-    grid.appendChild(state.editMode ? renderEditRow(p, state) : renderViewBtn(p));
+    grid.appendChild(state.editMode ? renderEditRow(p, state) : renderViewBtn(p, state));
   }
 }
 
