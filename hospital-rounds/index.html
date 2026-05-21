@@ -633,9 +633,9 @@
     <div class="popupMenuOverlay" id="importActionOverlay">
       <div class="popupMenu">
         <div class="popupTitle">データ取込</div>
-        <div style="font-size: 14px; margin-bottom: 15px; color: #333; line-height: 1.4;">現在のデータが存在します。<br>どのように取り込みますか？</div>
-        <button class="danger" id="importOverwriteBtn">上書き（現在のデータを消去）</button>
-        <button class="primary" id="importAppendBtn">追記（差分を追加）</button>
+        <div style="font-size: 14px; margin-bottom: 15px; color: #333; line-height: 1.4;">患者は末尾に新規追加されます (青ステータス)。<br>設定も合わせて取り込みますか？<br><span style="font-size:12px;color:#6b7280;">※管理機能の設定は引き継がれません</span></div>
+        <button class="primary" id="importIncludeSettingsBtn">設定も取り込む</button>
+        <button class="secondary" id="importPatientsOnlyBtn">患者のみ取込</button>
         <div style="height:12px;"></div>
         <button class="secondary" id="importCancelBtn">キャンセル</button>
       </div>

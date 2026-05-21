@@ -10,120 +10,122 @@ import { STATUS } from "../constants.js";
 import {
   projectBundle, parseBundle, getSection, SECTION,
 } from "../bundle.js";
+import { recordOp } from "./roster.js";
 
-export function askImportAction() {
+// 「設定も取込」「患者のみ」「キャンセル」を返す。データありの時だけ表示する。
+function askImportAction() {
   return new Promise(resolve => {
     const overlay = document.getElementById("importActionOverlay");
-    const btnOver = document.getElementById("importOverwriteBtn");
-    const btnApp = document.getElementById("importAppendBtn");
+    const btnInc = document.getElementById("importIncludeSettingsBtn");
+    const btnPat = document.getElementById("importPatientsOnlyBtn");
     const btnCan = document.getElementById("importCancelBtn");
 
     const cleanup = () => {
       overlay.classList.remove("active");
-      btnOver.removeEventListener("click", onOver);
-      btnApp.removeEventListener("click", onApp);
+      btnInc.removeEventListener("click", onInc);
+      btnPat.removeEventListener("click", onPat);
       btnCan.removeEventListener("click", onCan);
     };
-    const onOver = () => { cleanup(); resolve("overwrite"); };
-    const onApp = () => { cleanup(); resolve("append"); };
+    const onInc = () => { cleanup(); resolve("include-settings"); };
+    const onPat = () => { cleanup(); resolve("patients-only"); };
     const onCan = () => { cleanup(); resolve("cancel"); };
 
-    btnOver.addEventListener("click", onOver);
-    btnApp.addEventListener("click", onApp);
+    btnInc.addEventListener("click", onInc);
+    btnPat.addEventListener("click", onPat);
     btnCan.addEventListener("click", onCan);
 
     overlay.classList.add("active");
   });
 }
 
-export function applyAppend(currP, impP) {
-  let changed = false;
-  const namePrefix = (impP && impP.name && impP.name.trim() !== "") ? impP.name.trim() + "さんのデータが" : "";
-  const appendStr = `\n\n（${namePrefix}追記されました）\n`;
-  const appendStrFirst = `（${namePrefix}追記されました）\n`;
-
-  function checkAndAppend(objC, objI, key) {
-    let currVal = objC[key];
-    let impVal = objI[key];
-    if (typeof impVal === "string" && impVal.trim() !== "") {
-      if (currVal !== impVal) {
-        if (currVal && currVal.trim() !== "") {
-          objC[key] = currVal.trim() + appendStr + impVal.trim();
-        } else {
-          objC[key] = appendStrFirst + impVal.trim();
-        }
-        changed = true;
-      }
-    }
-  }
-
-  checkAndAppend(currP, impP, "memo");
-  checkAndAppend(currP, impP, "shared");
-  checkAndAppend(currP, impP, "s");
-  checkAndAppend(currP.a, impP.a, "text");
-  checkAndAppend(currP.p, impP.p, "text");
-
-  let newOFreeText = [];
-  if (typeof impP.oFree === "string" && impP.oFree.trim() !== "") {
-    if (currP.oFree !== impP.oFree) {
-      newOFreeText.push(impP.oFree.trim());
-    }
-  }
-
-  const vitalLabels = {
-    spo2: "SpO2", spo2_memo: "SpO2メモ", rr: "RR",
-    bp_sys: "BP収縮期", bp_dia: "BP拡張期", pr: "P", bt: "BT"
-  };
-
-  for (let k in impP.vitals) {
-    let impVal = impP.vitals[k];
-    let currVal = currP.vitals[k];
-    if (typeof impVal === "string" && impVal.trim() !== "") {
-      if (currVal !== impVal) {
-        let label = vitalLabels[k] || k;
-        newOFreeText.push(`${label}: ${impVal.trim()}`);
-      }
-    }
-  }
-
-  for (let k in impP.o) {
-    if (currP.o[k] && impP.o[k]) {
-      let impNote = impP.o[k].note;
-      let currNote = currP.o[k].note;
-      if (typeof impNote === "string" && impNote.trim() !== "") {
-        if (currNote !== impNote) {
-          if (currNote && currNote.trim() !== "") {
-            currP.o[k].note = currNote.trim() + appendStr + impNote.trim();
-          } else {
-            currP.o[k].note = appendStrFirst + impNote.trim();
-          }
-          changed = true;
-        }
-      }
-    }
-  }
-
-  if (newOFreeText.length > 0) {
-    let appendedText = newOFreeText.join("\n");
-    if (currP.oFree && currP.oFree.trim() !== "") {
-      currP.oFree = currP.oFree.trim() + appendStr + appendedText;
-    } else {
-      currP.oFree = appendStrFirst + appendedText;
-    }
-    changed = true;
-  }
-
-  if (typeof impP.name === "string" && impP.name.trim() !== "" && (!currP.name || currP.name.trim() === "")) {
-    currP.name = impP.name.trim();
-    changed = true;
-  }
-
-  if (changed) {
-    currP.status = STATUS.BLUE;
-  }
+function vibrate() {
+  try { navigator.vibrate?.(80); } catch (_) { }
 }
 
-// Rebuild appState (clinical only) from a bundle's sections.patients + meta.
+function isAppStateEmpty() {
+  for (const p of appState.patients) {
+    if (p.name || p.room || p.s || p.a?.text || p.p?.text || p.memo || p.shared || p.oFree) return false;
+    const v = p.vitals || {};
+    if (v.spo2 || v.rr || v.bp_sys || v.bp_dia || v.pr || v.bt || v.spo2_memo) return false;
+    for (const k in (p.o || {})) {
+      if (p.o[k]?.note || p.o[k]?.normal) return false;
+    }
+    if (Array.isArray(p.tags) && p.tags.length > 0) return false;
+  }
+  return true;
+}
+
+function isImportedPatientEmpty(p) {
+  if (!p) return true;
+  if (p.name || p.room || p.s || p.a?.text || p.p?.text || p.memo || p.shared || p.oFree) return false;
+  const v = p.vitals || {};
+  if (v.spo2 || v.rr || v.bp_sys || v.bp_dia || v.pr || v.bt || v.spo2_memo) return false;
+  for (const k in (p.o || {})) {
+    if (p.o[k]?.note || p.o[k]?.normal) return false;
+  }
+  if (Array.isArray(p.tags) && p.tags.length > 0) return false;
+  return true;
+}
+
+// 取込側の患者が参照しているタグ名のうち、現行 settings.tags に無いものを末尾に追加。
+// 名前ベースなので衝突リネームは不要 (同名タグは同タグとして扱う)。
+function unionImportedTags(importedPatients) {
+  if (!Array.isArray(settings.tags)) settings.tags = [];
+  const currentSet = new Set(settings.tags);
+  let added = 0;
+  for (const p of importedPatients) {
+    if (!Array.isArray(p?.tags)) continue;
+    for (const t of p.tags) {
+      if (!t || currentSet.has(t)) continue;
+      settings.tags.push(t);
+      currentSet.add(t);
+      added++;
+    }
+  }
+  if (added > 0) saveSettings();
+}
+
+// 新規患者として末尾に追加 (status=BLUE で「新着」を可視化)。
+// 完全に空のレコードはスキップ。
+function appendNewPatients(importedPatients) {
+  let count = 0;
+  for (const src of importedPatients) {
+    if (isImportedPatientEmpty(src)) continue;
+    const p = { ...src };
+    p.status = STATUS.BLUE;
+    p.updatedAt = Date.now();
+    p.tags = Array.isArray(src.tags) ? src.tags.slice() : [];
+    p.vitals = { ...(src.vitals || {}) };
+    p.o = {};
+    for (const k in (src.o || {})) {
+      p.o[k] = { normal: !!src.o[k]?.normal, note: String(src.o[k]?.note ?? "") };
+    }
+    p.a = { text: String(src.a?.text ?? "") };
+    p.p = { text: String(src.p?.text ?? "") };
+    const atIdx = appState.patients.length;
+    appState.patients.push(p);
+    if (p.pid && rosterState) {
+      recordOp({
+        type: "add", at: atIdx,
+        patient: { pid: p.pid, name: p.name, room: p.room, tags: p.tags.slice() },
+      });
+    }
+    count++;
+  }
+  return count;
+}
+
+// 受信した settings を反映。管理機能関連 (adminEnabled / adminTerminal /
+// rosterPassphrase) は現端末の状態を維持し、取り込まない。
+function applyImportedSettings(sSettings) {
+  const merged = { ...sSettings };
+  merged.adminEnabled = settings.adminEnabled;
+  merged.adminTerminal = settings.adminTerminal;
+  merged.rosterPassphrase = settings.rosterPassphrase;
+  setSettings(merged);
+  saveSettings();
+}
+
 function importedAppStateFromBundle(bundle) {
   const sPatients = getSection(bundle, SECTION.PATIENTS);
   const sMeta = getSection(bundle, SECTION.META);
@@ -143,8 +145,16 @@ function importedRosterStateFromBundle(bundle) {
   });
 }
 
+function refreshTitleUI() {
+  const appTitleInput = document.getElementById("appTitleInput");
+  if (appTitleInput) appTitleInput.value = appState.title;
+  document.title = appState.title;
+  const printHead = document.querySelector(".overviewPrintHead");
+  if (printHead) printHead.textContent = appState.title + " — 総覧";
+}
+
 export function initImportExport(callbacks) {
-  const { renderHome, renderDetail, renderSettings, renderOverviewScreen, renderMemoScreen, renderSharedScreen, showView } = callbacks;
+  const { renderHome, renderDetail, renderSettings, renderOverviewScreen, renderMemoScreen, renderSharedScreen } = callbacks;
 
   const settingsImportFile = document.getElementById("settingsImportFile");
   const settingsImportBtn = document.getElementById("settingsImportBtn");
@@ -186,6 +196,20 @@ export function initImportExport(callbacks) {
     });
   }
 
+  function rerenderCurrentView() {
+    renderHome();
+    const settingsView = document.getElementById("settingsView");
+    const detailView = document.getElementById("detailView");
+    const overviewView = document.getElementById("overviewView");
+    const memoView = document.getElementById("memoView");
+    const sharedView = document.getElementById("sharedView");
+    if (settingsView && settingsView.classList.contains("active")) renderSettings();
+    if (detailView && detailView.classList.contains("active")) renderDetail();
+    if (overviewView && overviewView.classList.contains("active")) renderOverviewScreen();
+    if (memoView && memoView.classList.contains("active")) renderMemoScreen();
+    if (sharedView && sharedView.classList.contains("active")) renderSharedScreen();
+  }
+
   if (settingsImportBtn && settingsImportFile) {
     settingsImportBtn.addEventListener("click", () => { settingsImportFile.click(); });
 
@@ -209,80 +233,46 @@ export function initImportExport(callbacks) {
           const sPatients = getSection(bundle, SECTION.PATIENTS);
           const sSettings = getSection(bundle, SECTION.SETTINGS);
 
-          if (Array.isArray(sPatients)) {
-            const importedState = importedAppStateFromBundle(bundle);
-            const importedRoster = importedRosterStateFromBundle(bundle);
-
-            let isEmpty = true;
-            for (let i = 0; i < appState.patients.length; i++) {
-              const p = appState.patients[i];
-              if (p.name || p.s || p.a.text || p.p.text || p.memo || p.shared) { isEmpty = false; break; }
-              const v = p.vitals;
-              if (v && (v.spo2 || v.rr || v.bp_sys || v.pr || v.bt)) { isEmpty = false; break; }
-              for (const k in p.o) {
-                if (p.o[k].note || p.o[k].normal) { isEmpty = false; break; }
-              }
-              if (!isEmpty) break;
-            }
-
-            let isOverwrite = false;
-            let isAppend = false;
-
-            if (isEmpty) {
-              setAppState(importedState);
-              setRosterState(importedRoster);
-              const appTitleInput = document.getElementById("appTitleInput");
-              if (appTitleInput) appTitleInput.value = appState.title;
-              document.title = appState.title;
-              const printHead = document.querySelector(".overviewPrintHead");
-              if (printHead) printHead.textContent = appState.title + " — 総覧";
-              isOverwrite = true;
-            } else {
-              const action = await askImportAction();
-              if (action === "cancel") { settingsImportFile.value = ""; return; }
-              if (action === "overwrite") {
-                if (!confirm("現在のデータは上書きされますが、本当によろしいですか？\n（現在のデータは全て消去されます）")) {
-                  settingsImportFile.value = ""; return;
-                }
-                setAppState(importedState);
-                setRosterState(importedRoster);
-                const appTitleInput = document.getElementById("appTitleInput");
-                if (appTitleInput) appTitleInput.value = appState.title;
-                document.title = appState.title;
-                const printHead = document.querySelector(".overviewPrintHead");
-                if (printHead) printHead.textContent = appState.title + " — 総覧";
-                isOverwrite = true;
-              } else if (action === "append") {
-                isAppend = true;
-                for (let i = 0; i < Math.min(appState.patients.length, importedState.patients.length); i++) {
-                  applyAppend(appState.patients[i], importedState.patients[i]);
-                }
-              }
-            }
-
-            saveNow();
-            if (sSettings && isOverwrite) {
-              setSettings(sSettings);
-              saveSettings();
-            }
-          } else if (sSettings) {
-            setSettings(sSettings);
-            saveSettings();
+          // 患者セクション無し (= settings だけ) なら設定だけ取込
+          if (!Array.isArray(sPatients)) {
+            if (sSettings) applyImportedSettings(sSettings);
+            ensurePatientsHaveAllOKeys();
+            vibrate();
+            rerenderCurrentView();
+            return;
           }
 
+          const importedState = importedAppStateFromBundle(bundle);
+          const importedRoster = importedRosterStateFromBundle(bundle);
+
+          if (isAppStateEmpty()) {
+            // 真っさら: 全部取り込んで、popup も「取込ました」alert も出さず振動だけ
+            setAppState(importedState);
+            setRosterState(importedRoster);
+            refreshTitleUI();
+            if (sSettings) applyImportedSettings(sSettings);
+            saveNow();
+            ensurePatientsHaveAllOKeys();
+            vibrate();
+            rerenderCurrentView();
+            return;
+          }
+
+          // データあり: popup で設定込みか選択
+          const action = await askImportAction();
+          if (action === "cancel") return;
+
+          // どちらの選択でも患者は末尾に追加 (status=BLUE)
+          if (action === "patients-only") {
+            unionImportedTags(importedState.patients);
+          } else if (action === "include-settings" && sSettings) {
+            applyImportedSettings(sSettings);
+          }
+          appendNewPatients(importedState.patients);
+          saveNow();
           ensurePatientsHaveAllOKeys();
-          alert("データを取り込みました。");
-          renderHome();
-          const settingsView = document.getElementById("settingsView");
-          const detailView = document.getElementById("detailView");
-          const overviewView = document.getElementById("overviewView");
-          const memoView = document.getElementById("memoView");
-          const sharedView = document.getElementById("sharedView");
-          if (settingsView && settingsView.classList.contains("active")) renderSettings();
-          if (detailView && detailView.classList.contains("active")) renderDetail();
-          if (overviewView && overviewView.classList.contains("active")) renderOverviewScreen();
-          if (memoView && memoView.classList.contains("active")) renderMemoScreen();
-          if (sharedView && sharedView.classList.contains("active")) renderSharedScreen();
+          vibrate();
+          rerenderCurrentView();
         } catch (err) {
           alert("ファイルの読み込みに失敗しました。正しいJSONファイルか確認してください。");
           console.error("Import failed:", err);
@@ -292,5 +282,4 @@ export function initImportExport(callbacks) {
       reader.readAsText(file);
     });
   }
-
 }
