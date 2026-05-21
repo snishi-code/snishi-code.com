@@ -103,7 +103,9 @@
         </div>
         <canvas id="homeQrCanvas" width="800" height="800"></canvas>
       </div>
-      <div class="grid" id="homeGrid"></div>
+      <div class="viewScroll">
+        <div class="grid" id="homeGrid"></div>
+      </div>
     </section>
 
     <!-- Memo view -->
@@ -326,6 +328,7 @@
         <canvas id="settingsQrCanvas" width="800" height="800"></canvas>
       </div>
 
+      <div class="viewScroll">
       <div class="card">
         <div class="cardHead">
           <div class="label">S</div>
@@ -441,6 +444,7 @@
           </div>
         </div>
       </div>
+      </div>
     </section>
 
     <!-- Detail view -->
@@ -502,6 +506,7 @@
         <canvas id="qrCanvas" width="800" height="800"></canvas>
       </div>
 
+      <div class="viewScroll">
       <div class="card" id="detailMemoCard">
         <div class="cardHead">
           <div class="label" style="display:flex;align-items:center;" title="メモ" aria-label="メモ">
@@ -582,22 +587,6 @@
         </div>
       </div>
 
-      <div class="card">
-        <div class="cardBody" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-          <div class="statusPick" aria-label="ステータス選択">
-            <button class="statusBtn yellow" id="statusYellowBtn" type="button" title="保留（黄）" aria-label="保留（黄）">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="9" y1="6" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="18"/></svg>
-            </button>
-            <button class="statusBtn green" id="statusGreenBtn" type="button" title="済（緑）" aria-label="済（緑）">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            </button>
-            <button class="statusBtn gray" id="statusGrayBtn" type="button" title="終了（濃いグレー）" aria-label="終了（濃いグレー）">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
       <div class="card" id="detailSharedCard">
         <div class="cardHead">
           <div class="label" style="display:flex;align-items:center;" title="共有" aria-label="共有">
@@ -611,6 +600,7 @@
 
       <div class="qrHint" style="margin-top:10px">
         保存キー: <span class="mono" id="storageKeyLabel"></span>
+      </div>
       </div>
     </section>
 

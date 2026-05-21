@@ -706,6 +706,15 @@
       font-weight: 900
     }
 
+    /* ホーム/詳細/設定 のスクロールラッパ。
+       上部ボタン群と QR カードは外側、本体だけがスクロールする。
+       memoScroll と違って枠線・影は付けない（中身が既にカード化されているため）。 */
+    .viewScroll {
+      max-height: calc(100vh - 148px);
+      overflow: auto;
+      margin-top: 12px;
+    }
+
     /* Memo list */
     .memoScroll {
       max-height: calc(100vh - 148px);
@@ -884,7 +893,8 @@
       }
 
       #memoView .memoScroll,
-      #sharedView .memoScroll {
+      #sharedView .memoScroll,
+      .viewScroll {
         max-height: none !important;
         overflow: visible !important;
         border: none !important;
