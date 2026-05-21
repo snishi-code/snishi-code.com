@@ -350,53 +350,75 @@ function buildGroupSection(group, entries, getSelected, setSelected, onChange, r
 }
 
 // opts: { getSelected, setSelected, entries: [{value,label,color?}], onChange, fillWidth, withModeToggle, includeStatus, forPatient }
-// 全タグピッカー（患者用・共有フィルター用）共通の「+」ボタン。
-// 設定画面と同じインライン入力 UX: タップ → その場で入力欄が現れて、
-// 別の場所をタップ（or Enter）で登録、Escape でキャンセル。
-function appendAddTagButton(popup, refreshPopup, refreshTrigger) {
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "tagPickerAddBtn";
-  btn.title = "新規タグ";
-  btn.setAttribute("aria-label", "新規タグ");
-  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    // インライン入力欄に差し替え
+// ============================
+// 「+ 新規タグ」ウィジェット（設定画面・各タグピッカー popup 共通）
+//
+// 既定: 小さい「+」ボタン (.tagSettingAdd と同じ見た目)
+// タップ: その場が入力欄つきチップ (.tagSettingChip.editing) に差し替わる
+// 入力後の挙動:
+//   - Enter または別の場所をタップ (blur) で commit
+//   - 空 commit や Escape はキャンセル扱いで「+」表示に戻る
+//   - 既存タグと同名なら alert で通知し、入力チップを閉じる
+// commit 成功時は onAdded(name) を呼ぶ（呼び元で popup や一覧を再描画）。
+// ============================
+export function makeAddTagWidget({ onAdded } = {}) {
+  const wrap = document.createElement("span");
+  let activeInput = null; // 多重 commit/再描画ガード
+
+  function showButton() {
+    activeInput = null;
+    wrap.className = "tagAddWidget";
+    wrap.textContent = "";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tagSettingAdd";
+    btn.title = "新規タグ";
+    btn.setAttribute("aria-label", "新規タグ");
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showInput();
+    });
+    wrap.appendChild(btn);
+  }
+
+  function showInput() {
+    wrap.className = "tagAddWidget tagSettingChip editing";
+    wrap.textContent = "";
     const inp = document.createElement("input");
     inp.type = "text";
-    inp.className = "tagPickerAddInput";
+    inp.className = "tagSettingInput";
     inp.placeholder = "タグ名";
-    if (btn.parentNode) btn.parentNode.replaceChild(inp, btn);
-    inp.focus();
-
-    let committed = false;
-    function commit() {
-      if (committed) return;
-      committed = true;
+    activeInput = inp;
+    let done = false;
+    function finalize(commit) {
+      if (done) return;
+      done = true;
       const name = String(inp.value || "").trim();
-      if (!name) {
-        refreshPopup();
-        return;
-      }
-      if (addNewTag(name)) {
-        refreshPopup();
-        refreshTrigger();
-      } else {
+      if (commit && name) {
+        if (addNewTag(name)) {
+          showButton();
+          if (onAdded) onAdded(name);
+          return;
+        }
         alert("そのタグは既に存在します。");
-        refreshPopup();
       }
+      showButton();
     }
-    inp.addEventListener("blur", commit);
+    inp.addEventListener("blur", () => finalize(true));
     inp.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") { e.preventDefault(); commit(); }
-      else if (e.key === "Escape") { e.preventDefault(); committed = true; refreshPopup(); }
+      if (e.key === "Enter") { e.preventDefault(); finalize(true); }
+      else if (e.key === "Escape") { e.preventDefault(); finalize(false); }
     });
-    // popup を閉じる側の document click ハンドラに拾われないように伝播停止
+    // 親 popup の document click ハンドラに拾われて popup ごと閉じないように
     inp.addEventListener("click", (e) => e.stopPropagation());
     inp.addEventListener("mousedown", (e) => e.stopPropagation());
-  });
-  popup.appendChild(btn);
+    wrap.appendChild(inp);
+    setTimeout(() => inp.focus(), 0);
+  }
+
+  showButton();
+  return wrap;
 }
 
 export function makeTagPicker(opts) {
@@ -507,17 +529,15 @@ export function makeTagPicker(opts) {
         sectionsHost.appendChild(buildGroupSection(unGroup, unEntries, getSelected, setSelected, onChange, refreshTrigger, refreshPopup));
       }
       popup.appendChild(sectionsHost);
-      appendAddTagButton(popup, refreshPopup, refreshTrigger);
+      popup.appendChild(makeAddTagWidget({ onAdded: () => { refreshPopup(); refreshTrigger(); } }));
       return;
     }
 
     const list = (typeof entries === "function" ? entries() : entries) || [];
     if (!list.length) {
-      const empty = document.createElement("div");
-      empty.className = "tagPickerEmpty";
-      empty.textContent = "（タグ未登録）";
-      popup.appendChild(empty);
-      appendAddTagButton(popup, refreshPopup, refreshTrigger);
+      // 既存タグが無い場合も「タグ未登録」のような空状態文言は出さず、
+      // 設定画面と同じく「+」だけ並べる
+      popup.appendChild(makeAddTagWidget({ onAdded: () => { refreshPopup(); refreshTrigger(); } }));
       return;
     }
     const current = new Set(getSelected());
@@ -550,7 +570,7 @@ export function makeTagPicker(opts) {
       }
       popup.appendChild(lbl);
     }
-    appendAddTagButton(popup, refreshPopup, refreshTrigger);
+    popup.appendChild(makeAddTagWidget({ onAdded: () => { refreshPopup(); refreshTrigger(); } }));
   }
 
   trigger.addEventListener("click", (e) => {

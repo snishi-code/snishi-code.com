@@ -1209,36 +1209,10 @@
       font-size: 12px;
     }
 
-    /* タグピッカー popup の「+」ボタン。タップでその場が入力欄に変わり、
-       Enter または別の場所をタップで登録（設定画面と同じインライン UX）。 */
-    .tagPickerAddBtn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      padding: 6px 10px;
+    /* makeAddTagWidget の wrapper。popup 内では上に余白を入れる。 */
+    .tagPickerPopup .tagAddWidget {
+      display: inline-flex;
       margin-top: 6px;
-      border: 1px dashed var(--line);
-      background: transparent;
-      border-radius: 8px;
-      cursor: pointer;
-      color: var(--muted);
-    }
-    .tagPickerAddBtn:hover {
-      background: rgba(0, 0, 0, 0.04);
-      color: var(--text);
-      border-color: var(--text);
-    }
-    .tagPickerAddInput {
-      width: 100%;
-      padding: 6px 10px;
-      margin-top: 6px;
-      border: 1px solid var(--focus);
-      border-radius: 8px;
-      outline: none;
-      font-size: 13px;
-      background: #fff;
-      color: var(--text);
     }
 
     /* AND/OR mode toggle inside filter popup */

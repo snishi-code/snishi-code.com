@@ -4,7 +4,7 @@ import { settings, appState, rosterState, saveSettings, ensurePatientsHaveAllOKe
 import { DEFAULT_O_RULES, DEFAULT_TAGS, clone } from "../constants.js";
 import { canEditORule, canDeleteORule, isAdminEnabled, isAdminTerminal, isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
-import { renameTagAt, deleteTagAt, moveTag, isTagGroupingEnabled, getUserGroups, getTagsInGroup, getUnassignedTags, addGroup, renameGroup, setGroupMode, deleteGroup, setTagGroup, getAllTags, getGroupForTag } from "../features/tags.js";
+import { renameTagAt, deleteTagAt, moveTag, isTagGroupingEnabled, getUserGroups, getTagsInGroup, getUnassignedTags, addGroup, renameGroup, setGroupMode, deleteGroup, setTagGroup, getAllTags, getGroupForTag, makeAddTagWidget } from "../features/tags.js";
 import { GROUP_MODE_SINGLE, GROUP_MODE_MULTI } from "../constants.js";
 import { bindLongPressAndDrag } from "../features/drag.js";
 
@@ -383,19 +383,15 @@ function renderTagsList() {
     if (idx === _draftTagIndex) openInlineTagEditor(chip, idx);
   }
 
-  const addBtn = document.createElement("button");
-  addBtn.type = "button";
-  addBtn.className = "tagSettingAdd";
-  addBtn.title = "追加";
-  addBtn.setAttribute("aria-label", "追加");
-  addBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
-  addBtn.addEventListener("click", () => {
-    if (!Array.isArray(settings.tags)) settings.tags = [];
-    settings.tags.push("");
-    _draftTagIndex = settings.tags.length - 1;
-    renderTagsList();
-  });
-  wrap.appendChild(addBtn);
+  // 「+ 新規タグ」は features/tags.js の共通ウィジェットを使う（患者画面・
+  // メモ/共有ピッカーと同じ実装＆見た目）。
+  wrap.appendChild(makeAddTagWidget({
+    onAdded: () => {
+      _draftTagIndex = -1;
+      renderTagsList();
+      if (_renderPatientUIFn) _renderPatientUIFn();
+    },
+  }));
 
   host.appendChild(wrap);
 }
