@@ -18,12 +18,20 @@ let qrVisible = false;
 let nameToggle = null; // createEditToggle で初期化
 
 // 詳細画面・ホーム編集モード共通のステータス巡回。
-// タップ＝白→黄→緑→灰→白…、長押し＝白へ強制リセット。
+//   - タップ: 白→黄→緑→灰→白 を巡回 (青はサイクル外、青のタップは白に戻る)
+//   - 長押し: 白 → 青 / それ以外 → 白
+// 青は「新着 (取込で追加された患者) / 注意」を任意で示すスロット。
 export const STATUS_CYCLE = [STATUS.NONE, STATUS.YELLOW, STATUS.GREEN, STATUS.GRAY];
 
 export function nextStatusInCycle(current) {
   const idx = STATUS_CYCLE.indexOf(current);
+  // 青などサイクル外から短タップで戻ると idx=-1 → 0 (= NONE) になる
   return STATUS_CYCLE[(idx + 1 + STATUS_CYCLE.length) % STATUS_CYCLE.length] || STATUS.YELLOW;
+}
+
+export function statusOnLongPress(current) {
+  // 白からの長押しのみ青へ。青を含むそれ以外は全て白へ強制リセット。
+  return current === STATUS.NONE ? STATUS.BLUE : STATUS.NONE;
 }
 
 // シンプルな「タップ vs 長押し」判定。長押し閾値 600ms。
@@ -596,7 +604,9 @@ export function initStatusButtons(renderHomeFn) {
       },
       () => {
         if (nameToggle?.isEditing()) return;
-        setStatus(STATUS.NONE);
+        const p = appState.patients[selectedNo - 1];
+        if (!p) return;
+        setStatus(statusOnLongPress(p.status));
       }
     );
   }

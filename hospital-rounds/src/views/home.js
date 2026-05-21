@@ -6,7 +6,7 @@ import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features
 import { makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
 import { formatPatientLabel, isRoomSortActive } from "../features/room.js";
 import { isNonAdminTerminal } from "../features/admin.js";
-import { bindTapOrLongPress, nextStatusInCycle } from "./detail.js";
+import { bindTapOrLongPress, nextStatusInCycle, statusOnLongPress } from "./detail.js";
 
 let _editMode = false;
 
@@ -78,7 +78,7 @@ export function renderHome(onPatientClick) {
       bindTapOrLongPress(
         btn,
         () => setStatus(nextStatusInCycle(p.status)),
-        () => setStatus(STATUS.NONE)
+        () => setStatus(statusOnLongPress(p.status))
       );
     } else {
       if (onPatientClick) {
