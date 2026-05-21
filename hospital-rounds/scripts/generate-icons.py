@@ -85,9 +85,14 @@ def process(target_color):
     cropped = out.crop(bbox)
     cw, ch = cropped.size
     side = max(cw, ch)
-    # 中心揃えで正方形に
-    square = Image.new("RGBA", (side, side), (0, 0, 0, 0))
-    square.paste(cropped, ((side - cw) // 2, (side - ch) // 2))
+    # 中心揃えで正方形に。背景は target_color 不透明で塗り潰し:
+    # 透明なまま放置すると Chrome の PWA install 判定で maskable icon 要件
+    # （角まで不透明）を満たさず install ボタンが出ない。
+    # iOS/Android はホーム画面で独自に角丸マスクを掛けるので、見た目は
+    # ユーザー原画と同じく「角丸の単色アイコン」に仕上がる。
+    bg_solid = target_color + (255,)
+    square = Image.new("RGBA", (side, side), bg_solid)
+    square.paste(cropped, ((side - cw) // 2, (side - ch) // 2), cropped)
     return square
 
 

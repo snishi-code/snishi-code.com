@@ -1,4 +1,4 @@
-const CACHE = 'hospital-rounds-v9';
+const CACHE = 'hospital-rounds-v10';
 
 // SW のスコープ（=sw.js が置かれているディレクトリ）。本番では '/hospital-rounds/'、
 // テスト(サブドメイン)では '/' になる。相対URL は self.registration.scope を起点に解決。
