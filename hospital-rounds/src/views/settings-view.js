@@ -558,7 +558,6 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
       key: nextCustomRuleKey(),
       label: "項目",
       normalText: "",
-      placeholder: "",
     });
     saveSettings();
     ensurePatientsHaveAllOKeys();

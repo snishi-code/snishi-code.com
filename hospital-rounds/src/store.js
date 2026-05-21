@@ -59,7 +59,6 @@ function normalizeSettings(raw) {
         key,
         label,
         normalText: String(r.normalText ?? ""),
-        placeholder: String(r.placeholder ?? ""),
         fromAdmin: !!r.fromAdmin,
       });
     }

@@ -33,8 +33,90 @@ const SAFE_FIELDS = [
 ];
 
 // ============================
-// Encode / Decode
+// QR wire 形式
+//
+// 受信側もアプリ構造を知っているので、key 名や positional な意味は両側で
+// 共有して JSON のオーバーヘッドを削る:
+//   - defaults: ["s_text","a_text","p_text"] の固定3要素配列
+//   - oRules: [[key, label, normalText, fromAdmin?], ...] の位置依存配列
+//     fromAdmin が true のときだけ 4 要素目 1 を付ける
+//   - clearTargets: 10桁のビット列 "0110001110"（フィールド順固定）
+//   - tagGroups: [[id, name, mode("s"|"m")], ...]
+//   - その他 (tags / tagGroupingEnabled / tagGroupAssign) はそのまま
 // ============================
+
+const WIRE_V = 2;
+const CLEAR_TARGET_ORDER = [
+  "memo", "s", "o", "a", "p", "shared",
+  "statusYellow", "statusGreen", "statusGray", "statusBlue",
+];
+
+function serializeForWire(s) {
+  const out = { v: WIRE_V };
+  if (s.defaults) {
+    out.d = [s.defaults.s || "", s.defaults.a || "", s.defaults.p || ""];
+  }
+  if (Array.isArray(s.oRules)) {
+    out.o = s.oRules.map(r => {
+      const arr = [String(r.key || ""), String(r.label || ""), String(r.normalText || "")];
+      if (r.fromAdmin) arr.push(1);
+      return arr;
+    });
+  }
+  if (s.clearTargets) {
+    out.c = CLEAR_TARGET_ORDER.map(f => s.clearTargets[f] ? "1" : "0").join("");
+  }
+  if (Array.isArray(s.tags)) out.t = s.tags;
+  if (typeof s.tagGroupingEnabled === "boolean") out.tge = s.tagGroupingEnabled;
+  if (Array.isArray(s.tagGroups)) {
+    out.tg = s.tagGroups.map(g => [String(g.id || ""), String(g.name || ""), g.mode === "single" ? "s" : "m"]);
+  }
+  if (s.tagGroupAssign && Object.keys(s.tagGroupAssign).length) {
+    out.tga = s.tagGroupAssign;
+  }
+  return out;
+}
+
+function deserializeFromWire(wire) {
+  if (!wire || typeof wire !== "object" || wire.v !== WIRE_V) return null;
+  const out = {};
+  if (Array.isArray(wire.d) && wire.d.length >= 3) {
+    out.defaults = { s: String(wire.d[0] || ""), a: String(wire.d[1] || ""), p: String(wire.d[2] || "") };
+  }
+  if (Array.isArray(wire.o)) {
+    out.oRules = wire.o.map(arr => {
+      const r = {
+        key: String(arr[0] || ""),
+        label: String(arr[1] || ""),
+        normalText: String(arr[2] || ""),
+      };
+      if (arr[3] === 1) r.fromAdmin = true;
+      return r;
+    });
+  }
+  if (typeof wire.c === "string" && wire.c.length >= CLEAR_TARGET_ORDER.length) {
+    out.clearTargets = {};
+    for (let i = 0; i < CLEAR_TARGET_ORDER.length; i++) {
+      out.clearTargets[CLEAR_TARGET_ORDER[i]] = wire.c[i] === "1";
+    }
+  }
+  if (Array.isArray(wire.t)) out.tags = wire.t.filter(x => typeof x === "string");
+  if (typeof wire.tge === "boolean") out.tagGroupingEnabled = wire.tge;
+  if (Array.isArray(wire.tg)) {
+    out.tagGroups = wire.tg.map(arr => ({
+      id: String(arr[0] || ""),
+      name: String(arr[1] || ""),
+      mode: arr[2] === "s" ? "single" : "multi",
+    }));
+  }
+  if (wire.tga && typeof wire.tga === "object") {
+    out.tagGroupAssign = {};
+    for (const [k, v] of Object.entries(wire.tga)) {
+      if (typeof k === "string" && typeof v === "string") out.tagGroupAssign[k] = v;
+    }
+  }
+  return out;
+}
 
 function buildSafeSettings() {
   const out = {};
@@ -45,18 +127,13 @@ function buildSafeSettings() {
 }
 
 function encodePayload() {
-  return JSON.stringify(buildSafeSettings());
+  return JSON.stringify(serializeForWire(buildSafeSettings()));
 }
 
 function decodePayload(payload) {
   try {
     const obj = JSON.parse(String(payload || ""));
-    if (!obj || typeof obj !== "object") return null;
-    const safe = {};
-    for (const k of SAFE_FIELDS) {
-      if (obj[k] !== undefined) safe[k] = obj[k];
-    }
-    return safe;
+    return deserializeFromWire(obj);
   } catch (_) {
     return null;
   }
