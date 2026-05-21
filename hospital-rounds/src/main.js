@@ -12,7 +12,7 @@ import {
   setMarkUpdatedHandler, requestStoragePersistence,
 } from "./store.js";
 
-import { renderHome, updateCountChip } from "./views/home.js";
+import { renderHome, updateCountChip, setHomeEditMode } from "./views/home.js";
 import { renderDetail, renderQrIfNeeded, initDetailEvents, initStatusButtons, initQrNavButtons } from "./views/detail.js";
 import { renderMemoScreen, setMemoEditMode, getMemoEditMode } from "./views/memo.js";
 import { renderSharedScreen, setSharedEditMode, getSharedEditMode } from "./views/shared-list.js";
@@ -212,10 +212,17 @@ window.addEventListener("message", (e) => {
   openDocsPage(e.data.page);
 });
 
-// メモ・共有の編集トグルは共通ヘルパで定義。鉛筆 → 編集モード（行を入力欄に
-// 切替）/ 外側クリック or ビュー遷移で表示モードに戻る。
+// ホーム・メモ・共有の編集トグルは共通ヘルパで定義。鉛筆 → 編集モード /
+// 外側クリック or ビュー遷移で表示モードに戻る。
+// ホーム編集モードでは患者ボタンがタップ＝ステータスサイクル / 長押し＝白に。
 updateMemoEditBtnVisibility();
 updateSharedEditBtnVisibility();
+createEditToggle({
+  triggerBtn: document.getElementById("homeEditBtn"),
+  container: document.getElementById("homeView"),
+  onEnter: () => { setHomeEditMode(true); doRenderHome(); },
+  onExit: () => { setHomeEditMode(false); doRenderHome(); },
+});
 createEditToggle({
   triggerBtn: document.getElementById("memoEditBtn"),
   container: document.getElementById("memoView"),

@@ -17,16 +17,17 @@ import { statusClass } from "./home.js";
 let qrVisible = false;
 let nameToggle = null; // createEditToggle で初期化
 
-// 詳細画面のステータス巡回。タップ＝白→黄→緑→灰→白…、長押し＝白へ強制リセット。
-const STATUS_CYCLE = [STATUS.NONE, STATUS.YELLOW, STATUS.GREEN, STATUS.GRAY];
+// 詳細画面・ホーム編集モード共通のステータス巡回。
+// タップ＝白→黄→緑→灰→白…、長押し＝白へ強制リセット。
+export const STATUS_CYCLE = [STATUS.NONE, STATUS.YELLOW, STATUS.GREEN, STATUS.GRAY];
 
-function nextStatusInCycle(current) {
+export function nextStatusInCycle(current) {
   const idx = STATUS_CYCLE.indexOf(current);
   return STATUS_CYCLE[(idx + 1 + STATUS_CYCLE.length) % STATUS_CYCLE.length] || STATUS.YELLOW;
 }
 
 // シンプルな「タップ vs 長押し」判定。長押し閾値 600ms。
-function bindTapOrLongPress(el, onTap, onLongPress, longMs = 600) {
+export function bindTapOrLongPress(el, onTap, onLongPress, longMs = 600) {
   let timer = null;
   let longFired = false;
   let started = false;
