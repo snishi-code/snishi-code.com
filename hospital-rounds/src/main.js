@@ -27,6 +27,7 @@ import { initSharedQr, refreshSharedQrIfActive, initMemoQr, refreshMemoQrIfActiv
 import { initHomeQr, refreshHomeQrIfActive } from "./features/qr-home.js";
 import { initSettingsQr, refreshSettingsQrIfActive, setOnSettingsApplied } from "./features/qr-settings.js";
 import { createPrintFlow } from "./features/print.js";
+import { createEditToggle } from "./features/edit-toggle.js";
 import { sortPatientsByRoom, invalidateSortSnapshot } from "./features/room.js";
 import { initAdminUI, refreshAdminAvailability, setAdminAppliedHandler } from "./features/admin-ui.js";
 import { scanQR, isScannerSupported } from "./features/qr-scan.js";
@@ -49,38 +50,19 @@ function doRenderDetail() {
   renderDetail(syncDetailMemoDisplay);
 }
 
-const PENCIL_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
-const CHECK_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-
-function updateMemoEditBtn() {
+// 編集モード関連のボタン表示制御は createEditToggle が `.editActive` を
+// 当ててくれるので、ここでは「非管理端末では非表示」だけハンドル。
+function updateMemoEditBtnVisibility() {
   const btn = document.getElementById("memoEditBtn");
-  if (!btn) return;
-  if (isNonAdminTerminal()) { btn.style.display = "none"; return; }
-  btn.style.display = "";
-  const active = getMemoEditMode();
-  btn.innerHTML = active ? CHECK_SVG : PENCIL_SVG;
-  btn.classList.toggle("editActive", active);
-  btn.title = btn.setAttribute("aria-label", active ? "完了" : "編集");
-  btn.title = active ? "完了" : "編集";
+  if (btn) btn.style.display = isNonAdminTerminal() ? "none" : "";
 }
-
-function updateSharedEditBtn() {
+function updateSharedEditBtnVisibility() {
   const btn = document.getElementById("sharedEditBtn");
-  if (!btn) return;
-  if (isNonAdminTerminal()) { btn.style.display = "none"; return; }
-  btn.style.display = "";
-  const active = getSharedEditMode();
-  btn.innerHTML = active ? CHECK_SVG : PENCIL_SVG;
-  btn.classList.toggle("editActive", active);
-  btn.setAttribute("aria-label", active ? "完了" : "編集");
-  btn.title = active ? "完了" : "編集";
+  if (btn) btn.style.display = isNonAdminTerminal() ? "none" : "";
 }
 
 function navigateToPatient(i) {
-  setMemoEditMode(false);
-  setSharedEditMode(false);
-  updateMemoEditBtn();
-  updateSharedEditBtn();
+  // 共通の編集トグルが showView で自動 exit するので、ここでは個別 reset 不要
   setSelectedNo(i);
   doRenderDetail();
   showView("detail");
@@ -168,24 +150,16 @@ function validateAdminTerminal() {
 
 function navToMemo() {
   if (!validateAdminTerminal()) return;
-  setSharedEditMode(false);
-  updateSharedEditBtn();
   doRenderMemo();
   showView("memo");
 }
 function navToShared() {
   if (!validateAdminTerminal()) return;
-  setMemoEditMode(false);
-  updateMemoEditBtn();
   doRenderShared();
   showView("shared");
 }
 function navToHome() {
   if (!validateAdminTerminal()) return;
-  setMemoEditMode(false);
-  setSharedEditMode(false);
-  updateMemoEditBtn();
-  updateSharedEditBtn();
   saveSettings();
   ensurePatientsHaveAllOKeys();
   doRenderHome();
@@ -197,10 +171,6 @@ const headerSharedBtn = document.getElementById("headerSharedBtn");
 const headerHelpBtn = document.getElementById("headerHelpBtn");
 
 function navToSettings() {
-  setMemoEditMode(false);
-  setSharedEditMode(false);
-  updateMemoEditBtn();
-  updateSharedEditBtn();
   renderSettings();
   showView("settings");
 }
@@ -242,23 +212,21 @@ window.addEventListener("message", (e) => {
   openDocsPage(e.data.page);
 });
 
-const memoEditBtn = document.getElementById("memoEditBtn");
-if (memoEditBtn) memoEditBtn.addEventListener("click", () => {
-  const nextActive = !getMemoEditMode();
-  // Exiting edit mode on admin terminal: validate
-  if (!nextActive && !validateAdminTerminal()) return;
-  setMemoEditMode(nextActive);
-  updateMemoEditBtn();
-  doRenderMemo();
+// メモ・共有の編集トグルは共通ヘルパで定義。鉛筆 → 編集モード（行を入力欄に
+// 切替）/ 外側クリック or ビュー遷移で表示モードに戻る。
+updateMemoEditBtnVisibility();
+updateSharedEditBtnVisibility();
+createEditToggle({
+  triggerBtn: document.getElementById("memoEditBtn"),
+  container: document.getElementById("memoView"),
+  onEnter: () => { setMemoEditMode(true); doRenderMemo(); },
+  onExit: () => { setMemoEditMode(false); doRenderMemo(); },
 });
-
-const sharedEditBtn = document.getElementById("sharedEditBtn");
-if (sharedEditBtn) sharedEditBtn.addEventListener("click", () => {
-  const nextActive = !getSharedEditMode();
-  if (!nextActive && !validateAdminTerminal()) return;
-  setSharedEditMode(nextActive);
-  updateSharedEditBtn();
-  doRenderShared();
+createEditToggle({
+  triggerBtn: document.getElementById("sharedEditBtn"),
+  container: document.getElementById("sharedView"),
+  onEnter: () => { setSharedEditMode(true); doRenderShared(); },
+  onExit: () => { setSharedEditMode(false); doRenderShared(); },
 });
 
 // ============================
@@ -487,30 +455,12 @@ setMarkUpdatedHandler(() => invalidateSortSnapshot());
 window.addEventListener("beforeunload", () => { try { flushCommit(); } catch (_) {} });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") { try { flushCommit(); } catch (_) {} } });
 
-// タイトル入力欄はメモ/共有画面と同じ「普段は表示・鉛筆で編集モード」の
-// パターン。readonly のときはタップでホームへ戻るボタン代替として動かす。
+// タイトル入力欄: 共通の編集トグルで管理。普段は readonly でタップ＝ホーム遷移。
+// 鉛筆タップで編集モード、外側クリック・ビュー遷移・Enter で確定。
 const appTitleInput = document.getElementById("appTitleInput");
 const headerEditTitleBtn = document.getElementById("headerEditTitleBtn");
-let titleEditing = false;
-
-function setTitleEditing(on) {
-  titleEditing = !!on;
-  if (appTitleInput) {
-    appTitleInput.readOnly = !titleEditing;
-    if (titleEditing) {
-      appTitleInput.focus();
-      appTitleInput.select();
-    } else {
-      appTitleInput.blur();
-    }
-  }
-  if (headerEditTitleBtn) {
-    headerEditTitleBtn.classList.toggle("editActive", titleEditing);
-    headerEditTitleBtn.innerHTML = titleEditing ? CHECK_SVG : PENCIL_SVG;
-    headerEditTitleBtn.title = titleEditing ? "完了" : "タイトル編集";
-    headerEditTitleBtn.setAttribute("aria-label", titleEditing ? "完了" : "タイトル編集");
-  }
-}
+const appTitleRow = document.querySelector(".appTitleRow");
+let titleToggle = null;
 
 if (appTitleInput) {
   appTitleInput.value = appState.title;
@@ -519,21 +469,34 @@ if (appTitleInput) {
     updateAppTitle(e.target.value);
     scheduleSave();
   });
-  // readonly 中のクリックはホーム遷移として扱う（編集中は通常通り入力に集中）
+  // readonly 中のクリックはホーム遷移として扱う
   appTitleInput.addEventListener("click", () => {
-    if (!titleEditing) navToHome();
+    if (!titleToggle?.isEditing()) navToHome();
   });
-  // 編集中に Enter を押したら確定して readonly に戻る
+  // 編集中の Enter で確定
   appTitleInput.addEventListener("keydown", (e) => {
-    if (titleEditing && e.key === "Enter") {
+    if (titleToggle?.isEditing() && e.key === "Enter") {
       e.preventDefault();
-      setTitleEditing(false);
+      titleToggle.exit();
     }
   });
 }
-if (headerEditTitleBtn) {
-  headerEditTitleBtn.addEventListener("click", () => setTitleEditing(!titleEditing));
-}
+
+titleToggle = createEditToggle({
+  triggerBtn: headerEditTitleBtn,
+  container: appTitleRow,
+  onEnter: () => {
+    if (!appTitleInput) return;
+    appTitleInput.readOnly = false;
+    appTitleInput.focus();
+    appTitleInput.select();
+  },
+  onExit: () => {
+    if (!appTitleInput) return;
+    appTitleInput.readOnly = true;
+    appTitleInput.blur();
+  },
+});
 
 // ハンバーガーメニュー（設定・印刷・取込・保存）。ヘッダー右の ☰ で開閉し、
 // 各アイコンをタップしたらメニューを閉じてから実行する。取込/保存は

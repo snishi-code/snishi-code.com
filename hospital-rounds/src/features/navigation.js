@@ -1,8 +1,11 @@
 "use strict";
 
 import { appState, selectedNo } from "../store.js";
+import { exitAllEdits } from "./edit-toggle.js";
 
 export function showView(which, pushState = true) {
+  // ビューを切り替える前に、どこかで開いていた編集モードを必ず閉じる
+  exitAllEdits();
   if (pushState) {
     history.pushState({ view: which }, "", "");
   }

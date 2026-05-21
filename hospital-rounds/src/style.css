@@ -371,6 +371,11 @@
       color: var(--text);
       cursor: pointer;
       user-select: none;
+      /* 単語境界がない長い英数字 (AAAA…) でもボックスからはみ出さないよう
+         任意位置で折り返す。CJK は自然に折り返すのでこの設定の影響を受けない。 */
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      text-align: center;
     }
 
     .patientBtn:active {

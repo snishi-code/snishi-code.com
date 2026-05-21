@@ -11,13 +11,11 @@ import { isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
 import { scanQR, isScannerSupported } from "../features/qr-scan.js";
 import { buildTimestampHeader } from "../features/qr-protocol.js";
+import { createEditToggle } from "../features/edit-toggle.js";
 import { statusClass } from "./home.js";
 
 let qrVisible = false;
-let detailEditing = false;
-
-const PENCIL_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
-const CHECK_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+let nameToggle = null; // createEditToggle で初期化
 
 // 詳細画面のステータス巡回。タップ＝白→黄→緑→灰→白…、長押し＝白へ強制リセット。
 const STATUS_CYCLE = [STATUS.NONE, STATUS.YELLOW, STATUS.GREEN, STATUS.GRAY];
@@ -500,39 +498,26 @@ export function initDetailEvents(renderHomeFn) {
   }
 }
 
-// 詳細画面の表示モード ↔ 編集モード切替。
-// 表示モード: 名前ボタン（ステータス色つき）+ 鉛筆。タップでサイクル / 長押しで白。
-// 編集モード: 部屋・名前・タグの入力欄。
-function setDetailEditing(on) {
-  detailEditing = !!on;
+// 詳細画面の表示モード ↔ 編集モード切替。共通 createEditToggle を使う。
+// 表示モード: 名前ボタン（ステータス色つき）。タップでサイクル / 長押しで白。
+// 編集モード: 部屋・名前・タグの入力欄。外側クリックや別ビューで自動 exit。
+function applyEditingDom(editing) {
   const display = document.getElementById("detailNameBtn");
   const editRow = document.getElementById("detailEditRow");
-  const editBtn = document.getElementById("detailEditBtn");
-  const titleInput = document.getElementById("detailTitle");
+  if (display) display.style.display = editing ? "none" : "";
+  if (editRow) editRow.style.display = editing ? "flex" : "none";
+}
 
-  if (display) display.style.display = detailEditing ? "none" : "";
-  if (editRow) editRow.style.display = detailEditing ? "flex" : "none";
-  if (editBtn) {
-    editBtn.classList.toggle("editActive", detailEditing);
-    editBtn.innerHTML = detailEditing ? CHECK_SVG : PENCIL_SVG;
-    editBtn.title = detailEditing ? "完了" : "編集";
-    editBtn.setAttribute("aria-label", detailEditing ? "完了" : "編集");
-  }
-  if (detailEditing && titleInput) {
-    titleInput.focus();
-    titleInput.select();
-  }
-  if (!detailEditing) {
-    // 編集を抜けたら名前ボタンの表示を最新化
-    const p = appState.patients[selectedNo - 1];
-    const display2 = document.getElementById("detailNameBtn");
-    if (display2 && p) display2.textContent = formatPatientLabel(p, String(selectedNo));
-  }
+function setDetailEditing(on) {
+  if (!nameToggle) return;
+  if (on) nameToggle.enter();
+  else nameToggle.exit();
 }
 
 export function initStatusButtons(renderHomeFn) {
   const nameBtn = document.getElementById("detailNameBtn");
   const editBtn = document.getElementById("detailEditBtn");
+  const container = document.querySelector("#detailView .detailTop");
 
   const setStatus = (next) => {
     const p = appState.patients[selectedNo - 1];
@@ -549,20 +534,32 @@ export function initStatusButtons(renderHomeFn) {
     bindTapOrLongPress(
       nameBtn,
       () => {
-        // 編集モード中はサイクルしない（誤動作防止）
-        if (detailEditing) return;
+        if (nameToggle?.isEditing()) return; // 編集中はサイクルしない
         const p = appState.patients[selectedNo - 1];
         if (!p) return;
         setStatus(nextStatusInCycle(p.status));
       },
       () => {
-        if (detailEditing) return;
+        if (nameToggle?.isEditing()) return;
         setStatus(STATUS.NONE);
       }
     );
   }
 
-  if (editBtn) {
-    editBtn.addEventListener("click", () => setDetailEditing(!detailEditing));
-  }
+  nameToggle = createEditToggle({
+    triggerBtn: editBtn,
+    container,
+    onEnter: () => {
+      applyEditingDom(true);
+      const titleInput = document.getElementById("detailTitle");
+      if (titleInput) { titleInput.focus(); titleInput.select(); }
+    },
+    onExit: () => {
+      applyEditingDom(false);
+      // 名前ボタンの表示を最新化
+      const p = appState.patients[selectedNo - 1];
+      const display = document.getElementById("detailNameBtn");
+      if (display && p) display.textContent = formatPatientLabel(p, String(selectedNo));
+    },
+  });
 }
