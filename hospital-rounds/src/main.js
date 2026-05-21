@@ -394,6 +394,7 @@ wireScanButton("adminImportScanBtn", "adminImportArea");
 const resetBtn = document.getElementById("resetBtn");
 if (resetBtn) {
   resetBtn.addEventListener("click", () => {
+    closeHeaderMenu();
     const ok = confirm("全患者の入力を消去します。よろしいですか？");
     if (!ok) return;
     setAppState(normalizeLoaded(null));
@@ -410,6 +411,7 @@ if (resetBtn) {
 const clearAllBtn = document.getElementById("clearAllBtn");
 if (clearAllBtn) {
   clearAllBtn.addEventListener("click", () => {
+    closeHeaderMenu();
     const ok = confirm("全患者の対象項目をクリアします。よろしいですか？");
     if (!ok) return;
     const ct = settings.clearTargets;
