@@ -6,13 +6,57 @@ import { buildTabPayload } from "../payload.js";
 import { utf8ByteLength } from "../payload.js";
 import { qrcodegen } from "../libs/qrcodegen.js";
 import { makePatientTagPicker } from "../features/tags.js";
-import { makeRoomInput } from "../features/room.js";
+import { makeRoomInput, formatPatientLabel } from "../features/room.js";
 import { isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
 import { scanQR, isScannerSupported } from "../features/qr-scan.js";
 import { buildTimestampHeader } from "../features/qr-protocol.js";
+import { statusClass } from "./home.js";
 
 let qrVisible = false;
+let detailEditing = false;
+
+const PENCIL_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+const CHECK_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+// 詳細画面のステータス巡回。タップ＝白→黄→緑→灰→白…、長押し＝白へ強制リセット。
+const STATUS_CYCLE = [STATUS.NONE, STATUS.YELLOW, STATUS.GREEN, STATUS.GRAY];
+
+function nextStatusInCycle(current) {
+  const idx = STATUS_CYCLE.indexOf(current);
+  return STATUS_CYCLE[(idx + 1 + STATUS_CYCLE.length) % STATUS_CYCLE.length] || STATUS.YELLOW;
+}
+
+// シンプルな「タップ vs 長押し」判定。長押し閾値 600ms。
+function bindTapOrLongPress(el, onTap, onLongPress, longMs = 600) {
+  let timer = null;
+  let longFired = false;
+  let started = false;
+
+  const start = () => {
+    started = true;
+    longFired = false;
+    timer = setTimeout(() => {
+      longFired = true;
+      onLongPress();
+    }, longMs);
+  };
+  const cancel = () => {
+    if (timer) { clearTimeout(timer); timer = null; }
+    started = false;
+  };
+  const finish = () => {
+    if (!started) return;
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (!longFired) onTap();
+    started = false;
+  };
+
+  el.addEventListener("pointerdown", (e) => { e.preventDefault(); start(); });
+  el.addEventListener("pointerup", finish);
+  el.addEventListener("pointerleave", cancel);
+  el.addEventListener("pointercancel", cancel);
+}
 
 // ============================
 // QR generation helpers
@@ -224,20 +268,12 @@ function renderOEditorRow(rule, item, onChange) {
 // Status buttons
 // ============================
 
+// 名前ボタンの背景色を現在ステータスに合わせて更新する。
+// 旧 setSelectedStatusButtons の置き換え（外部呼び出し互換のため同名で残置）。
 export function setSelectedStatusButtons(status) {
-  const statusYellowBtn = document.getElementById("statusYellowBtn");
-  const statusGreenBtn = document.getElementById("statusGreenBtn");
-  const statusGrayBtn = document.getElementById("statusGrayBtn");
-  const topStatusYellowBtn = document.getElementById("topStatusYellowBtn");
-  const topStatusGreenBtn = document.getElementById("topStatusGreenBtn");
-  const topStatusGrayBtn = document.getElementById("topStatusGrayBtn");
-
-  if (statusYellowBtn) statusYellowBtn.classList.toggle("selected", status === STATUS.YELLOW);
-  if (statusGreenBtn) statusGreenBtn.classList.toggle("selected", status === STATUS.GREEN);
-  if (statusGrayBtn) statusGrayBtn.classList.toggle("selected", status === STATUS.GRAY);
-  if (topStatusYellowBtn) topStatusYellowBtn.classList.toggle("selected", status === STATUS.YELLOW);
-  if (topStatusGreenBtn) topStatusGreenBtn.classList.toggle("selected", status === STATUS.GREEN);
-  if (topStatusGrayBtn) topStatusGrayBtn.classList.toggle("selected", status === STATUS.GRAY);
+  const btn = document.getElementById("detailNameBtn");
+  if (!btn) return;
+  btn.className = "patientBtn " + statusClass(status);
 }
 
 // ============================
@@ -255,9 +291,14 @@ export function renderDetail(syncDetailMemoDisplay) {
   const oList = document.getElementById("oList");
   const oFreeText = document.getElementById("oFreeText");
 
-  const displayName = p?.name ? p.name : String(selectedNo);
+  // 名前ボタン（表示モード）の中身とステータス色
+  const nameBtn = document.getElementById("detailNameBtn");
+  if (nameBtn) {
+    nameBtn.textContent = formatPatientLabel(p, String(selectedNo));
+  }
+  // 編集モード用の name input は隠れた状態で値だけ保持
   if (detailTitle) {
-    detailTitle.value = displayName;
+    detailTitle.value = String(p?.name ?? "");
     // Non-admin terminal: cannot edit existing names; can fill empty
     if (isNonAdminTerminal() && p?.name) {
       detailTitle.readOnly = true;
@@ -267,6 +308,9 @@ export function renderDetail(syncDetailMemoDisplay) {
   }
   if (syncDetailMemoDisplay) syncDetailMemoDisplay();
   setSelectedStatusButtons(p.status);
+
+  // 患者切替時は常に表示モードに戻す
+  setDetailEditing(false);
 
   const nonAdmin = isNonAdminTerminal();
   const detailRoomSlot = document.getElementById("detailRoomSlot");
@@ -456,10 +500,43 @@ export function initDetailEvents(renderHomeFn) {
   }
 }
 
-export function initStatusButtons(renderHomeFn) {
-  const setStatus = (status) => {
+// 詳細画面の表示モード ↔ 編集モード切替。
+// 表示モード: 名前ボタン（ステータス色つき）+ 鉛筆。タップでサイクル / 長押しで白。
+// 編集モード: 部屋・名前・タグの入力欄。
+function setDetailEditing(on) {
+  detailEditing = !!on;
+  const display = document.getElementById("detailNameBtn");
+  const editRow = document.getElementById("detailEditRow");
+  const editBtn = document.getElementById("detailEditBtn");
+  const titleInput = document.getElementById("detailTitle");
+
+  if (display) display.style.display = detailEditing ? "none" : "";
+  if (editRow) editRow.style.display = detailEditing ? "flex" : "none";
+  if (editBtn) {
+    editBtn.classList.toggle("editActive", detailEditing);
+    editBtn.innerHTML = detailEditing ? CHECK_SVG : PENCIL_SVG;
+    editBtn.title = detailEditing ? "完了" : "編集";
+    editBtn.setAttribute("aria-label", detailEditing ? "完了" : "編集");
+  }
+  if (detailEditing && titleInput) {
+    titleInput.focus();
+    titleInput.select();
+  }
+  if (!detailEditing) {
+    // 編集を抜けたら名前ボタンの表示を最新化
     const p = appState.patients[selectedNo - 1];
-    const next = p.status === status ? STATUS.NONE : status;
+    const display2 = document.getElementById("detailNameBtn");
+    if (display2 && p) display2.textContent = formatPatientLabel(p, String(selectedNo));
+  }
+}
+
+export function initStatusButtons(renderHomeFn) {
+  const nameBtn = document.getElementById("detailNameBtn");
+  const editBtn = document.getElementById("detailEditBtn");
+
+  const setStatus = (next) => {
+    const p = appState.patients[selectedNo - 1];
+    if (!p) return;
     p.status = next;
     markUpdated(selectedNo);
     setSelectedStatusButtons(next);
@@ -468,17 +545,24 @@ export function initStatusButtons(renderHomeFn) {
     renderQrIfNeeded();
   };
 
-  const statusYellowBtn = document.getElementById("statusYellowBtn");
-  const statusGreenBtn = document.getElementById("statusGreenBtn");
-  const statusGrayBtn = document.getElementById("statusGrayBtn");
-  const topStatusYellowBtn = document.getElementById("topStatusYellowBtn");
-  const topStatusGreenBtn = document.getElementById("topStatusGreenBtn");
-  const topStatusGrayBtn = document.getElementById("topStatusGrayBtn");
+  if (nameBtn) {
+    bindTapOrLongPress(
+      nameBtn,
+      () => {
+        // 編集モード中はサイクルしない（誤動作防止）
+        if (detailEditing) return;
+        const p = appState.patients[selectedNo - 1];
+        if (!p) return;
+        setStatus(nextStatusInCycle(p.status));
+      },
+      () => {
+        if (detailEditing) return;
+        setStatus(STATUS.NONE);
+      }
+    );
+  }
 
-  if (statusYellowBtn) statusYellowBtn.addEventListener("click", () => setStatus(STATUS.YELLOW));
-  if (statusGreenBtn) statusGreenBtn.addEventListener("click", () => setStatus(STATUS.GREEN));
-  if (statusGrayBtn) statusGrayBtn.addEventListener("click", () => setStatus(STATUS.GRAY));
-  if (topStatusYellowBtn) topStatusYellowBtn.addEventListener("click", () => setStatus(STATUS.YELLOW));
-  if (topStatusGreenBtn) topStatusGreenBtn.addEventListener("click", () => setStatus(STATUS.GREEN));
-  if (topStatusGrayBtn) topStatusGrayBtn.addEventListener("click", () => setStatus(STATUS.GRAY));
+  if (editBtn) {
+    editBtn.addEventListener("click", () => setDetailEditing(!detailEditing));
+  }
 }

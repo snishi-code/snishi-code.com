@@ -377,6 +377,19 @@
       transform: translateY(1px)
     }
 
+    /* 詳細画面ヘッダーの患者ボタン: グリッドの患者ボタンと同じ見た目だが
+       コンパクトサイズ。タップでステータス変更（黄→緑→灰→白）、
+       長押しで未設定（白）にリセット。 */
+    #detailNameBtn.patientBtn {
+      width: auto;
+      min-width: 100px;
+      max-width: 280px;
+      min-height: 40px;
+      padding: 6px 14px;
+      font-size: 15px;
+      touch-action: manipulation;
+    }
+
     .patientBtn.status-yellow {
       background: var(--status-yellow-bg);
       border-color: var(--status-yellow-bd);
