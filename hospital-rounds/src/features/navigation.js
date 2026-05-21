@@ -22,6 +22,10 @@ export function showView(which, pushState = true) {
   if (detailView) detailView.classList.toggle("active", which === "detail");
   if (docsViewEl) docsViewEl.classList.toggle("active", which === "docs");
 
+  // ヘッダーのナビボタンを CSS の attribute selector で active 表示する
+  // ためのフラグ。html[data-view="memo"] #headerMemoBtn { ... } などで使う
+  document.documentElement.dataset.view = which;
+
   if (which !== "shared") {
     const sharedQrWrap = document.getElementById("sharedQrWrap");
     if (sharedQrWrap) sharedQrWrap.classList.remove("active");

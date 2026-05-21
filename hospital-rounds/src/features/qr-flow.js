@@ -1,7 +1,6 @@
 "use strict";
 
 import { qrcodegen } from "../libs/qrcodegen.js";
-import { utf8ByteLength } from "../payload.js";
 import { scanQRStream, isScannerSupported } from "./qr-scan.js";
 import { encodePages, decodePage, newBatchId } from "./qr-protocol.js";
 
@@ -95,8 +94,7 @@ export function createQrFlow(cfg) {
     qrPageIndex = i;
     const total = qrPages.length;
     const text = qrPages[i];
-    const bytes = utf8ByteLength(text);
-    if (meta) meta.textContent = `(${i + 1}/${total}) ${bytes} bytes`;
+    if (meta) meta.textContent = `(${i + 1}/${total})`;
     if (prevBtn) prevBtn.disabled = (i === 0);
     if (nextBtn) nextBtn.disabled = (i === total - 1);
     drawQrToCanvas(cfg.ids.canvasId, text);

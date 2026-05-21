@@ -97,6 +97,19 @@
       border-color: rgba(255, 255, 255, 0.18);
     }
 
+    /* 現在ビューに対応するヘッダーボタンを青枠でハイライト。
+       html[data-view="..."] は navigation.js が showView 時に更新する。
+       ホーム/詳細/総覧は対応するヘッダーボタン無し（タイトル＝ホーム）。 */
+    html[data-view="memo"]     #headerMemoBtn,
+    html[data-view="shared"]   #headerSharedBtn,
+    html[data-view="settings"] #headerMenuBtn,
+    html[data-view="docs"]     #headerHelpBtn {
+      border-color: rgba(96, 165, 250, 0.9);
+      box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.45);
+      background: rgba(96, 165, 250, 0.18);
+      color: #ffffff;
+    }
+
     html[data-env="test"] header button.secondary:hover {
       background: rgba(255, 255, 255, 0.2);
     }
