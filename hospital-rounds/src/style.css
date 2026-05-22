@@ -8,17 +8,17 @@
       --status-none-bg: #ffffff;
       --status-none-bd: #e5e7eb;
 
-      --status-yellow-bg: #f59e0b;
-      --status-yellow-bd: #b45309;
-      --status-yellow-fg: #78350f;
+      --status-yellow-bg: #fef3c7;
+      --status-yellow-bd: #d97706;
+      --status-yellow-fg: #92400e;
 
-      --status-green-bg: #14b8a6;
+      --status-green-bg: #ccfbf1;
       --status-green-bd: #0f766e;
-      --status-green-fg: #ffffff;
+      --status-green-fg: #134e4a;
 
-      --status-gray-bg: #6b7280;
-      --status-gray-bd: #1f2937;
-      --status-gray-text: #f9fafb;
+      --status-gray-bg: #f3f4f6;
+      --status-gray-bd: #4b5563;
+      --status-gray-text: #1f2937;
 
       --status-blue-bg: #bfdbfe;
       --status-blue-bd: #2563eb;
