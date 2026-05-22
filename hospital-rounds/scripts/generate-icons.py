@@ -22,9 +22,13 @@ SOURCE_BLUE = (4, 89, 196)
 # 出力色 (アプリ内で使っているのと同じコード)
 SLATE_TARGET = (71, 85, 105)  # #475569 (テスト)
 
-# レイアウト: ソースを CIRCLE_RATIO の比率で正方形内に置く (Chrome 風の余白)
+# レイアウト: 色付き円がキャンバスをほぼ埋めるように。Chrome の home screen
+# アイコンと同じ「アイコン全体が色付きパターンで、ランチャーがマスクを適用」
+# 設計。余白を自前で取らない (取ると OS がさらに余白を足して小さく見える)。
+# maskable icon の safe zone は内側 80% 円なので、ロゴ本体はソース内で既に
+# 中央 60% 程度に収まっており要件を満たす。
 REF_SIDE = 1024
-CIRCLE_RATIO = 0.88  # 円直径 ≒ 正方形辺の 88% (余白 6% ずつ)
+CIRCLE_RATIO = 1.0  # 色付き円が正方形辺いっぱい (角は透明)
 
 SIZES = [
     (192, "icon-192"),
@@ -64,8 +68,12 @@ def recolor_blue_to(src, target):
     return out
 
 
-def compose_onto_white_square(src):
-    """src を白い正方形キャンバスの中央に CIRCLE_RATIO 比で配置。"""
+def compose_onto_colored_square(src, bg_color):
+    """src を bg_color で塗った正方形キャンバスの中央に CIRCLE_RATIO 比で配置。
+    キャンバス色をソースの円の色と同じにすることで、ランチャーが
+    squircle/teardrop など円以外のマスクを当てても角に違和感が出ない。
+    透明な角は bg_color が透けて見え、結果として単色塗り + ロゴの adaptive
+    icon になる。"""
     bbox = src.getbbox()
     if bbox is None:
         raise RuntimeError("source is fully transparent")
@@ -76,7 +84,7 @@ def compose_onto_white_square(src):
     new_w, new_h = max(1, round(cw * scale)), max(1, round(ch * scale))
     scaled = cropped.resize((new_w, new_h), Image.LANCZOS)
 
-    canvas = Image.new("RGBA", (REF_SIDE, REF_SIDE), (255, 255, 255, 255))
+    canvas = Image.new("RGBA", (REF_SIDE, REF_SIDE), bg_color + (255,))
     paste_x = (REF_SIDE - new_w) // 2
     paste_y = (REF_SIDE - new_h) // 2
     canvas.paste(scaled, (paste_x, paste_y), scaled)
@@ -87,10 +95,12 @@ def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     src = Image.open(SRC).convert("RGBA")
 
-    # 本番: ソースの青をそのまま使う
-    prod_canvas = compose_onto_white_square(src)
-    # テスト: 青だけ灰に置換
-    test_canvas = compose_onto_white_square(recolor_blue_to(src, SLATE_TARGET))
+    # 本番: ソースの青をそのまま、キャンバスもソースの青で塗る
+    prod_canvas = compose_onto_colored_square(src, SOURCE_BLUE)
+    # テスト: 青→灰に置換、キャンバスも灰で塗る
+    test_canvas = compose_onto_colored_square(
+        recolor_blue_to(src, SLATE_TARGET), SLATE_TARGET
+    )
 
     variants = [("", prod_canvas), ("-test", test_canvas)]
     for suffix, canvas in variants:
