@@ -570,6 +570,24 @@ initDocsDemo();
   obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-view"] });
 }
 
+// ヘッダー高さを CSS 変数化。.detailTop の sticky 用 top オフセットに使う。
+// モバイルでは内容が wrap して 68px+ になることがあるので実測が必須。
+{
+  const header = document.querySelector("header");
+  if (header) {
+    const updateHeaderH = () => {
+      const h = header.getBoundingClientRect().height;
+      document.documentElement.style.setProperty("--headerH", h + "px");
+    };
+    updateHeaderH();
+    if (typeof ResizeObserver !== "undefined") {
+      new ResizeObserver(updateHeaderH).observe(header);
+    } else {
+      window.addEventListener("resize", updateHeaderH);
+    }
+  }
+}
+
 doRenderHome();
 setSelectedNo(1);
 doRenderDetail();

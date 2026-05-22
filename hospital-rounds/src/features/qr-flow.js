@@ -81,8 +81,8 @@ export function createQrFlow(cfg) {
 
     if (!qrPages || qrPages.length === 0) {
       if (meta) meta.textContent = cfg.emptyMessage || "（表示する内容がありません）";
-      if (prevBtn) { prevBtn.style.display = "none"; prevBtn.disabled = true; }
-      if (nextBtn) { nextBtn.style.display = "none"; nextBtn.disabled = true; }
+      if (prevBtn) prevBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = true;
       if (canvas) {
         canvas.width = 1; canvas.height = 1;
         canvas.style.width = "0";
@@ -94,16 +94,9 @@ export function createQrFlow(cfg) {
     qrPageIndex = i;
     const total = qrPages.length;
     const text = qrPages[i];
-    const singlePage = total === 1;
-    if (meta) meta.textContent = singlePage ? "" : `(${i + 1}/${total})`;
-    if (prevBtn) {
-      prevBtn.style.display = singlePage ? "none" : "";
-      prevBtn.disabled = (i === 0);
-    }
-    if (nextBtn) {
-      nextBtn.style.display = singlePage ? "none" : "";
-      nextBtn.disabled = (i === total - 1);
-    }
+    if (meta) meta.textContent = `(${i + 1}/${total})`;
+    if (prevBtn) prevBtn.disabled = (i === 0);
+    if (nextBtn) nextBtn.disabled = (i === total - 1);
     drawQrToCanvas(cfg.ids.canvasId, text);
   }
 

@@ -621,10 +621,10 @@
       padding: 2px 8px;
       background: #f8fafc;
       border-radius: 10px;
-      /* ヘッダー (sticky top:0) の下に貼り付き、スクロール時にも揺れない。
-         header の高さ実測 ≒ 56px (padding 12+12 + iconBtn 32)。 */
+      /* ヘッダー (sticky top:0) の直下に貼り付く。--headerH は main.js が
+         実測してセット (モバイルでは内容 wrap で 68px+ になることがあるため)。 */
       position: sticky;
-      top: 56px;
+      top: var(--headerH, 56px);
       z-index: 9;
     }
 

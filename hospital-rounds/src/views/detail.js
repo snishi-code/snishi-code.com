@@ -201,16 +201,9 @@ function renderQrPage(ecl) {
   qrPageIndex = i;
   const text = qrPages[i];
 
-  const singlePage = total === 1;
-  if (qrPageMeta) qrPageMeta.textContent = singlePage ? "" : `(${i + 1}/${total})`;
-  if (qrPrevBtn) {
-    qrPrevBtn.style.display = singlePage ? "none" : "";
-    qrPrevBtn.disabled = i === 0;
-  }
-  if (qrNextBtn) {
-    qrNextBtn.style.display = singlePage ? "none" : "";
-    qrNextBtn.disabled = i === total - 1;
-  }
+  if (qrPageMeta) qrPageMeta.textContent = `(${i + 1}/${total})`;
+  if (qrPrevBtn) qrPrevBtn.disabled = i === 0;
+  if (qrNextBtn) qrNextBtn.disabled = i === total - 1;
 
   if (qrCanvas) {
     const qr = qrcodegen.QrCode.encodeText(text, ecl);
