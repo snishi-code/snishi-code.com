@@ -1716,6 +1716,84 @@
       margin-bottom: 0;
     }
 
+    /* 患者操作メニュー: 2x2 アイコングリッド + 右上に閉じるバツ */
+    .popupMenu.actionMenu {
+      position: relative;
+      width: 280px;
+      padding-top: 18px;
+    }
+
+    .popupCloseIcon {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 36px;
+      height: 36px;
+      margin: 0;
+      padding: 0;
+      border: 1px solid var(--line);
+      background: var(--btn2);
+      color: var(--btn2Text);
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .popupCloseIcon:hover {
+      background: #f3f4f6;
+    }
+
+    .actionGrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .actionGridBtn {
+      width: 100%;
+      min-height: 72px;
+      margin: 0;
+      padding: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-weight: 800;
+      border-radius: 10px;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .actionGridBtn .actionGridSign {
+      font-size: 32px;
+    }
+
+    .actionGridBtn .actionGridNum {
+      font-size: 26px;
+    }
+
+    .actionGridBtn.add {
+      border: 1px solid var(--blue);
+      background: var(--blue-light);
+      color: var(--blue);
+    }
+
+    .actionGridBtn.add:hover {
+      background: var(--blue-border);
+    }
+
+    .actionGridBtn.del {
+      border: 1px solid #b91c1c;
+      background: #fef2f2;
+      color: #b91c1c;
+    }
+
+    .actionGridBtn.del:hover {
+      background: #fee2e2;
+    }
+
     /* アイコン専用メニュー（ヘッダーのハンバーガー等）。ボタンを横並びにし、
        タッチ目標を 44px 以上に確保する。 */
     .popupMenu.menuIcons {

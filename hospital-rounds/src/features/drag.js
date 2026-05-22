@@ -247,11 +247,37 @@ export function insertPatients(atIdx, count) {
   finishDataChange();
 }
 
+// 長押し位置から後ろ count 件のインデックスを返す。末尾に到達したら短くなる。
+function deletionSliceIndices(count) {
+  if (targetActionIdx < 0) return [];
+  const end = Math.min(targetActionIdx + count, appState.patients.length);
+  const indices = [];
+  for (let i = targetActionIdx; i < end; i++) indices.push(i);
+  return indices;
+}
+
+// 指定インデックス群を一括削除。空になったら既定患者を1件補充する。
+function deletePatientsByIndices(indices) {
+  const sorted = [...indices].sort((a, b) => b - a);
+  for (const idx of sorted) {
+    const victim = appState.patients[idx];
+    if (victim && victim.pid) recordOp({ type: "delete", pid: victim.pid });
+    appState.patients.splice(idx, 1);
+  }
+  if (appState.patients.length === 0) {
+    const p = makeDefaultPatient();
+    recordOp({ type: "add", at: 0, patient: { pid: p.pid, name: "", room: "", tags: [] } });
+    appState.patients.push(p);
+  }
+  finishDataChange();
+}
+
 export function initActionMenu() {
   const cancelBtn = document.getElementById("actionCancelBtn");
   const add1Btn = document.getElementById("actionAdd1Btn");
   const add5Btn = document.getElementById("actionAdd5Btn");
   const deleteBtn = document.getElementById("actionDeleteBtn");
+  const delete5Btn = document.getElementById("actionDelete5Btn");
 
   if (cancelBtn) cancelBtn.addEventListener("click", closeActionMenu);
 
@@ -268,38 +294,24 @@ export function initActionMenu() {
   });
 
   if (deleteBtn) deleteBtn.addEventListener("click", () => {
-    if (targetActionIdx < 0) return;
-    if (!confirm("この患者データを削除します。よろしいですか？")) return;
-    const victim = appState.patients[targetActionIdx];
-    if (victim && victim.pid) recordOp({ type: "delete", pid: victim.pid });
-    appState.patients.splice(targetActionIdx, 1);
-    if (appState.patients.length === 0) {
-      const p = makeDefaultPatient();
-      recordOp({ type: "add", at: 0, patient: { pid: p.pid, name: "", room: "", tags: [] } });
-      appState.patients.push(p);
+    const indices = deletionSliceIndices(1);
+    if (indices.length === 0) { closeActionMenu(); return; }
+    const target = appState.patients[indices[0]];
+    if (!isPatientEmpty(target)) {
+      if (!confirm("この患者には入力データがあります。削除しますか？")) { closeActionMenu(); return; }
     }
-    finishDataChange();
+    deletePatientsByIndices(indices);
     closeActionMenu();
   });
 
-  const deleteEmptiesBtn = document.getElementById("actionDeleteEmptiesBtn");
-  if (deleteEmptiesBtn) deleteEmptiesBtn.addEventListener("click", () => {
-    const victims = appState.patients.filter(isPatientEmpty);
-    if (victims.length === 0) {
-      alert("未使用（白・内容なし）の患者ボタンはありません。");
-      closeActionMenu();
-      return;
+  if (delete5Btn) delete5Btn.addEventListener("click", () => {
+    const indices = deletionSliceIndices(5);
+    if (indices.length === 0) { closeActionMenu(); return; }
+    const allEmpty = indices.every(i => isPatientEmpty(appState.patients[i]));
+    if (!allEmpty) {
+      if (!confirm(`${indices.length} 件の中に入力データのある患者が含まれます。すべて削除しますか？`)) { closeActionMenu(); return; }
     }
-    if (!confirm(`未使用の患者ボタンを ${victims.length} 件まとめて削除します。\n（灰ステータスは「終了マーク」として残ります）\nよろしいですか？`)) return;
-    const victimPids = new Set(victims.map(p => p.pid).filter(Boolean));
-    for (const pid of victimPids) recordOp({ type: "delete", pid });
-    appState.patients = appState.patients.filter(p => !isPatientEmpty(p));
-    if (appState.patients.length === 0) {
-      const p = makeDefaultPatient();
-      recordOp({ type: "add", at: 0, patient: { pid: p.pid, name: "", room: "", tags: [] } });
-      appState.patients.push(p);
-    }
-    finishDataChange();
+    deletePatientsByIndices(indices);
     closeActionMenu();
   });
 }

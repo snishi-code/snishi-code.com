@@ -627,14 +627,25 @@
     </div>
 
     <div class="popupMenuOverlay" id="actionMenuOverlay">
-      <div class="popupMenu">
+      <div class="popupMenu actionMenu">
+        <button class="popupCloseIcon" id="actionCancelBtn" type="button" title="閉じる" aria-label="閉じる">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
         <div class="popupTitle" id="actionMenuTitle">患者の操作</div>
-        <button class="secondary" id="actionAdd1Btn">1人追加（下へ）</button>
-        <button class="secondary" id="actionAdd5Btn">5人追加（下へ）</button>
-        <button class="danger" id="actionDeleteBtn">削除</button>
-        <button class="danger" id="actionDeleteEmptiesBtn">空ボタンをまとめて削除</button>
-        <div style="height:12px;"></div>
-        <button class="secondary" id="actionCancelBtn">キャンセル</button>
+        <div class="actionGrid">
+          <button class="actionGridBtn add" id="actionAdd1Btn" type="button" title="1人追加（下へ）" aria-label="1人追加（下へ）">
+            <span class="actionGridSign">+</span><span class="actionGridNum">1</span>
+          </button>
+          <button class="actionGridBtn add" id="actionAdd5Btn" type="button" title="5人追加（下へ）" aria-label="5人追加（下へ）">
+            <span class="actionGridSign">+</span><span class="actionGridNum">5</span>
+          </button>
+          <button class="actionGridBtn del" id="actionDeleteBtn" type="button" title="1人削除" aria-label="1人削除">
+            <span class="actionGridSign">−</span><span class="actionGridNum">1</span>
+          </button>
+          <button class="actionGridBtn del" id="actionDelete5Btn" type="button" title="5人削除（下へ）" aria-label="5人削除（下へ）">
+            <span class="actionGridSign">−</span><span class="actionGridNum">5</span>
+          </button>
+        </div>
       </div>
     </div>
 
