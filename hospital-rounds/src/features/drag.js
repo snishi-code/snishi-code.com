@@ -1,6 +1,6 @@
 "use strict";
 
-import { appState, settings, makeDefaultPatient, scheduleSave, ensurePatientsHaveAllOKeys } from "../store.js";
+import { appState, settings, makeDefaultPatient, scheduleSave, ensurePatientsHaveAllOKeys, isPatientEmpty } from "../store.js";
 import { isNonAdminTerminal } from "./admin.js";
 import { recordOp } from "./roster.js";
 
@@ -273,6 +273,27 @@ export function initActionMenu() {
     const victim = appState.patients[targetActionIdx];
     if (victim && victim.pid) recordOp({ type: "delete", pid: victim.pid });
     appState.patients.splice(targetActionIdx, 1);
+    if (appState.patients.length === 0) {
+      const p = makeDefaultPatient();
+      recordOp({ type: "add", at: 0, patient: { pid: p.pid, name: "", room: "", tags: [] } });
+      appState.patients.push(p);
+    }
+    finishDataChange();
+    closeActionMenu();
+  });
+
+  const deleteEmptiesBtn = document.getElementById("actionDeleteEmptiesBtn");
+  if (deleteEmptiesBtn) deleteEmptiesBtn.addEventListener("click", () => {
+    const victims = appState.patients.filter(isPatientEmpty);
+    if (victims.length === 0) {
+      alert("未使用（白・内容なし）の患者ボタンはありません。");
+      closeActionMenu();
+      return;
+    }
+    if (!confirm(`未使用の患者ボタンを ${victims.length} 件まとめて削除します。\n（灰ステータスは「終了マーク」として残ります）\nよろしいですか？`)) return;
+    const victimPids = new Set(victims.map(p => p.pid).filter(Boolean));
+    for (const pid of victimPids) recordOp({ type: "delete", pid });
+    appState.patients = appState.patients.filter(p => !isPatientEmpty(p));
     if (appState.patients.length === 0) {
       const p = makeDefaultPatient();
       recordOp({ type: "add", at: 0, patient: { pid: p.pid, name: "", room: "", tags: [] } });

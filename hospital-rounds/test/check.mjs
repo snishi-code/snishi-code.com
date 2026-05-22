@@ -203,6 +203,115 @@ for (const [name, raw] of Object.entries(fixtures)) {
 }
 
 // ============================
+// 5) isPatientEmpty
+// ============================
+section("isPatientEmpty");
+
+await test("default patient (status NONE, all empty) IS empty", async () => {
+  localStorage.clear();
+  const store = await freshStore();
+  const p = store.makeDefaultPatient();
+  assert.equal(store.isPatientEmpty(p), true);
+});
+
+await test("status NONE + name set is NOT empty", async () => {
+  localStorage.clear();
+  const store = await freshStore();
+  const p = store.makeDefaultPatient();
+  p.name = "山田";
+  assert.equal(store.isPatientEmpty(p), false);
+});
+
+await test("status NONE + room set is NOT empty", async () => {
+  localStorage.clear();
+  const store = await freshStore();
+  const p = store.makeDefaultPatient();
+  p.room = "301";
+  assert.equal(store.isPatientEmpty(p), false);
+});
+
+await test("status NONE + tag set is NOT empty", async () => {
+  localStorage.clear();
+  const store = await freshStore();
+  const p = store.makeDefaultPatient();
+  p.tags = ["A"];
+  assert.equal(store.isPatientEmpty(p), false);
+});
+
+await test("status NONE + SOAP s is NOT empty", async () => {
+  localStorage.clear();
+  const store = await freshStore();
+  const p = store.makeDefaultPatient();
+  p.s = "発熱あり";
+  assert.equal(store.isPatientEmpty(p), false);
+});
+
+await test("status NONE + memo is NOT empty", async () => {
+  localStorage.clear();
+  const store = await freshStore();
+  const p = store.makeDefaultPatient();
+  p.memo = "メモ";
+  assert.equal(store.isPatientEmpty(p), false);
+});
+
+await test("status NONE + shared is NOT empty", async () => {
+  localStorage.clear();
+  const store = await freshStore();
+  const p = store.makeDefaultPatient();
+  p.shared = "共有";
+  assert.equal(store.isPatientEmpty(p), false);
+});
+
+await test("status NONE + vitals is NOT empty", async () => {
+  localStorage.clear();
+  const store = await freshStore();
+  const p = store.makeDefaultPatient();
+  p.vitals.bt = "37.5";
+  assert.equal(store.isPatientEmpty(p), false);
+});
+
+await test("status NONE + o normal flag is NOT empty", async () => {
+  localStorage.clear();
+  const store = await freshStore();
+  const p = store.makeDefaultPatient();
+  const firstKey = Object.keys(p.o)[0];
+  p.o[firstKey].normal = true;
+  assert.equal(store.isPatientEmpty(p), false);
+});
+
+await test("status GRAY (終了マーク) with empty fields is NOT empty", async () => {
+  localStorage.clear();
+  const store = await freshStore();
+  const p = store.makeDefaultPatient();
+  p.status = "gray";
+  assert.equal(store.isPatientEmpty(p), false);
+});
+
+await test("status YELLOW with empty fields is NOT empty", async () => {
+  localStorage.clear();
+  const store = await freshStore();
+  const p = store.makeDefaultPatient();
+  p.status = "yellow";
+  assert.equal(store.isPatientEmpty(p), false);
+});
+
+await test("status GREEN with empty fields is NOT empty", async () => {
+  localStorage.clear();
+  const store = await freshStore();
+  const p = store.makeDefaultPatient();
+  p.status = "green";
+  assert.equal(store.isPatientEmpty(p), false);
+});
+
+await test("status BLUE with empty fields is NOT empty", async () => {
+  localStorage.clear();
+  const store = await freshStore();
+  const p = store.makeDefaultPatient();
+  p.status = "blue";
+  assert.equal(store.isPatientEmpty(p), false);
+});
+
+// ============================
 // Summary
 // ============================
 console.log("");

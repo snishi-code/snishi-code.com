@@ -151,6 +151,36 @@ export function makeDefaultPatient() {
   };
 }
 
+// 「空患者」= 開いた直後の未使用スロット相当: ステータスが NONE (白) で、かつ name/room/
+// tags/SOAP/memo/shared/vitals/o/oFree がすべて初期値（pid と updatedAt は無視）。
+// YELLOW/GREEN/BLUE/GRAY はユーザーが明示的にステータスを付けた状態なので、たとえ他の
+// フィールドが空でも「触れたボタン」と見なし削除対象外（特に GRAY は「診察・カルテ記載
+// 終了」の重要マーカーなので消してはならない）。
+export function isPatientEmpty(p) {
+  if (!p) return false;
+  if (p.status !== STATUS.NONE) return false;
+  if (p.name) return false;
+  if (p.room) return false;
+  if (Array.isArray(p.tags) && p.tags.length > 0) return false;
+  if (p.s) return false;
+  if (p.memo) return false;
+  if (p.shared) return false;
+  if (p.oFree) return false;
+  if (p.a && p.a.text) return false;
+  if (p.p && p.p.text) return false;
+  const v = p.vitals || {};
+  if (v.spo2 || v.spo2_memo || v.rr || v.bp_sys || v.bp_dia || v.pr || v.bt) return false;
+  if (p.o && typeof p.o === "object") {
+    for (const k of Object.keys(p.o)) {
+      const item = p.o[k];
+      if (!item) continue;
+      if (item.normal) return false;
+      if (item.note) return false;
+    }
+  }
+  return true;
+}
+
 function coerceOItem(x) {
   if (!x || typeof x !== "object") return { normal: false, note: "" };
   return { normal: !!x.normal, note: String(x.note ?? "") };
