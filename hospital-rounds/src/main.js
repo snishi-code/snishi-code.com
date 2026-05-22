@@ -34,6 +34,7 @@ import { scanQR, isScannerSupported } from "./features/qr-scan.js";
 import { isAdminTerminal, isNonAdminTerminal, isAdminEnabled, findIncompleteAdminPatients, clearIncompleteAdminPatients } from "./features/admin.js";
 import { flushCommit } from "./features/roster.js";
 import { initDocsDemo, renderDocsDemo, resetDocsDemo } from "./features/docs-demo.js";
+import { initNoAutofill } from "./features/no-autofill.js";
 
 // ============================
 // Wrappers that capture current context
@@ -289,6 +290,12 @@ initImportExport({
   renderSharedScreen: doRenderShared,
   showView,
 });
+
+// ============================
+// PHI 保護: ブラウザ autofill による origin またぎの漏洩防止
+// ============================
+
+initNoAutofill();
 
 // ============================
 // Action menu (long-press)
