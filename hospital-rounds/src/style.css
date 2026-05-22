@@ -12,12 +12,12 @@
       --status-yellow-bd: #d97706;
       --status-yellow-fg: #92400e;
 
-      --status-green-bg: #ccfbf1;
-      --status-green-bd: #0f766e;
-      --status-green-fg: #134e4a;
+      --status-green-bg: #dcfce7;
+      --status-green-bd: #16a34a;
+      --status-green-fg: #166534;
 
-      --status-gray-bg: #f3f4f6;
-      --status-gray-bd: #4b5563;
+      --status-gray-bg: #e5e7eb;
+      --status-gray-bd: #374151;
       --status-gray-text: #1f2937;
 
       --status-blue-bg: #bfdbfe;
@@ -52,69 +52,66 @@
       position: sticky;
       top: 0;
       z-index: 10;
-      background: #2563eb;
-      border-bottom: 1px solid #1d4ed8;
+      background: #ffffff;
+      border-bottom: 1px solid var(--line);
     }
 
-    /* ── ヘッダー共通 (本番=青 / テスト=スレート) ── */
-    /* アプリロゴ: ヘッダーと同色背景の上に白抜きで描画。 */
+    /* ── ヘッダー共通 (本番/テストともに白) ──
+       環境色はロゴバッジ (左上の丸) にだけ残す。
+       PWA テーマカラーも合わせて白に変更し、ステータスバーとの段差を消す。 */
     .appLogo {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       width: 32px;
       height: 32px;
+      background: #2563eb;
       color: #ffffff;
+      border-radius: 50%;
       flex-shrink: 0;
-      margin-left: -4px;
+    }
+
+    html[data-env="test"] .appLogo {
+      background: #475569;
     }
 
     header .appTitleInput,
     header button.secondary {
-      color: #ffffff;
+      color: var(--text);
     }
 
     header .appTitleInput:hover:not(:focus) {
-      background: rgba(255, 255, 255, 0.12);
+      background: rgba(0, 0, 0, 0.05);
     }
 
     header .appTitleInput:not([readonly]):focus {
-      background: rgba(255, 255, 255, 0.95);
+      background: #fff;
       color: var(--text);
-      border-color: rgba(255, 255, 255, 0.6);
-      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
-    }
-
-    html[data-env="test"] header {
-      background: #475569;
-      border-bottom-color: #334155;
+      border-color: rgba(37, 99, 235, 0.6);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
     }
 
     /* ヘッダー右側のアイコンボタンは普段は囲み無し。
-       ホバー / 現在ビューのハイライトでだけ枠と背景を見せる。
-       test 環境はホバー色を白系に上書き（下の :hover ルール参照）。 */
+       ホバー / 現在ビューのハイライトでだけ枠と背景を見せる。 */
     header button.secondary {
       background: transparent;
       border-color: transparent;
     }
 
-    /* ヘッダーは色付き背景なので :hover は白半透明で控えめに */
     header button.secondary:hover {
-      background: rgba(255, 255, 255, 0.18);
-      border-color: rgba(255, 255, 255, 0.3);
+      background: rgba(0, 0, 0, 0.06);
+      border-color: var(--line);
+      color: var(--text);
     }
 
-    /* 現在ビューに対応するヘッダーボタンを白抜きハイライト。
-       本番(青)・テスト(スレート) のどちらでも見えるよう白の半透明で塗る。
-       html[data-view="..."] は navigation.js が showView 時に更新する。
-       ホーム/詳細/総覧は対応するヘッダーボタン無し（タイトル＝ホーム）。 */
+    /* 現在ビューに対応するヘッダーボタンを淡い青でハイライト。
+       iconBtn.editActive と同じトーンに揃える。 */
     html[data-view="memo"]     #headerMemoBtn,
     html[data-view="shared"]   #headerSharedBtn,
     html[data-view="settings"] #headerSettingsBtn {
-      background: rgba(255, 255, 255, 0.22);
-      border-color: rgba(255, 255, 255, 0.45);
-      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
-      color: #ffffff;
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #2563eb;
     }
 
     /* ── QR スキャナ・オーバーレイ ── */
@@ -620,7 +617,10 @@
       justify-content: space-between;
       gap: 10px;
       flex-wrap: wrap;
-      margin-top: 14px;
+      margin-top: 4px;
+      padding: 2px 8px;
+      background: #f8fafc;
+      border-radius: 10px;
     }
 
     .detailTitle {
@@ -924,7 +924,7 @@
     .viewScroll {
       max-height: calc(100vh - 148px);
       overflow: auto;
-      margin-top: 12px;
+      margin-top: 4px;
     }
 
     /* Memo list */
