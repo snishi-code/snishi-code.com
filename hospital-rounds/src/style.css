@@ -1723,20 +1723,26 @@
     .popupMenu.actionMenu {
       width: auto;
       min-width: 0;
-      max-width: 360px;
+      max-width: 380px;
+      padding: 14px 30px;
+    }
+
+    .popupMenu.actionMenu .popupTitle {
+      margin-bottom: 8px;
+      padding-bottom: 6px;
     }
 
     .popupMenu.actionMenu .actionGrid {
       display: grid;
       grid-template-columns: auto auto;
       justify-content: center;
-      gap: 10px;
+      gap: 12px;
       margin-bottom: 10px;
     }
 
     .popupMenu.actionMenu .actionGridBtn {
-      width: 64px;
-      height: 56px;
+      width: 68px;
+      height: 44px;
       margin: 0;
       padding: 0;
       display: inline-flex;
@@ -1753,11 +1759,11 @@
     }
 
     .popupMenu.actionMenu .actionGridBtn .actionGridSign {
-      font-size: 22px;
+      font-size: 20px;
     }
 
     .popupMenu.actionMenu .actionGridBtn .actionGridNum {
-      font-size: 20px;
+      font-size: 18px;
     }
 
     .popupMenu.actionMenu .actionGridBtn.add {
@@ -1781,8 +1787,8 @@
     }
 
     .popupMenu.actionMenu .actionMenuClose {
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 36px;
       margin: 0 auto;
       padding: 0;
       display: flex;
