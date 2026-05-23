@@ -1,6 +1,7 @@
 "use strict";
 
-import { appState, settings, selectedNo, oRuleMap, makeEmptyOByRules, markUpdated, scheduleSave } from "../store.js";
+import { appState, settings, selectedNo, markUpdated, scheduleSave } from "../store.js";
+import { renderFormatStrip } from "../features/formats.js";
 import { STATUS } from "../constants.js";
 import { buildTabPayload } from "../payload.js";
 import { utf8ByteLength } from "../payload.js";
@@ -227,49 +228,6 @@ export function initQrNavButtons() {
 // O-list editor row
 // ============================
 
-function renderOEditorRow(rule, item, onChange) {
-  const row = document.createElement("div");
-  row.style.marginTop = "10px";
-
-  const lbl = document.createElement("label");
-  lbl.textContent = rule.label;
-  row.appendChild(lbl);
-
-  const seg = document.createElement("div");
-  seg.className = "segRow";
-  row.appendChild(seg);
-
-  const b = document.createElement("button");
-  b.type = "button";
-  b.className = "segBtn normalCheck" + (item.normal ? " selected" : "");
-  b.title = "正常";
-  b.setAttribute("aria-label", "正常");
-  b.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-  b.addEventListener("click", () => {
-    const cur = appState.patients[selectedNo - 1]?.o?.[rule.key] ?? { normal: false, note: "" };
-    const next = { ...cur, normal: !cur.normal };
-    b.classList.toggle("selected", next.normal);
-    onChange(next);
-  });
-  seg.appendChild(b);
-
-  const input = document.createElement("input");
-  input.type = "text";
-  input.className = "oInput";
-  input.placeholder = "";
-  input.value = String(item.note ?? "");
-  input.addEventListener("input", () => {
-    const cur = appState.patients[selectedNo - 1]?.o?.[rule.key] ?? { normal: false, note: "" };
-    const note = String(input.value ?? "");
-    const next = { ...cur, note, normal: note.trim() ? false : cur.normal };
-    b.classList.toggle("selected", next.normal);
-    onChange(next);
-  });
-  seg.appendChild(input);
-
-  return row;
-}
-
 // ============================
 // Status buttons
 // ============================
@@ -294,7 +252,6 @@ export function renderDetail(syncDetailMemoDisplay) {
   const aText = document.getElementById("aText");
   const pText = document.getElementById("pText");
   const detailSharedText = document.getElementById("detailSharedText");
-  const oList = document.getElementById("oList");
   const oFreeText = document.getElementById("oFreeText");
 
   // 名前ボタン（表示モード）の中身とステータス色
@@ -345,35 +302,12 @@ export function renderDetail(syncDetailMemoDisplay) {
   if (aText) aText.value = p.a.text;
   if (pText) pText.value = p.p.text;
   if (detailSharedText) detailSharedText.value = p.shared || "";
-
-  const v = p.vitals || {};
-  const vitalFields = [
-    ["vitalSpo2", "spo2"], ["vitalSpo2Memo", "spo2_memo"], ["vitalRr", "rr"],
-    ["vitalBpSys", "bp_sys"], ["vitalBpDia", "bp_dia"], ["vitalPr", "pr"], ["vitalBt", "bt"]
-  ];
-  for (const [id, key] of vitalFields) {
-    const el = document.getElementById(id);
-    if (el) el.value = v[key] || "";
-  }
   if (oFreeText) oFreeText.value = String(p.oFree ?? "");
 
-  if (oList) {
-    oList.textContent = "";
-    const map = oRuleMap();
-    for (const r of settings.oRules) {
-      const rule = map[r.key];
-      if (!rule) continue;
-      if (!p.o || typeof p.o !== "object") p.o = makeEmptyOByRules();
-      if (!p.o[r.key]) p.o[r.key] = { normal: false, note: "" };
-      const row = renderOEditorRow(rule, p.o[r.key], (next) => {
-        p.o[r.key] = next;
-        markUpdated(selectedNo);
-        scheduleSave();
-        renderQrIfNeeded();
-      });
-      oList.appendChild(row);
-    }
-  }
+  // 各パネル右肩の [+] [pin...] [≡] ボタン strip を描画
+  renderFormatStrip("O", document.getElementById("oFormatStrip"));
+  renderFormatStrip("A", document.getElementById("aFormatStrip"));
+  renderFormatStrip("P", document.getElementById("pFormatStrip"));
 
   renderQrIfNeeded();
 }
@@ -429,27 +363,6 @@ export function initDetailEvents(renderHomeFn) {
       p.shared = String(detailSharedText.value ?? "");
       markUpdated(selectedNo);
       scheduleSave();
-    });
-  }
-
-  const vitalBindings = [
-    { id: "vitalSpo2", key: "spo2" },
-    { id: "vitalSpo2Memo", key: "spo2_memo" },
-    { id: "vitalRr", key: "rr" },
-    { id: "vitalBpSys", key: "bp_sys" },
-    { id: "vitalBpDia", key: "bp_dia" },
-    { id: "vitalPr", key: "pr" },
-    { id: "vitalBt", key: "bt" },
-  ];
-  for (const { id, key } of vitalBindings) {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener("input", () => {
-      const p = appState.patients[selectedNo - 1];
-      if (!p.vitals) p.vitals = { spo2: "", spo2_memo: "", rr: "", bp_sys: "", bp_dia: "", pr: "", bt: "" };
-      p.vitals[key] = String(el.value ?? "");
-      markUpdated(selectedNo);
-      scheduleSave();
-      renderQrIfNeeded();
     });
   }
 

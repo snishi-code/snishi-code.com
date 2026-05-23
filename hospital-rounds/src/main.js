@@ -8,7 +8,7 @@ import {
   appState, settings, selectedNo,
   setAppState, setRosterState, setSelectedNo,
   saveNow, scheduleSave, saveSettings,
-  normalizeLoaded, ensurePatientsHaveAllOKeys, makeEmptyOByRules,
+  normalizeLoaded, ensurePatientsHaveAllOKeys,
   setMarkUpdatedHandler, requestStoragePersistence,
 } from "./store.js";
 
@@ -22,6 +22,7 @@ import { renderSettings, initSettingsView } from "./views/settings-view.js";
 import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./features/navigation.js";
 import { DOCS_BUNDLE } from "./docs-bundle.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
+import { initFormats, setOnTextChanged as setOnFormatTextChanged } from "./features/formats.js";
 import { initImportExport } from "./features/import-export.js";
 import { initSharedQr, refreshSharedQrIfActive, initMemoQr, refreshMemoQrIfActive } from "./features/qr-shared.js";
 import { initHomeQr, refreshHomeQrIfActive } from "./features/qr-home.js";
@@ -302,6 +303,11 @@ initNoAutofill();
 // ============================
 
 initActionMenu();
+initFormats();
+setOnFormatTextChanged(() => {
+  doRenderDetail();
+  if (typeof renderQrIfNeeded === "function") renderQrIfNeeded();
+});
 
 // ============================
 // Shared QR (show + read with bug fix)
@@ -430,9 +436,7 @@ if (clearAllBtn) {
       if (ct.memo) p.memo = "";
       if (ct.s) p.s = "";
       if (ct.o) {
-        p.o = makeEmptyOByRules();
         p.oFree = "";
-        p.vitals = { spo2: "", spo2_memo: "", rr: "", bp_sys: "", bp_dia: "", pr: "", bt: "" };
       }
       if (ct.a) p.a = { text: "" };
       if (ct.p) p.p = { text: "" };

@@ -1,6 +1,6 @@
 "use strict";
 
-import { appState, settings, oRuleMap } from "./store.js";
+import { appState, settings } from "./store.js";
 
 export function oneLineText(s) {
   return String(s ?? "")
@@ -27,56 +27,10 @@ export function utf8ByteLength(text) {
   return unescape(encodeURIComponent(String(text ?? ""))).length;
 }
 
-function buildOItem(rule, item) {
-  if (!rule) return "";
-  const note = oneLineText(item?.note ?? "");
-  if (note) return rule.label + "：" + note;
-  const normal = !!item?.normal;
-  if (normal) return rule.label + "：" + rule.normalText;
-  return "";
-}
-
 function buildOOutput(p) {
-  const v = p.vitals || {};
-  const hasSpo2 = v.spo2 !== undefined && v.spo2 !== "";
-  const hasRr = v.rr !== undefined && v.rr !== "";
-  const hasBpSys = v.bp_sys !== undefined && v.bp_sys !== "";
-  const hasBpDia = v.bp_dia !== undefined && v.bp_dia !== "";
-  const hasPr = v.pr !== undefined && v.pr !== "";
-  const hasBt = v.bt !== undefined && v.bt !== "";
-
-  const vParts = [];
-  if (hasSpo2) {
-    let s = `SpO2 ${v.spo2}%`;
-    if (v.spo2_memo) s += ` (${v.spo2_memo})`;
-    vParts.push(s);
-  } else if (v.spo2_memo) {
-    vParts.push(`SpO2 ${v.spo2_memo}`);
-  }
-  if (hasRr) vParts.push(`RR ${v.rr}`);
-  if (hasBpSys || hasBpDia) vParts.push(`BP ${v.bp_sys || ""}/${v.bp_dia || ""}mmHg`);
-  if (hasPr) vParts.push(`P ${v.pr}`);
-  if (hasBt) vParts.push(`BT ${v.bt}℃`);
-
-  const parts = [];
-  if (vParts.length > 0) {
-    parts.push(vParts.join(", "));
-  } else {
-    parts.push("Vital 安定");
-  }
-
-  const map = oRuleMap();
-  for (const r of settings.oRules) {
-    const item = p?.o ? p.o[r.key] : null;
-    const rule = map[r.key];
-    const s = buildOItem(rule, item);
-    if (s) parts.push(s);
-  }
-  const base = parts.join("\n");
-  const free = multiLineText(p?.oFree ?? "");
-  if (!free.trim()) return base;
-  if (!base.trim()) return free;
-  return base + "\n" + free;
+  // v2: O 欄は oFree (自由記述) のみ。バイタル/構造化所見はフォーマットで挿入された
+  // テキストとしてここに含まれる
+  return multiLineText(p?.oFree ?? "");
 }
 
 function buildAOutput(p) {

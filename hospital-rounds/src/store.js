@@ -2,7 +2,8 @@
 
 import {
   DEFAULT_PATIENT_COUNT, STATUS,
-  DEFAULT_O_RULES, DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS,
+  DEFAULT_FORMATS, LEGACY_O_RULES, FORMAT_PANELS, FORMAT_TYPES,
+  DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS,
   DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL,
   DEFAULT_ROSTER_PASSPHRASE, DEFAULT_TAG_GROUPING_ENABLED,
   clone,
@@ -14,6 +15,23 @@ import { loadBundle as storageLoad, saveBundle as storageSave } from "./storage.
 // Settings defaults & normalization
 // ============================
 
+function newFormatId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return "fmt_" + crypto.randomUUID();
+  return "fmt_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+
+function makeDefaultFormats() {
+  return DEFAULT_FORMATS.map(f => ({
+    id: newFormatId(),
+    name: f.name,
+    panel: f.panel,
+    type: f.type,
+    joiner: f.joiner,
+    pinned: !!f.pinned,
+    items: f.items.map(it => ({ ...it })),
+  }));
+}
+
 export function defaultSettings() {
   return {
     v: 1,
@@ -22,7 +40,7 @@ export function defaultSettings() {
       a: "著変なし",
       p: "現行加療継続",
     },
-    oRules: clone(DEFAULT_O_RULES),
+    formats: makeDefaultFormats(),
     clearTargets: clone(DEFAULT_CLEAR_TARGETS),
     tags: clone(DEFAULT_TAGS),
     adminEnabled: DEFAULT_ADMIN_ENABLED,
@@ -33,6 +51,29 @@ export function defaultSettings() {
     tagGroups: [],
     tagGroupAssign: {},
   };
+}
+
+function normalizeFormatItem(item, type) {
+  if (!item || typeof item !== "object") return null;
+  const label = String(item.label ?? "").trim();
+  if (!label) return null;
+  if (type === "numeric") return { label, unit: String(item.unit ?? "") };
+  return { label, normal: String(item.normal ?? "") };
+}
+
+function normalizeFormat(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const name = String(raw.name ?? "").trim();
+  if (!name) return null;
+  const panel = FORMAT_PANELS.includes(raw.panel) ? raw.panel : "O";
+  const type = FORMAT_TYPES.includes(raw.type) ? raw.type : "numeric";
+  const joiner = typeof raw.joiner === "string" ? raw.joiner : (type === "text" ? "\n" : ", ");
+  const pinned = !!raw.pinned;
+  const id = (typeof raw.id === "string" && raw.id) ? raw.id : newFormatId();
+  const items = Array.isArray(raw.items)
+    ? raw.items.map(it => normalizeFormatItem(it, type)).filter(Boolean)
+    : [];
+  return { id, name, panel, type, joiner, pinned, items };
 }
 
 function normalizeSettings(raw) {
@@ -46,22 +87,11 @@ function normalizeSettings(raw) {
     out.defaults.a = (typeof raw.defaults.a === "string") ? raw.defaults.a : out.defaults.a;
     out.defaults.p = (typeof raw.defaults.p === "string") ? raw.defaults.p : out.defaults.p;
   }
-  if (Array.isArray(raw.oRules)) {
-    const cleaned = [];
-    for (const r of raw.oRules) {
-      if (!r || typeof r !== "object") continue;
-      const key = String(r.key ?? "").trim();
-      const label = String(r.label ?? "").trim();
-      if (!key || !label) continue;
-      if (key === "vital") continue;
-      cleaned.push({
-        key,
-        label,
-        normalText: String(r.normalText ?? ""),
-        fromAdmin: !!r.fromAdmin,
-      });
-    }
-    if (cleaned.length) out.oRules = cleaned;
+  // 旧 oRules はマイグレーション時のみ参照する。新 settings には書き戻さない。
+  // formats: 新規登録された設定。空または欠落ならデフォルトを採用。
+  if (Array.isArray(raw.formats)) {
+    const cleaned = raw.formats.map(normalizeFormat).filter(Boolean);
+    if (cleaned.length) out.formats = cleaned;
   }
   if (raw.clearTargets && typeof raw.clearTargets === "object") {
     const ct = raw.clearTargets;
@@ -109,20 +139,6 @@ function normalizeSettings(raw) {
   return out;
 }
 
-export function oRuleMap() {
-  const m = Object.create(null);
-  for (const r of settings.oRules) m[r.key] = r;
-  return m;
-}
-
-export function makeEmptyOByRules() {
-  const o = Object.create(null);
-  for (const r of settings.oRules) {
-    o[r.key] = { normal: false, note: "" };
-  }
-  return o;
-}
-
 // ============================
 // Patient helpers
 // ============================
@@ -142,8 +158,6 @@ export function makeDefaultPatient() {
     s: "",
     memo: "",
     shared: "",
-    vitals: { spo2: "", spo2_memo: "", rr: "", bp_sys: "", bp_dia: "", pr: "", bt: "" },
-    o: makeEmptyOByRules(),
     oFree: "",
     a: { text: "" },
     p: { text: "" },
@@ -152,7 +166,7 @@ export function makeDefaultPatient() {
 }
 
 // 「空患者」= 開いた直後の未使用スロット相当: ステータスが NONE (白) で、かつ name/room/
-// tags/SOAP/memo/shared/vitals/o/oFree がすべて初期値（pid と updatedAt は無視）。
+// tags/SOAP/memo/shared/oFree がすべて初期値（pid と updatedAt は無視）。
 // YELLOW/GREEN/BLUE/GRAY はユーザーが明示的にステータスを付けた状態なので、たとえ他の
 // フィールドが空でも「触れたボタン」と見なし削除対象外（特に GRAY は「診察・カルテ記載
 // 終了」の重要マーカーなので消してはならない）。
@@ -168,53 +182,80 @@ export function isPatientEmpty(p) {
   if (p.oFree) return false;
   if (p.a && p.a.text) return false;
   if (p.p && p.p.text) return false;
-  const v = p.vitals || {};
-  if (v.spo2 || v.spo2_memo || v.rr || v.bp_sys || v.bp_dia || v.pr || v.bt) return false;
-  if (p.o && typeof p.o === "object") {
-    for (const k of Object.keys(p.o)) {
-      const item = p.o[k];
-      if (!item) continue;
-      if (item.normal) return false;
-      if (item.note) return false;
-    }
-  }
   return true;
 }
 
-function coerceOItem(x) {
-  if (!x || typeof x !== "object") return { normal: false, note: "" };
-  return { normal: !!x.normal, note: String(x.note ?? "") };
+// ============================
+// 旧データ (v1: patient.o[key]={normal,note} + patient.vitals) → oFree テキスト化
+//
+// 旧 O 構造体 / バイタル構造体は v2 以降撤去。読込時に 1 回だけ寄せて oFree 末尾に
+// 結合する。oRulesFromBundle が渡されればそのラベル/正常文を優先、無ければ
+// LEGACY_O_RULES (既定) を使う。
+// ============================
+function migrateLegacyOandVitalsToText(r, oRulesFromBundle) {
+  const out = [];
+
+  // 1) Vitals → "BP 128/76mmHg, P 72, SpO2 95% (条件), RR 18, T 36.8℃" のような 1 行
+  if (r && r.vitals && typeof r.vitals === "object") {
+    const v = r.vitals;
+    const vParts = [];
+    if (v.spo2 || v.spo2_memo) {
+      let s = v.spo2 ? `SpO2 ${v.spo2}%` : `SpO2 ${v.spo2_memo}`;
+      if (v.spo2 && v.spo2_memo) s += ` (${v.spo2_memo})`;
+      vParts.push(s);
+    }
+    if (v.rr) vParts.push(`RR ${v.rr}`);
+    if (v.bp_sys || v.bp_dia) vParts.push(`BP ${v.bp_sys || ""}/${v.bp_dia || ""}mmHg`);
+    if (v.pr) vParts.push(`P ${v.pr}`);
+    if (v.bt) vParts.push(`BT ${v.bt}℃`);
+    if (vParts.length) out.push(vParts.join(", "));
+  }
+
+  // 2) Structured o → ラベルごとに 1 行
+  if (r && r.o && typeof r.o === "object") {
+    const rules = (Array.isArray(oRulesFromBundle) && oRulesFromBundle.length)
+      ? oRulesFromBundle
+      : LEGACY_O_RULES;
+    // バックワード互換: abd1/abd2 を旧データから一行にまとめる
+    const seen = new Set();
+    for (const rule of rules) {
+      const key = rule.key;
+      seen.add(key);
+      const item = r.o[key];
+      if (!item || typeof item !== "object") continue;
+      const note = String(item.note ?? "").trim();
+      if (note) out.push(`${rule.label}：${note}`);
+      else if (item.normal) out.push(`${rule.label}：${rule.normalText || ""}`);
+    }
+    // abd1/abd2 (旧キー) を腹部にまとめて出す
+    const abd1 = r.o.abd1, abd2 = r.o.abd2;
+    const extras = [];
+    if (abd1 && abd1.note && String(abd1.note).trim()) extras.push(String(abd1.note).trim());
+    if (abd2 && abd2.note && String(abd2.note).trim()) extras.push(String(abd2.note).trim());
+    if (extras.length) out.push(`腹部：${extras.join(" / ")}`);
+  }
+
+  return out.join("\n");
 }
 
-function migrateLegacyO(r) {
-  const out = makeEmptyOByRules();
-  if (!r || !r.o || typeof r.o !== "object") return out;
+function migrateLegacyPatientToOFree(r, oRulesFromBundle) {
+  const migrated = migrateLegacyOandVitalsToText(r, oRulesFromBundle);
+  const existing = (r && typeof r.oFree === "string") ? r.oFree : "";
+  if (!migrated.trim()) return existing;
+  if (!existing.trim()) return migrated;
+  return migrated + "\n" + existing;
+}
 
-  for (const key of Object.keys(out)) {
-    if (r.o && typeof r.o[key] === "object" && r.o[key]) out[key] = coerceOItem(r.o[key]);
-  }
-
-  if (typeof r.o.lung === "object" && r.o.lung) out["lung"] = coerceOItem(r.o.lung);
-  if (typeof r.o.bowel === "object" && r.o.bowel) out["bowel"] = coerceOItem(r.o.bowel);
-
-  const abd1 = (typeof r.o.abd1 === "object" && r.o.abd1) ? coerceOItem(r.o.abd1) : null;
-  const abd2 = (typeof r.o.abd2 === "object" && r.o.abd2) ? coerceOItem(r.o.abd2) : null;
-  const abdomen = out["abdomen"] ? coerceOItem(out["abdomen"]) : { normal: false, note: "" };
-  const abdNotes = [];
-  if (abd1 && abd1.note.trim()) abdNotes.push(abd1.note.trim());
-  if (abd2 && abd2.note.trim()) abdNotes.push(abd2.note.trim());
-  if (!abdomen.note.trim() && abdNotes.length) {
-    abdomen.note = abdNotes.join(" / ");
-    abdomen.normal = false;
-  } else if (!abdomen.note.trim()) {
-    const anyNormal = (abd1 && abd1.normal) || (abd2 && abd2.normal);
-    abdomen.normal = abdomen.normal || !!anyNormal;
-  }
-  out["abdomen"] = abdomen;
-
-  if (out["edema"] && typeof r.o.edema === "object" && r.o.edema) out["edema"] = coerceOItem(r.o.edema);
-
-  return out;
+// パッチ: 旧バンドル読込時に settings.oRules も読み出して migration に渡せるよう保持
+let _migrationORulesContext = null;
+function rememberMigrationContext(rawSettings) {
+  _migrationORulesContext = (rawSettings && Array.isArray(rawSettings.oRules))
+    ? rawSettings.oRules.filter(r => r && typeof r === "object" && r.key && r.label).map(r => ({
+        key: String(r.key),
+        label: String(r.label),
+        normalText: String(r.normalText ?? ""),
+      }))
+    : null;
 }
 
 function normalizePatientArray(arr) {
@@ -234,17 +275,8 @@ function normalizePatientArray(arr) {
       s: (r && typeof r.s === "string") ? r.s : d.s,
       memo: (r && typeof r.memo === "string") ? r.memo : d.memo,
       shared: (r && typeof r.shared === "string") ? r.shared : d.shared,
-      vitals: {
-        spo2: (r && r.vitals && typeof r.vitals.spo2 === "string") ? r.vitals.spo2 : d.vitals.spo2,
-        spo2_memo: (r && r.vitals && typeof r.vitals.spo2_memo === "string") ? r.vitals.spo2_memo : d.vitals.spo2_memo,
-        rr: (r && r.vitals && typeof r.vitals.rr === "string") ? r.vitals.rr : d.vitals.rr,
-        bp_sys: (r && r.vitals && typeof r.vitals.bp_sys === "string") ? r.vitals.bp_sys : d.vitals.bp_sys,
-        bp_dia: (r && r.vitals && typeof r.vitals.bp_dia === "string") ? r.vitals.bp_dia : d.vitals.bp_dia,
-        pr: (r && r.vitals && typeof r.vitals.pr === "string") ? r.vitals.pr : d.vitals.pr,
-        bt: (r && r.vitals && typeof r.vitals.bt === "string") ? r.vitals.bt : d.vitals.bt,
-      },
-      o: migrateLegacyO(r),
-      oFree: (r && typeof r.oFree === "string") ? r.oFree : d.oFree,
+      // 旧 patient.vitals / patient.o を 1 回だけ oFree に流し込む
+      oFree: migrateLegacyPatientToOFree(r, _migrationORulesContext),
       a: { text: (r && r.a && typeof r.a.text === "string") ? r.a.text : d.a.text },
       p: { text: (r && r.p && typeof r.p.text === "string") ? r.p.text : d.p.text },
       updatedAt: (r && typeof r.updatedAt === "number") ? r.updatedAt : 0,
@@ -264,15 +296,9 @@ export function normalizeLoaded(raw) {
   };
 }
 
-export function ensurePatientsHaveAllOKeys() {
-  const keys = settings.oRules.map(r => r.key);
-  for (const p of appState.patients) {
-    if (!p.o || typeof p.o !== "object") p.o = Object.create(null);
-    for (const k of keys) {
-      if (!p.o[k]) p.o[k] = { normal: false, note: "" };
-    }
-  }
-}
+// 後方互換のためのスタブ。旧 O 構造体を撤去したため何もしない。
+// 呼び出し側 (drag.js 等) は引き続き呼ぶがコストはほぼゼロ。
+export function ensurePatientsHaveAllOKeys() { /* no-op since v2 */ }
 
 // ============================
 // Roster meta normalization
@@ -328,12 +354,16 @@ function applyBundleToLive(bundle) {
   const sMeta = getSection(bundle, SECTION.META);
   const sHistory = getSection(bundle, SECTION.HISTORY);
 
+  // 患者マイグレーション前に旧 oRules を退避 (label/normalText の正引きに使う)
+  rememberMigrationContext(sSettings || {});
+
   settings = normalizeSettings(sSettings || {});
   appState = {
     v: 3,
     title: (sMeta && typeof sMeta.title === "string") ? sMeta.title : "回診",
     patients: normalizePatientArray(Array.isArray(sPatients) ? sPatients : null),
   };
+  _migrationORulesContext = null;
   rosterState = normalizeRosterMeta({
     rosterId: bundle.rosterId,
     baseSnapshot: sHistory ? sHistory.baseSnapshot : null,

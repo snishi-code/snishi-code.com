@@ -80,7 +80,7 @@ await test("clean localStorage → defaults populated", async () => {
   assert.equal(store.appState.patients.length, 50, "50 default patient slots");
   assert.equal(store.appState.title, "回診");
   assert.equal(store.rosterState, null, "rosterState is null when nothing stored");
-  assert.ok(store.settings.oRules.length > 0, "default oRules populated");
+  assert.ok(Array.isArray(store.settings.formats) && store.settings.formats.length > 0, "default formats populated");
   assert.ok(store.appState.patients.every(p => typeof p.pid === "string" && p.pid.length > 0), "every default patient has a pid");
 });
 
@@ -196,8 +196,9 @@ for (const [name, raw] of Object.entries(fixtures)) {
     if (samplePid) {
       const found = store.appState.patients.find(p => p.pid === samplePid);
       assert.ok(found, `patient ${samplePid} present after hydration`);
-      assert.ok(found.vitals, "patient has vitals object");
-      assert.ok(found.o, "patient has o object");
+      assert.equal(typeof found.oFree, "string", "patient has oFree string");
+      assert.equal(found.vitals, undefined, "legacy vitals removed after migration");
+      assert.equal(found.o, undefined, "legacy o removed after migration");
     }
   });
 }
@@ -262,20 +263,11 @@ await test("status NONE + shared is NOT empty", async () => {
   assert.equal(store.isPatientEmpty(p), false);
 });
 
-await test("status NONE + vitals is NOT empty", async () => {
+await test("status NONE + oFree text is NOT empty", async () => {
   localStorage.clear();
   const store = await freshStore();
   const p = store.makeDefaultPatient();
-  p.vitals.bt = "37.5";
-  assert.equal(store.isPatientEmpty(p), false);
-});
-
-await test("status NONE + o normal flag is NOT empty", async () => {
-  localStorage.clear();
-  const store = await freshStore();
-  const p = store.makeDefaultPatient();
-  const firstKey = Object.keys(p.o)[0];
-  p.o[firstKey].normal = true;
+  p.oFree = "BP 128/76";
   assert.equal(store.isPatientEmpty(p), false);
 });
 
@@ -309,6 +301,142 @@ await test("status BLUE with empty fields is NOT empty", async () => {
   const p = store.makeDefaultPatient();
   p.status = "blue";
   assert.equal(store.isPatientEmpty(p), false);
+});
+
+// ============================
+// 6) 旧 vitals / o 構造体マイグレーション → oFree
+// ============================
+section("legacy migration (vitals + o → oFree)");
+
+await test("legacy vitals are folded into oFree text", async () => {
+  localStorage.clear();
+  // 旧スキーマの bundle を直接保存して読み直す
+  const legacyBundle = {
+    format: BUNDLE_FORMAT,
+    schema: 1,
+    sections: {
+      meta: { title: "回診" },
+      settings: {},
+      patients: [{
+        pid: "p_test_vit",
+        status: "none",
+        name: "",
+        room: "",
+        tags: [],
+        s: "",
+        memo: "",
+        shared: "",
+        vitals: { spo2: "95", spo2_memo: "O2 2L", bp_sys: "128", bp_dia: "76", pr: "72", rr: "18", bt: "36.8" },
+        o: {},
+        oFree: "",
+        a: { text: "" },
+        p: { text: "" },
+      }],
+    },
+  };
+  localStorage.setItem("rounds_v2_soap_ryoyo_ward_bundle_v1", JSON.stringify(legacyBundle));
+  const store = await freshStore();
+  const found = store.appState.patients.find(p => p.pid === "p_test_vit");
+  assert.ok(found, "patient hydrated");
+  assert.equal(found.vitals, undefined, "vitals stripped");
+  assert.ok(found.oFree.includes("SpO2 95"), "SpO2 in oFree");
+  assert.ok(found.oFree.includes("O2 2L"), "SpO2 memo in oFree");
+  assert.ok(found.oFree.includes("BP 128/76"), "BP in oFree");
+  assert.ok(found.oFree.includes("T 36.8") || found.oFree.includes("BT 36.8"), "BT in oFree");
+});
+
+await test("legacy o structured findings fold into oFree with labels", async () => {
+  localStorage.clear();
+  const legacyBundle = {
+    format: BUNDLE_FORMAT,
+    schema: 1,
+    sections: {
+      meta: { title: "回診" },
+      settings: {
+        oRules: [
+          { key: "lung", label: "肺音", normalText: "明らかなラ音なし" },
+          { key: "abdomen", label: "腹部", normalText: "平坦軟" },
+        ],
+      },
+      patients: [{
+        pid: "p_test_o",
+        status: "none",
+        name: "",
+        room: "",
+        tags: [],
+        s: "",
+        memo: "",
+        shared: "",
+        o: {
+          lung: { normal: true, note: "" },
+          abdomen: { normal: false, note: "圧痛あり" },
+        },
+        oFree: "",
+        a: { text: "" },
+        p: { text: "" },
+      }],
+    },
+  };
+  localStorage.setItem("rounds_v2_soap_ryoyo_ward_bundle_v1", JSON.stringify(legacyBundle));
+  const store = await freshStore();
+  const found = store.appState.patients.find(p => p.pid === "p_test_o");
+  assert.ok(found, "patient hydrated");
+  assert.equal(found.o, undefined, "structured o stripped");
+  assert.ok(found.oFree.includes("肺音：明らかなラ音なし"), "lung normal text injected");
+  assert.ok(found.oFree.includes("腹部：圧痛あり"), "abdomen note injected");
+});
+
+await test("existing oFree is preserved when vitals/o also present", async () => {
+  localStorage.clear();
+  const legacyBundle = {
+    format: BUNDLE_FORMAT,
+    schema: 1,
+    sections: {
+      meta: { title: "回診" },
+      settings: {},
+      patients: [{
+        pid: "p_test_both",
+        status: "none",
+        name: "",
+        room: "",
+        tags: [],
+        s: "",
+        memo: "",
+        shared: "",
+        vitals: { spo2: "98" },
+        o: {},
+        oFree: "既存メモ",
+        a: { text: "" },
+        p: { text: "" },
+      }],
+    },
+  };
+  localStorage.setItem("rounds_v2_soap_ryoyo_ward_bundle_v1", JSON.stringify(legacyBundle));
+  const store = await freshStore();
+  const found = store.appState.patients.find(p => p.pid === "p_test_both");
+  assert.ok(found.oFree.includes("既存メモ"), "existing oFree preserved");
+  assert.ok(found.oFree.includes("SpO2 98"), "migrated SpO2 appended");
+});
+
+// ============================
+// 7) フォーマット (formats[]) 設計サニティ
+// ============================
+section("formats");
+
+await test("default formats include バイタル (numeric) and 身体所見 (text)", async () => {
+  localStorage.clear();
+  const store = await freshStore();
+  const fmts = store.settings.formats;
+  assert.ok(Array.isArray(fmts) && fmts.length >= 2, "at least 2 default formats");
+  const vital = fmts.find(f => f.name === "バイタル");
+  const phys = fmts.find(f => f.name === "身体所見");
+  assert.ok(vital, "バイタル exists");
+  assert.equal(vital.type, "numeric");
+  assert.equal(vital.panel, "O");
+  assert.equal(vital.pinned, true);
+  assert.ok(phys, "身体所見 exists");
+  assert.equal(phys.type, "text");
+  assert.equal(phys.panel, "O");
 });
 
 // ============================

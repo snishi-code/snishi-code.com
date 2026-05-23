@@ -10,7 +10,9 @@ export const STATUS = {
   BLUE: "blue",
 };
 
-export const DEFAULT_O_RULES = [
+// 旧 O 構造体の正常文。マイグレーション時にのみ参照する (旧 patient.o[key].normal=true
+// を文字列化するための表)。新コードからは settings.oRules も DEFAULT_O_RULES も使わない。
+export const LEGACY_O_RULES = [
   { key: "general", label: "General", normalText: "良好" },
   { key: "lung", label: "肺音", normalText: "明らかなラ音なし" },
   { key: "bowel", label: "腸音", normalText: "正常" },
@@ -18,6 +20,39 @@ export const DEFAULT_O_RULES = [
   { key: "meal", label: "食事", normalText: "摂取良好" },
   { key: "elimination", label: "排泄", normalText: "尿・便ともに特記なし" },
 ];
+
+// 新フォーマット概念。アプリ起動時にユーザーが空なら以下が並ぶ。
+// type: "numeric" | "text"
+// panel: "O" | "A" | "P"
+// joiner: 項目間の区切り
+// pinned: 患者画面で 1-tap クイックアクセスボタンとして並ぶか
+// items: numeric は {label,unit}, text は {label,normal}
+export const DEFAULT_FORMATS = [
+  {
+    name: "バイタル", panel: "O", type: "numeric", joiner: ", ", pinned: true,
+    items: [
+      { label: "BP",   unit: "mmHg" },
+      { label: "P",    unit: "bpm"  },
+      { label: "SpO2", unit: "%"    },
+      { label: "RR",   unit: ""     },
+      { label: "T",    unit: "℃"   },
+    ],
+  },
+  {
+    name: "身体所見", panel: "O", type: "text", joiner: "\n", pinned: true,
+    items: [
+      { label: "General",  normal: "良好" },
+      { label: "肺音",     normal: "明らかなラ音なし" },
+      { label: "腸音",     normal: "正常" },
+      { label: "腹部",     normal: "平坦軟、圧痛なし" },
+      { label: "食事",     normal: "摂取良好" },
+      { label: "排泄",     normal: "尿・便ともに特記なし" },
+    ],
+  },
+];
+
+export const FORMAT_PANELS = Object.freeze(["O", "A", "P"]);
+export const FORMAT_TYPES = Object.freeze(["numeric", "text"]);
 
 export const DEFAULT_TAGS = [];
 export const DEFAULT_ADMIN_ENABLED = false;

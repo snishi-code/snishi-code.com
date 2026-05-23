@@ -45,11 +45,6 @@ function vibrate() {
 function isAppStateEmpty() {
   for (const p of appState.patients) {
     if (p.name || p.room || p.s || p.a?.text || p.p?.text || p.memo || p.shared || p.oFree) return false;
-    const v = p.vitals || {};
-    if (v.spo2 || v.rr || v.bp_sys || v.bp_dia || v.pr || v.bt || v.spo2_memo) return false;
-    for (const k in (p.o || {})) {
-      if (p.o[k]?.note || p.o[k]?.normal) return false;
-    }
     if (Array.isArray(p.tags) && p.tags.length > 0) return false;
   }
   return true;
@@ -58,11 +53,6 @@ function isAppStateEmpty() {
 function isImportedPatientEmpty(p) {
   if (!p) return true;
   if (p.name || p.room || p.s || p.a?.text || p.p?.text || p.memo || p.shared || p.oFree) return false;
-  const v = p.vitals || {};
-  if (v.spo2 || v.rr || v.bp_sys || v.bp_dia || v.pr || v.bt || v.spo2_memo) return false;
-  for (const k in (p.o || {})) {
-    if (p.o[k]?.note || p.o[k]?.normal) return false;
-  }
   if (Array.isArray(p.tags) && p.tags.length > 0) return false;
   return true;
 }
@@ -95,13 +85,11 @@ function appendNewPatients(importedPatients) {
     p.status = STATUS.BLUE;
     p.updatedAt = Date.now();
     p.tags = Array.isArray(src.tags) ? src.tags.slice() : [];
-    p.vitals = { ...(src.vitals || {}) };
-    p.o = {};
-    for (const k in (src.o || {})) {
-      p.o[k] = { normal: !!src.o[k]?.normal, note: String(src.o[k]?.note ?? "") };
-    }
     p.a = { text: String(src.a?.text ?? "") };
     p.p = { text: String(src.p?.text ?? "") };
+    // 旧 vitals/o は src 側で normalizeLoaded 経由マイグレーション済み (oFree に流れ込んでいる)
+    delete p.vitals;
+    delete p.o;
     const atIdx = appState.patients.length;
     appState.patients.push(p);
     if (p.pid && rosterState) {

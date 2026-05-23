@@ -1,12 +1,13 @@
 "use strict";
 
-import { settings, appState, rosterState, saveSettings, ensurePatientsHaveAllOKeys } from "../store.js";
-import { DEFAULT_O_RULES, DEFAULT_TAGS, clone } from "../constants.js";
-import { canEditORule, canDeleteORule, isAdminEnabled, isAdminTerminal, isNonAdminTerminal } from "../features/admin.js";
+import { settings, appState, rosterState, saveSettings } from "../store.js";
+import { DEFAULT_TAGS, clone } from "../constants.js";
+import { isAdminEnabled, isAdminTerminal, isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
 import { renameTagAt, deleteTagAt, moveTag, isTagGroupingEnabled, getUserGroups, getTagsInGroup, getUnassignedTags, addGroup, renameGroup, setGroupMode, deleteGroup, setTagGroup, getAllTags, getGroupForTag, makeAddTagWidget } from "../features/tags.js";
 import { GROUP_MODE_SINGLE, GROUP_MODE_MULTI } from "../constants.js";
 import { bindLongPressAndDrag } from "../features/drag.js";
+import { startNewFormat, startEditFormat, deleteFormatById } from "../features/formats.js";
 
 const STATUS_SWATCHES = { statusYellow: "#f59e0b", statusGreen: "#14b8a6", statusGray: "#6b7280", statusBlue: "#2563eb" };
 
@@ -24,13 +25,76 @@ const CLEAR_ITEM_TITLE = {
   statusBlue: "ステータス：青（追記）",
 };
 
-function nextCustomRuleKey() {
-  const used = new Set(settings.oRules.map(r => r.key));
-  for (let i = 1; i < 9999; i++) {
-    const k = "custom" + i;
-    if (!used.has(k)) return k;
+function renderFormatList() {
+  const host = document.getElementById("setFormats");
+  if (!host) return;
+  host.textContent = "";
+  const list = Array.isArray(settings.formats) ? settings.formats : [];
+  if (list.length === 0) {
+    const empty = document.createElement("div");
+    empty.style.padding = "8px 4px";
+    empty.style.color = "#6b7280";
+    empty.style.fontSize = "13px";
+    empty.textContent = "フォーマットが登録されていません。右上の + から追加してください。";
+    host.appendChild(empty);
+    return;
   }
-  return "custom" + Math.floor(Math.random() * 1e9);
+  for (let i = 0; i < list.length; i++) {
+    const f = list[i];
+    const row = document.createElement("div");
+    row.className = "formatListRow";
+
+    const name = document.createElement("span");
+    name.className = "formatListName";
+    name.textContent = f.name;
+    row.appendChild(name);
+
+    const meta = document.createElement("span");
+    meta.className = "formatListMeta";
+    meta.textContent = `${f.panel} / ${f.type === "numeric" ? "数値" : "文字"}`;
+    if (f.pinned) {
+      const pin = document.createElement("span");
+      pin.className = "formatListPinChip";
+      pin.textContent = "★";
+      pin.title = "クイックアクセスに表示";
+      meta.appendChild(pin);
+    }
+    row.appendChild(meta);
+
+    const actions = document.createElement("span");
+    actions.className = "formatListActions";
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "iconBtn";
+    editBtn.title = "編集";
+    editBtn.setAttribute("aria-label", "編集");
+    editBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+    editBtn.addEventListener("click", () => {
+      startEditFormat(f, () => {
+        renderFormatList();
+        if (_renderDetailFn) _renderDetailFn();
+      });
+    });
+    actions.appendChild(editBtn);
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "iconBtn";
+    del.title = "削除";
+    del.setAttribute("aria-label", "削除");
+    del.innerHTML = TRASH_SVG;
+    del.addEventListener("click", () => {
+      if (!confirm(`フォーマット「${f.name}」を削除します。よろしいですか？`)) return;
+      deleteFormatById(f.id);
+      renderFormatList();
+      if (_renderDetailFn) _renderDetailFn();
+    });
+    actions.appendChild(del);
+
+    row.appendChild(actions);
+    host.appendChild(row);
+  }
 }
 
 function buildClearTargetLabelContent(key) {
@@ -396,7 +460,6 @@ export function renderSettings() {
   const setSDefault = document.getElementById("setSDefault");
   const setADefault = document.getElementById("setADefault");
   const setPDefault = document.getElementById("setPDefault");
-  const setORules = document.getElementById("setORules");
 
   if (setSDefault) setSDefault.value = String(settings?.defaults?.s ?? "");
   if (setADefault) setADefault.value = String(settings?.defaults?.a ?? "");
@@ -408,105 +471,7 @@ export function renderSettings() {
   renderTagGroupingToggleIcon();
   renderTagsList();
   renderTagGroups();
-
-  if (!setORules) return;
-  setORules.textContent = "";
-  for (let idx = 0; idx < settings.oRules.length; idx++) {
-    const r = settings.oRules[idx];
-    const wrap = document.createElement("div");
-    wrap.style.borderTop = idx === 0 ? "0" : "1px solid var(--line)";
-    wrap.style.paddingTop = idx === 0 ? "0" : "12px";
-    wrap.style.marginTop = idx === 0 ? "0" : "12px";
-
-    const grid = document.createElement("div");
-    grid.className = "formGrid two";
-
-    const col1 = document.createElement("div");
-    const l1 = document.createElement("label");
-    l1.style.display = "inline-flex";
-    l1.style.alignItems = "center";
-    l1.title = "項目";
-    l1.setAttribute("aria-label", "項目");
-    // List/category icon (3 horizontal lines)
-    l1.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/><line x1="8" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="8" y1="18" x2="20" y2="18"/></svg>`;
-    const inLabel = document.createElement("input");
-    inLabel.type = "text";
-    inLabel.className = "settingsInp";
-    inLabel.value = String(r.label ?? "");
-    inLabel.addEventListener("input", () => {
-      settings.oRules[idx].label = String(inLabel.value ?? "");
-      saveSettings();
-      if (_renderDetailFn) _renderDetailFn();
-      if (_renderQrFn) _renderQrFn();
-    });
-    col1.appendChild(l1);
-    col1.appendChild(inLabel);
-
-    const col2 = document.createElement("div");
-    const l2 = document.createElement("label");
-    l2.style.display = "inline-flex";
-    l2.style.alignItems = "center";
-    l2.title = "正常";
-    l2.setAttribute("aria-label", "正常");
-    // Green check icon (matches the O-normal button in patient view)
-    l2.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0f766e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-    const inNormal = document.createElement("input");
-    inNormal.type = "text";
-    inNormal.className = "settingsInp";
-    inNormal.value = String(r.normalText ?? "");
-    inNormal.addEventListener("input", () => {
-      settings.oRules[idx].normalText = String(inNormal.value ?? "");
-      saveSettings();
-      if (_renderDetailFn) _renderDetailFn();
-      if (_renderQrFn) _renderQrFn();
-    });
-    col2.appendChild(l2);
-    col2.appendChild(inNormal);
-
-    grid.appendChild(col1);
-    grid.appendChild(col2);
-
-    const actions = document.createElement("div");
-    actions.style.display = "flex";
-    actions.style.gap = "8px";
-    actions.style.marginTop = "10px";
-    actions.style.flexWrap = "wrap";
-
-    const canEdit = canEditORule(r);
-    if (!canEdit) {
-      inLabel.disabled = true;
-      inNormal.disabled = true;
-    }
-
-    const del = document.createElement("button");
-    del.type = "button";
-    del.className = "iconBtn";
-    del.title = "削除";
-    del.setAttribute("aria-label", "削除");
-    del.innerHTML = TRASH_SVG;
-    if (!canDeleteORule(r)) {
-      del.disabled = true;
-      del.style.opacity = "0.4";
-      del.title = "管理端末配布項目は削除できません";
-    }
-    del.addEventListener("click", () => {
-      if (!canDeleteORule(r)) return;
-      const ok = confirm("このO項目を削除します（患者データ側の既存値は残ります）。よろしいですか？");
-      if (!ok) return;
-      settings.oRules.splice(idx, 1);
-      if (settings.oRules.length === 0) settings.oRules = clone(DEFAULT_O_RULES);
-      saveSettings();
-      ensurePatientsHaveAllOKeys();
-      renderSettings();
-      if (_renderDetailFn) _renderDetailFn();
-      if (_renderQrFn) _renderQrFn();
-    });
-    actions.appendChild(del);
-
-    wrap.appendChild(grid);
-    wrap.appendChild(actions);
-    setORules.appendChild(wrap);
-  }
+  renderFormatList();
 }
 
 // Callbacks wired by main.js to avoid circular deps
@@ -522,8 +487,7 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
   const setSDefault = document.getElementById("setSDefault");
   const setADefault = document.getElementById("setADefault");
   const setPDefault = document.getElementById("setPDefault");
-  const addORuleBtn = document.getElementById("addORuleBtn");
-  const resetORulesBtn = document.getElementById("resetORulesBtn");
+  const addFormatBtn = document.getElementById("addFormatBtn");
   const addTagBtn = document.getElementById("addTagBtn");
   const resetTagsBtn = document.getElementById("resetTagsBtn");
 
@@ -545,27 +509,11 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
     if (_renderQrFn) _renderQrFn();
   });
 
-  if (addORuleBtn) addORuleBtn.addEventListener("click", () => {
-    settings.oRules.push({
-      key: nextCustomRuleKey(),
-      label: "項目",
-      normalText: "",
+  if (addFormatBtn) addFormatBtn.addEventListener("click", () => {
+    startNewFormat(() => {
+      renderFormatList();
+      if (_renderDetailFn) _renderDetailFn();
     });
-    saveSettings();
-    ensurePatientsHaveAllOKeys();
-    renderSettings();
-    if (_renderDetailFn) _renderDetailFn();
-  });
-
-  if (resetORulesBtn) resetORulesBtn.addEventListener("click", () => {
-    const ok = confirm("O項目を初期状態に戻します。よろしいですか？");
-    if (!ok) return;
-    settings.oRules = clone(DEFAULT_O_RULES);
-    saveSettings();
-    ensurePatientsHaveAllOKeys();
-    renderSettings();
-    if (_renderDetailFn) _renderDetailFn();
-    if (_renderQrFn) _renderQrFn();
   });
 
   const adminEnableBtn = document.getElementById("adminEnableBtn");

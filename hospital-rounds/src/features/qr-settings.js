@@ -36,7 +36,7 @@ import { createQrFlow } from "./qr-flow.js";
 const WIRE_V = 2;
 const SAFE_FIELDS = [
   "defaults",
-  "oRules",
+  "formats",
   "clearTargets",
   "tags",
   "tagGroups",
@@ -56,17 +56,7 @@ function encodePayload() {
   const s = buildSafeSettings();
   const out = { v: WIRE_V };
   if (s.defaults) out.defaults = s.defaults;
-  if (Array.isArray(s.oRules)) {
-    out.oRules = s.oRules.map(r => {
-      const obj = {
-        k: String(r.key || ""),
-        l: String(r.label || ""),
-        n: String(r.normalText || ""),
-      };
-      if (r.fromAdmin) obj.a = 1;
-      return obj;
-    });
-  }
+  if (Array.isArray(s.formats)) out.formats = s.formats;
   if (s.clearTargets) out.clearTargets = s.clearTargets;
   if (Array.isArray(s.tags)) out.tags = s.tags;
   if (typeof s.tagGroupingEnabled === "boolean") out.tagGroupingEnabled = s.tagGroupingEnabled;
@@ -96,16 +86,8 @@ function decodePayload(payload) {
       p: String(obj.defaults.p || ""),
     };
   }
-  if (Array.isArray(obj.oRules)) {
-    out.oRules = obj.oRules.map(r => {
-      const o = {
-        key: String(r?.k || ""),
-        label: String(r?.l || ""),
-        normalText: String(r?.n || ""),
-      };
-      if (r?.a) o.fromAdmin = true;
-      return o;
-    });
+  if (Array.isArray(obj.formats)) {
+    out.formats = obj.formats;
   }
   if (obj.clearTargets && typeof obj.clearTargets === "object") {
     out.clearTargets = {};
@@ -141,7 +123,7 @@ function applySettings(safe, ctrl) {
   }
   const summary = [];
   if (Array.isArray(safe.tags)) summary.push(`タグ ${safe.tags.length} 件`);
-  if (Array.isArray(safe.oRules)) summary.push(`Oルール ${safe.oRules.length} 件`);
+  if (Array.isArray(safe.formats)) summary.push(`フォーマット ${safe.formats.length} 件`);
   if (safe.defaults) summary.push("デフォルト文");
   if (safe.clearTargets) summary.push("クリア対象");
   if (Array.isArray(safe.tagGroups)) summary.push(`タググループ ${safe.tagGroups.length} 件`);

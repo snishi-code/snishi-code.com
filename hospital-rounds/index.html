@@ -365,18 +365,13 @@
 
       <div class="card">
         <div class="cardHead">
-          <div class="label">O</div>
+          <div class="label">フォーマット</div>
+          <button class="iconBtn" id="addFormatBtn" type="button" title="フォーマット追加" aria-label="フォーマット追加">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
         </div>
         <div class="cardBody">
-          <div id="setORules"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-            <button class="iconBtn" id="addORuleBtn" type="button" title="追加" aria-label="追加">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </button>
-            <button class="iconBtn" id="resetORulesBtn" type="button" title="初期化" aria-label="初期化">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.46"/></svg>
-            </button>
-          </div>
+          <div id="setFormats"></div>
         </div>
       </div>
 
@@ -532,48 +527,17 @@
       <div class="card">
         <div class="cardHead">
           <div class="label">O</div>
+          <div class="formatStrip" id="oFormatStrip"></div>
         </div>
         <div class="cardBody">
-          <div class="formGrid two"
-            style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line);">
-            <div>
-              <label>SpO2 (％)</label>
-              <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
-                <input type="number" id="vitalSpo2" class="settingsInp">
-                <input type="text" id="vitalSpo2Memo" class="settingsInp">
-              </div>
-            </div>
-            <div>
-              <label>RR</label>
-              <input type="number" id="vitalRr" class="settingsInp" style="margin-top:4px;">
-            </div>
-            <div>
-              <label>BP (mmHg)</label>
-              <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
-                <input type="number" id="vitalBpSys" class="settingsInp">
-                <span>/</span>
-                <input type="number" id="vitalBpDia" class="settingsInp">
-              </div>
-            </div>
-            <div>
-              <label>P</label>
-              <input type="number" id="vitalPr" class="settingsInp" style="margin-top:4px;">
-            </div>
-            <div>
-              <label>BT (℃)</label>
-              <input type="number" step="0.1" id="vitalBt" class="settingsInp" style="margin-top:4px;">
-            </div>
-          </div>
-          <div id="oList"></div>
-          <div style="margin-top:12px">
-            <textarea id="oFreeText"></textarea>
-          </div>
+          <textarea id="oFreeText" style="min-height:120px"></textarea>
         </div>
       </div>
 
       <div class="card">
         <div class="cardHead">
           <div class="label">A</div>
+          <div class="formatStrip" id="aFormatStrip"></div>
         </div>
         <div class="cardBody">
           <textarea id="aText" style="min-height:90px"></textarea>
@@ -583,6 +547,7 @@
       <div class="card">
         <div class="cardHead">
           <div class="label">P</div>
+          <div class="formatStrip" id="pFormatStrip"></div>
         </div>
         <div class="cardBody">
           <textarea id="pText" style="min-height:90px"></textarea>
@@ -646,6 +611,74 @@
         <button class="actionMenuClose" id="actionCancelBtn" type="button" title="閉じる" aria-label="閉じる">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
+      </div>
+    </div>
+
+    <!-- フォーマット入力モーダル: numeric / text を 1 つで動的描画 -->
+    <div class="popupMenuOverlay" id="formatInputOverlay">
+      <div class="popupMenu formatInputMenu">
+        <div class="popupTitle" id="formatInputTitle">入力</div>
+        <div class="formatInputBody" id="formatInputBody"></div>
+        <div class="formatInputActions">
+          <button class="secondary" id="formatInputCancelBtn" type="button">キャンセル</button>
+          <button class="primary" id="formatInputApplyBtn" type="button">反映</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- フォーマット選択モーダル ([≡] から) -->
+    <div class="popupMenuOverlay" id="formatPickerOverlay">
+      <div class="popupMenu formatPickerMenu">
+        <div class="popupTitle">フォーマット選択</div>
+        <div class="formatPickerList" id="formatPickerList"></div>
+        <div style="text-align:center;margin-top:8px;">
+          <button class="secondary" id="formatPickerCloseBtn" type="button">閉じる</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- フォーマット編集モーダル (新規/編集共通) -->
+    <div class="popupMenuOverlay" id="formatEditOverlay">
+      <div class="popupMenu formatEditMenu">
+        <div class="popupTitle">フォーマット編集</div>
+        <div class="formatEditBody">
+          <label class="formatEditField">
+            <span>名前</span>
+            <input type="text" id="formatEditName" placeholder="例: バイタル">
+          </label>
+          <div class="formatEditFieldRow">
+            <label class="formatEditField">
+              <span>パネル</span>
+              <select id="formatEditPanel">
+                <option value="O">O</option>
+                <option value="A">A</option>
+                <option value="P">P</option>
+              </select>
+            </label>
+            <label class="formatEditField">
+              <span>種類</span>
+              <select id="formatEditType">
+                <option value="numeric">数値</option>
+                <option value="text">文字</option>
+              </select>
+            </label>
+          </div>
+          <label class="formatEditField">
+            <span>区切り</span>
+            <input type="text" id="formatEditJoiner" placeholder=", ">
+          </label>
+          <label class="formatEditCheckRow">
+            <input type="checkbox" id="formatEditPinned">
+            <span>パネルにクイックアクセスを表示する</span>
+          </label>
+          <div class="formatEditItemsHead">項目</div>
+          <div id="formatEditItems"></div>
+          <button class="secondary" id="formatEditAddItemBtn" type="button" style="width:100%;margin-top:8px;">＋ 項目追加</button>
+        </div>
+        <div class="formatEditActions">
+          <button class="secondary" id="formatEditCancelBtn" type="button">キャンセル</button>
+          <button class="primary" id="formatEditSaveBtn" type="button">保存</button>
+        </div>
       </div>
     </div>
 
