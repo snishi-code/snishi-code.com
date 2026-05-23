@@ -1716,82 +1716,83 @@
       margin-bottom: 0;
     }
 
-    /* 患者操作メニュー: 2x2 アイコングリッド + 右上に閉じるバツ */
+    /* 患者操作メニュー: 2x2 アイコングリッド + 下に閉じるバツ。
+       色は +1/+5 = 患者ボタンの青ステータス、-1/-5 = danger 赤。
+       形 (+/−) と色の両方で差別化 (D/P 型色覚配慮) */
     .popupMenu.actionMenu {
-      position: relative;
       width: 280px;
-      padding-top: 18px;
     }
 
-    .popupCloseIcon {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 36px;
-      height: 36px;
-      margin: 0;
-      padding: 0;
-      border: 1px solid var(--line);
-      background: var(--btn2);
-      color: var(--btn2Text);
-      border-radius: 8px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-    }
-
-    .popupCloseIcon:hover {
-      background: #f3f4f6;
-    }
-
-    .actionGrid {
+    .popupMenu.actionMenu .actionGrid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
+      margin-bottom: 12px;
     }
 
-    .actionGridBtn {
+    .popupMenu.actionMenu .actionGridBtn {
       width: 100%;
-      min-height: 72px;
+      height: 72px;
       margin: 0;
-      padding: 10px;
+      padding: 0;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 4px;
+      gap: 6px;
       font-weight: 800;
       border-radius: 10px;
+      border-width: 1px;
+      border-style: solid;
       cursor: pointer;
       line-height: 1;
+      box-sizing: border-box;
     }
 
-    .actionGridBtn .actionGridSign {
-      font-size: 32px;
+    .popupMenu.actionMenu .actionGridBtn .actionGridSign {
+      font-size: 30px;
     }
 
-    .actionGridBtn .actionGridNum {
+    .popupMenu.actionMenu .actionGridBtn .actionGridNum {
       font-size: 26px;
     }
 
-    .actionGridBtn.add {
-      border: 1px solid var(--blue);
-      background: var(--blue-light);
-      color: var(--blue);
+    .popupMenu.actionMenu .actionGridBtn.add {
+      border-color: var(--status-blue-bd);
+      background: var(--status-blue-bg);
+      color: var(--status-blue-text);
     }
 
-    .actionGridBtn.add:hover {
-      background: var(--blue-border);
+    .popupMenu.actionMenu .actionGridBtn.add:hover {
+      background: #93c5fd;
     }
 
-    .actionGridBtn.del {
-      border: 1px solid #b91c1c;
+    .popupMenu.actionMenu .actionGridBtn.del {
+      border-color: #b91c1c;
       background: #fef2f2;
       color: #b91c1c;
     }
 
-    .actionGridBtn.del:hover {
+    .popupMenu.actionMenu .actionGridBtn.del:hover {
       background: #fee2e2;
+    }
+
+    .popupMenu.actionMenu .actionMenuClose {
+      width: 44px;
+      height: 44px;
+      margin: 0 auto;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      background: var(--btn2);
+      color: var(--btn2Text);
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .popupMenu.actionMenu .actionMenuClose:hover {
+      background: #e5e7eb;
     }
 
     /* アイコン専用メニュー（ヘッダーのハンバーガー等）。ボタンを横並びにし、

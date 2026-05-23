@@ -273,6 +273,7 @@ function deletePatientsByIndices(indices) {
 }
 
 export function initActionMenu() {
+  const overlay = document.getElementById("actionMenuOverlay");
   const cancelBtn = document.getElementById("actionCancelBtn");
   const add1Btn = document.getElementById("actionAdd1Btn");
   const add5Btn = document.getElementById("actionAdd5Btn");
@@ -280,6 +281,11 @@ export function initActionMenu() {
   const delete5Btn = document.getElementById("actionDelete5Btn");
 
   if (cancelBtn) cancelBtn.addEventListener("click", closeActionMenu);
+
+  // オーバーレイ (ポップアップの外側) タップで閉じる
+  if (overlay) overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeActionMenu();
+  });
 
   if (add1Btn) add1Btn.addEventListener("click", () => {
     if (targetActionIdx < 0) return;
