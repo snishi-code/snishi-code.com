@@ -3,6 +3,7 @@
 import { appState, settings, makeDefaultPatient, scheduleSave, ensurePatientsHaveAllOKeys, isPatientEmpty } from "../store.js";
 import { isNonAdminTerminal } from "./admin.js";
 import { recordOp } from "./roster.js";
+import { formatPatientLabel } from "./room.js";
 
 // Callback registered by main.js to re-render the current view after data changes
 let _onDataChange = null;
@@ -223,9 +224,9 @@ export function openActionMenu(idx) {
   if (isNonAdminTerminal()) return;
   targetActionIdx = idx;
   const p = appState.patients[idx];
-  const name = p.name ? p.name : String(idx + 1);
   const title = document.getElementById("actionMenuTitle");
-  if (title) title.textContent = `${name} の操作`;
+  // ホーム画面の患者ボタンと同じ表記を使う (例: "202 テスト" / 部屋未入力なら "名前" / それも未入力なら番号)
+  if (title) title.textContent = formatPatientLabel(p, String(idx + 1));
   const overlay = document.getElementById("actionMenuOverlay");
   if (overlay) overlay.classList.add("active");
 }
