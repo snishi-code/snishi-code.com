@@ -45,6 +45,12 @@ function renderFormatListForPanel(panel) {
   for (const f of list) {
     const row = document.createElement("div");
     row.className = "formatListRow";
+    // 行背景色で状態を示す (チップで重ねずシンプルに):
+    //   pinned (お気に入り) = 緑
+    //   isDefault (規定文)  = 青
+    //   両方 = 左ストライプを上半分=青/下半分=緑に分割 + 薄い混色背景
+    if (f.pinned) row.classList.add("pinned");
+    if (f.isDefault) row.classList.add("isDefault");
 
     const name = document.createElement("span");
     name.className = "formatListName";
@@ -54,20 +60,6 @@ function renderFormatListForPanel(panel) {
     const meta = document.createElement("span");
     meta.className = "formatListMeta";
     meta.textContent = f.type === "numeric" ? "数値" : "文字";
-    if (f.isDefault) {
-      const defChip = document.createElement("span");
-      defChip.className = "formatListDefaultChip";
-      defChip.textContent = "規定";
-      defChip.title = "空欄時の fallback として使用";
-      meta.appendChild(defChip);
-    }
-    if (f.pinned) {
-      const pin = document.createElement("span");
-      pin.className = "formatListPinChip";
-      pin.textContent = "★";
-      pin.title = "クイックアクセスに表示";
-      meta.appendChild(pin);
-    }
     row.appendChild(meta);
 
     const actions = document.createElement("span");

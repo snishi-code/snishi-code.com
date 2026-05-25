@@ -432,7 +432,15 @@ export function makeTagPicker(opts) {
     grouped = false,           // group sections when true (forces grouping mode)
     forPatient = false,        // patient picker: hide status group entirely
     iconOnly = false,          // trigger に選択チップを出さず、アイコンだけ表示する
+    iconHtml = null,           // iconOnly のときに使う SVG 文字列 (省略時は TAG_SVG)
+    addWidget = null,          // (onAddedCb) => element. 省略時は makeAddTagWidget
   } = opts;
+
+  // 追加ウィジェット (タグ用は makeAddTagWidget、フォーマット用は外から差し替え可能)
+  const buildAddWidget = (onAddedCb) => {
+    if (addWidget) return addWidget(onAddedCb);
+    return makeAddTagWidget({ onAdded: onAddedCb });
+  };
 
   const wrap = document.createElement("div");
   wrap.className = "tagPicker";
@@ -452,7 +460,8 @@ export function makeTagPicker(opts) {
     // iconOnly か grouping ON のときはアイコンのみ表示
     if (iconOnly || (grouped && isTagGroupingEnabled())) {
       const hasAny = selected.length > 0;
-      trigger.innerHTML = `<span class="tagPickerIcon" style="color:${hasAny ? '#2563eb' : 'var(--muted)'};">${TAG_SVG}</span>`;
+      const svg = iconHtml || TAG_SVG;
+      trigger.innerHTML = `<span class="tagPickerIcon" style="color:${hasAny ? '#2563eb' : 'var(--muted)'};">${svg}</span>`;
       trigger.classList.toggle("hasSelected", hasAny);
     } else {
       trigger.innerHTML = buildChipsHtml(selected, entriesToIndex(list));
@@ -529,7 +538,7 @@ export function makeTagPicker(opts) {
         sectionsHost.appendChild(buildGroupSection(unGroup, unEntries, getSelected, setSelected, onChange, refreshTrigger, refreshPopup));
       }
       popup.appendChild(sectionsHost);
-      popup.appendChild(makeAddTagWidget({ onAdded: () => { refreshPopup(); refreshTrigger(); } }));
+      popup.appendChild(buildAddWidget(() => { refreshPopup(); refreshTrigger(); }));
       return;
     }
 
@@ -537,7 +546,7 @@ export function makeTagPicker(opts) {
     if (!list.length) {
       // 既存タグが無い場合も「タグ未登録」のような空状態文言は出さず、
       // 設定画面と同じく「+」だけ並べる
-      popup.appendChild(makeAddTagWidget({ onAdded: () => { refreshPopup(); refreshTrigger(); } }));
+      popup.appendChild(buildAddWidget(() => { refreshPopup(); refreshTrigger(); }));
       return;
     }
     const current = new Set(getSelected());

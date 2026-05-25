@@ -19,6 +19,10 @@
 
 import { appState, settings, selectedNo, saveSettings, scheduleSave, markUpdated } from "../store.js";
 import { FORMAT_PANELS, FORMAT_TYPES } from "../constants.js";
+import { makeTagPicker } from "./tags.js";
+
+// 「定型文/書式」を意味するファイル+リストのアイコン (タグの値札アイコンと意図的に差別化)
+const FORMAT_ICON_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
 
 const PANEL_TEXTAREA_ID = { S: "sText", O: "oFreeText", A: "aText", P: "pText" };
 const PANEL_FIELD_KEY   = { S: "s",     O: "oFree",    A: "a",     P: "p"    };
@@ -43,42 +47,74 @@ export function pinnedFormatsForPanel(panel) {
 let _onTextChanged = null;
 export function setOnTextChanged(fn) { _onTextChanged = fn; }
 
+// 新規フォーマット作成ウィジェット (タグの makeAddTagWidget と同じ「+」ボタンスタイル)。
+// タグ側はインライン入力でラベル確定だが、フォーマットは項目構造があるのでモーダルを開く。
+function makeAddFormatWidget(panel, onAdded) {
+  const wrap = document.createElement("span");
+  wrap.className = "tagAddWidget";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "tagSettingAdd";
+  btn.title = "新規フォーマット";
+  btn.setAttribute("aria-label", "新規フォーマット");
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    startNewFormat(() => {
+      if (onAdded) onAdded();
+    }, panel);
+  });
+  wrap.appendChild(btn);
+  return wrap;
+}
+
+// パネルごとに 1 つ作る format picker (タグピッカーと同じ UI = makeTagPicker を再利用)。
+// 「選択=お気に入り (pinned 全患者共通)」「+ で新規フォーマット作成」。
+function makeFormatPicker(panel, onChange) {
+  return makeTagPicker({
+    getSelected: () => formatsForPanel(panel).filter(f => f.pinned).map(f => f.id),
+    setSelected: (ids) => {
+      const set = new Set(ids);
+      for (const f of formatsForPanel(panel)) f.pinned = set.has(f.id);
+      saveSettings();
+    },
+    entries: () => formatsForPanel(panel).map(f => ({ value: f.id, label: f.name })),
+    onChange,
+    iconOnly: true,
+    iconHtml: FORMAT_ICON_SVG,
+    addWidget: (onAdded) => makeAddFormatWidget(panel, onAdded),
+  });
+}
+
 export function renderFormatStrip(panel, hostEl) {
   if (!hostEl) return;
   hostEl.textContent = "";
   hostEl.className = "formatStrip";
 
-  const pinned = pinnedFormatsForPanel(panel);
+  // 1) フォーマットアイコン (タグピッカー流。タップで checkbox 一覧 + 末尾の + で新規)
+  const picker = makeFormatPicker(panel, () => {
+    // ピン状態が変わったら strip 全体を再描画 (チップ表示更新)
+    renderFormatStrip(panel, hostEl);
+  });
+  hostEl.appendChild(picker);
 
-  // [+] 新規作成
-  const addBtn = document.createElement("button");
-  addBtn.type = "button";
-  addBtn.className = "formatStripBtn formatStripAdd";
-  addBtn.title = "新規フォーマット作成";
-  addBtn.setAttribute("aria-label", "新規フォーマット作成");
-  addBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
-  addBtn.addEventListener("click", () => openFormatEditModal(null, panel, () => {
-    if (_onTextChanged) _onTextChanged();
-  }));
-  hostEl.appendChild(addBtn);
-
-  // ピン留め (1-tap で入力モーダル直開)
-  for (const f of pinned) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "formatStripBtn formatStripPinned";
-    b.textContent = f.name;
-    b.title = `${f.name} を入力`;
-    b.addEventListener("click", () => openFormatInputModal(f, panel));
-    hostEl.appendChild(b);
+  // 2) お気に入り (pinned) フォーマットをチップ表示。タップで入力モーダル直開
+  for (const f of pinnedFormatsForPanel(panel)) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "formatStripBtn formatStripPinned";
+    chip.textContent = f.name;
+    chip.title = `${f.name} を入力`;
+    chip.addEventListener("click", () => openFormatInputModal(f, panel));
+    hostEl.appendChild(chip);
   }
 
-  // [≡] 全フォーマット選択
+  // 3) [≡] 全フォーマット選択 (お気に入り以外も使うときの導線)
   const allBtn = document.createElement("button");
   allBtn.type = "button";
   allBtn.className = "formatStripBtn formatStripAll";
-  allBtn.title = "フォーマット選択";
-  allBtn.setAttribute("aria-label", "フォーマット選択");
+  allBtn.title = "フォーマット選択 (全件)";
+  allBtn.setAttribute("aria-label", "フォーマット選択 (全件)");
   allBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`;
   allBtn.addEventListener("click", () => openFormatPickerModal(panel));
   hostEl.appendChild(allBtn);
