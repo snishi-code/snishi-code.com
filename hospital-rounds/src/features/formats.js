@@ -270,7 +270,9 @@ function applyFormatInput() {
     } else {
       const value = String(row.val.value || "").trim();
       if (!value) continue;
-      parts.push(`${row.item.label}：${value}`);
+      // label が空ならコロンを付けず値だけ出す (規定文「著変なし」など)
+      const label = String(row.item.label || "").trim();
+      parts.push(label ? `${label}：${value}` : value);
     }
   }
   const out = parts.join(format.joiner || ", ");
@@ -433,8 +435,16 @@ function saveFormatEdit() {
   t.joiner = String(joinerInp?.value ?? (t.type === "text" ? "\n" : ", "));
   t.pinned = !!pinnedChk?.checked;
   t.isDefault = (t.type === "text") ? !!defaultChk?.checked : false;
-  // 空ラベル項目を除外
-  t.items = t.items.filter(it => String(it.label || "").trim());
+  // 項目の除外ルール:
+  //   text 型:    label / normal どちらか入力があれば保持 (規定文「著変なし」など
+  //               ラベルなし正常文のみのケースを許容)
+  //   numeric 型: label がなければ意味を成さないので除外
+  t.items = t.items.filter(it => {
+    const label = String(it.label || "").trim();
+    if (t.type === "numeric") return !!label;
+    const normal = String(it.normal || "").trim();
+    return !!label || !!normal;
+  });
 
   // 同一パネル内に isDefault は 1 つだけ。他はクリア
   if (t.isDefault) {
@@ -454,17 +464,12 @@ function saveFormatEdit() {
   saveSettings();
   const cb = _currentEdit.onSaved;
   const savedTarget = t;
-  const savedPanel = t.panel;
   closeFormatEditModal();
   if (cb) cb(savedTarget);
-  // 新規作成時はそのまま入力モーダルへ
-  if (savedTarget && _justCreated) {
-    _justCreated = false;
-    openFormatInputModal(savedTarget, savedPanel);
-  }
+  // 保存後は単に閉じるのみ。入力モーダルへの自動遷移は廃止
+  // (タップ=お気に入りトグルの設計と整合させ、設定画面からの作成時に
+  //  「さっきまで開いていた患者」へ誤反映されるバグを防ぐ)
 }
-
-let _justCreated = false;
 
 export function closeFormatEditModal() {
   const overlay = document.getElementById("formatEditOverlay");
@@ -486,12 +491,10 @@ function addFormatItem() {
 // ============================
 // panel が省略された場合は O。設定画面から呼ぶ場合は必ず panel を指定する
 export function startNewFormat(onSaved, panel) {
-  _justCreated = true;
   openFormatEditModal(null, panel || "O", onSaved);
 }
 
 export function startEditFormat(format, onSaved) {
-  _justCreated = false;
   openFormatEditModal(format, format.panel, onSaved);
 }
 
