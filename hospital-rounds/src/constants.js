@@ -23,13 +23,14 @@ export const LEGACY_O_RULES = [
 
 // 新フォーマット概念。アプリ起動時にユーザーが空なら以下が並ぶ。
 // type: "numeric" | "text"
-// panel: "O" | "A" | "P"
+// panel: "S" | "O" | "A" | "P"  (内部フィールド。UI では SOAP セクション帰属で自動推定)
 // joiner: 項目間の区切り
 // pinned: 患者画面で 1-tap クイックアクセスボタンとして並ぶか
+// isDefault: 患者画面の対象パネルが空欄の時に QR/出力で fallback として使う規定文か
 // items: numeric は {label,unit}, text は {label,normal}
 export const DEFAULT_FORMATS = [
   {
-    name: "バイタル", panel: "O", type: "numeric", joiner: ", ", pinned: true,
+    name: "バイタル", panel: "O", type: "numeric", joiner: ", ", pinned: true, isDefault: false,
     items: [
       { label: "BP",   unit: "mmHg" },
       { label: "P",    unit: "bpm"  },
@@ -39,7 +40,7 @@ export const DEFAULT_FORMATS = [
     ],
   },
   {
-    name: "身体所見", panel: "O", type: "text", joiner: "\n", pinned: true,
+    name: "身体所見", panel: "O", type: "text", joiner: "\n", pinned: true, isDefault: false,
     items: [
       { label: "General",  normal: "良好" },
       { label: "肺音",     normal: "明らかなラ音なし" },
@@ -51,7 +52,7 @@ export const DEFAULT_FORMATS = [
   },
 ];
 
-export const FORMAT_PANELS = Object.freeze(["O", "A", "P"]);
+export const FORMAT_PANELS = Object.freeze(["S", "O", "A", "P"]);
 export const FORMAT_TYPES = Object.freeze(["numeric", "text"]);
 
 export const DEFAULT_TAGS = [];

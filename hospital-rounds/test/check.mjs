@@ -439,6 +439,39 @@ await test("default formats include バイタル (numeric) and 身体所見 (tex
   assert.equal(phys.panel, "O");
 });
 
+await test("settings.defaults is removed from defaultSettings", async () => {
+  localStorage.clear();
+  const store = await freshStore();
+  assert.equal(store.settings.defaults, undefined, "no defaults field");
+});
+
+await test("legacy settings.defaults.{a,p} migrate to isDefault text formats", async () => {
+  localStorage.clear();
+  const legacyBundle = {
+    format: BUNDLE_FORMAT,
+    schema: 1,
+    sections: {
+      meta: { title: "回診" },
+      settings: {
+        defaults: { s: "", a: "著変なし", p: "現行加療継続" },
+      },
+      patients: [],
+    },
+  };
+  localStorage.setItem("rounds_v2_soap_ryoyo_ward_bundle_v1", JSON.stringify(legacyBundle));
+  const store = await freshStore();
+  const fmts = store.settings.formats;
+  const aDef = fmts.find(f => f.panel === "A" && f.isDefault);
+  const pDef = fmts.find(f => f.panel === "P" && f.isDefault);
+  const sDef = fmts.find(f => f.panel === "S" && f.isDefault);
+  assert.ok(aDef, "A panel got an isDefault format");
+  assert.equal(aDef.type, "text");
+  assert.equal(aDef.items[0].normal, "著変なし");
+  assert.ok(pDef, "P panel got an isDefault format");
+  assert.equal(pDef.items[0].normal, "現行加療継続");
+  assert.equal(sDef, undefined, "empty S default did NOT create a format");
+});
+
 // ============================
 // Summary
 // ============================

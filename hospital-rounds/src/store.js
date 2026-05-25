@@ -35,11 +35,6 @@ function makeDefaultFormats() {
 export function defaultSettings() {
   return {
     v: 1,
-    defaults: {
-      s: "",
-      a: "著変なし",
-      p: "現行加療継続",
-    },
     formats: makeDefaultFormats(),
     clearTargets: clone(DEFAULT_CLEAR_TARGETS),
     tags: clone(DEFAULT_TAGS),
@@ -69,29 +64,46 @@ function normalizeFormat(raw) {
   const type = FORMAT_TYPES.includes(raw.type) ? raw.type : "numeric";
   const joiner = typeof raw.joiner === "string" ? raw.joiner : (type === "text" ? "\n" : ", ");
   const pinned = !!raw.pinned;
+  const isDefault = !!raw.isDefault;
   const id = (typeof raw.id === "string" && raw.id) ? raw.id : newFormatId();
   const items = Array.isArray(raw.items)
     ? raw.items.map(it => normalizeFormatItem(it, type)).filter(Boolean)
     : [];
-  return { id, name, panel, type, joiner, pinned, items };
+  return { id, name, panel, type, joiner, pinned, isDefault, items };
 }
 
 function normalizeSettings(raw) {
   const out = defaultSettings();
   if (!raw || typeof raw !== "object") return out;
-  if (raw.defaults && typeof raw.defaults === "object") {
-    out.defaults.s = (typeof raw.defaults.s === "string") ? raw.defaults.s : out.defaults.s;
-    if (raw.defaults.s === "変わりありません" || raw.defaults.s === "（変わりありません）") {
-      out.defaults.s = "";
-    }
-    out.defaults.a = (typeof raw.defaults.a === "string") ? raw.defaults.a : out.defaults.a;
-    out.defaults.p = (typeof raw.defaults.p === "string") ? raw.defaults.p : out.defaults.p;
-  }
   // 旧 oRules はマイグレーション時のみ参照する。新 settings には書き戻さない。
   // formats: 新規登録された設定。空または欠落ならデフォルトを採用。
   if (Array.isArray(raw.formats)) {
     const cleaned = raw.formats.map(normalizeFormat).filter(Boolean);
     if (cleaned.length) out.formats = cleaned;
+  }
+
+  // 旧 settings.defaults.{s,a,p} を text 型 isDefault フォーマットへ 1 回マイグレーション
+  // 旧キー: defaults.s = "" / defaults.a = "著変なし" / defaults.p = "現行加療継続" 等
+  if (raw.defaults && typeof raw.defaults === "object") {
+    const panelOf = { s: "S", a: "A", p: "P" };
+    for (const k of ["s", "a", "p"]) {
+      const txt = String(raw.defaults[k] ?? "").trim();
+      if (!txt) continue;
+      if (txt === "変わりありません" || txt === "（変わりありません）") continue; // 旧旧
+      const panel = panelOf[k];
+      const alreadyHasDefault = out.formats.some(f => f.panel === panel && f.isDefault);
+      if (alreadyHasDefault) continue;
+      out.formats.push({
+        id: newFormatId(),
+        name: "規定文",
+        panel,
+        type: "text",
+        joiner: "\n",
+        pinned: false,
+        isDefault: true,
+        items: [{ label: "", normal: txt }],
+      });
+    }
   }
   if (raw.clearTargets && typeof raw.clearTargets === "object") {
     const ct = raw.clearTargets;

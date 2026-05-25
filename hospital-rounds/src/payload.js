@@ -27,29 +27,44 @@ export function utf8ByteLength(text) {
   return unescape(encodeURIComponent(String(text ?? ""))).length;
 }
 
+// 各パネルの isDefault フォーマット (1 個) の中身を text として描画する。
+// 旧 settings.defaults.{s,a,p} の役割を引き継ぐ fallback テキスト生成。
+// 対象は text 型のみ (numeric は normal 値を持たないため)。
+function renderDefaultForPanel(panel) {
+  const fmts = (settings && Array.isArray(settings.formats)) ? settings.formats : [];
+  const def = fmts.find(f => f.panel === panel && f.isDefault && f.type === "text");
+  if (!def) return "";
+  const parts = [];
+  for (const item of (def.items || [])) {
+    const label = String(item.label ?? "").trim();
+    const normal = String(item.normal ?? "").trim();
+    if (!normal) continue;
+    parts.push(label ? `${label}：${normal}` : normal);
+  }
+  return parts.join(def.joiner || ", ");
+}
+
 function buildOOutput(p) {
   // v2: O 欄は oFree (自由記述) のみ。バイタル/構造化所見はフォーマットで挿入された
   // テキストとしてここに含まれる
-  return multiLineText(p?.oFree ?? "");
+  const t = multiLineText(p?.oFree ?? "");
+  return t.trim() ? t : renderDefaultForPanel("O");
 }
 
 function buildAOutput(p) {
   const t = multiLineText(p.a.text);
-  const def = multiLineText(settings?.defaults?.a ?? "著変なし");
-  return t.trim() ? t : def;
+  return t.trim() ? t : renderDefaultForPanel("A");
 }
 
 function buildPOutput(p) {
   const t = multiLineText(p.p.text);
-  const def = multiLineText(settings?.defaults?.p ?? "現行加療継続");
-  return t.trim() ? t : def;
+  return t.trim() ? t : renderDefaultForPanel("P");
 }
 
 export function buildSoapParts(no) {
   const p = appState.patients[no - 1];
   const sTyped = multiLineText(p.s);
-  const sDef = multiLineText(settings?.defaults?.s ?? "");
-  const sOut = sTyped.trim() ? sTyped : sDef;
+  const sOut = sTyped.trim() ? sTyped : renderDefaultForPanel("S");
   const oOut = buildOOutput(p);
   const aOut = buildAOutput(p);
   const pOut = buildPOutput(p);

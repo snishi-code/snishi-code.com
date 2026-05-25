@@ -305,6 +305,7 @@ export function renderDetail(syncDetailMemoDisplay) {
   if (oFreeText) oFreeText.value = String(p.oFree ?? "");
 
   // 各パネル右肩の [+] [pin...] [≡] ボタン strip を描画
+  renderFormatStrip("S", document.getElementById("sFormatStrip"));
   renderFormatStrip("O", document.getElementById("oFormatStrip"));
   renderFormatStrip("A", document.getElementById("aFormatStrip"));
   renderFormatStrip("P", document.getElementById("pFormatStrip"));

@@ -20,8 +20,8 @@
 import { appState, settings, selectedNo, saveSettings, scheduleSave, markUpdated } from "../store.js";
 import { FORMAT_PANELS, FORMAT_TYPES } from "../constants.js";
 
-const PANEL_TEXTAREA_ID = { O: "oFreeText", A: "aText", P: "pText" };
-const PANEL_FIELD_KEY   = { O: "oFree",    A: "a",     P: "p"    };
+const PANEL_TEXTAREA_ID = { S: "sText", O: "oFreeText", A: "aText", P: "pText" };
+const PANEL_FIELD_KEY   = { S: "s",     O: "oFree",    A: "a",     P: "p"    };
 
 function newFmtId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return "fmt_" + crypto.randomUUID();
@@ -278,13 +278,19 @@ function openFormatEditModal(target, panel, onSaved) {
       id: newFmtId(),
       name: "",
       panel: panel || "O",
-      type: "numeric",
-      joiner: ", ",
+      type: "text",
+      joiner: "\n",
       pinned: true,
+      isDefault: false,
       items: [],
     },
     onSaved,
   };
+  // パネル表記をモーダルタイトル横に表示 (固定: ユーザーは変更不可)
+  const titleEl = document.querySelector("#formatEditOverlay .popupTitle");
+  if (titleEl) {
+    titleEl.textContent = `${_currentEdit.target.panel} 欄のフォーマット ${_currentEdit.isNew ? "新規作成" : "編集"}`;
+  }
   renderFormatEditForm();
   overlay.classList.add("active");
   const nameInp = document.getElementById("formatEditName");
@@ -293,18 +299,23 @@ function openFormatEditModal(target, panel, onSaved) {
 
 function renderFormatEditForm() {
   const nameInp = document.getElementById("formatEditName");
-  const panelSel = document.getElementById("formatEditPanel");
   const typeSel = document.getElementById("formatEditType");
   const joinerInp = document.getElementById("formatEditJoiner");
   const pinnedChk = document.getElementById("formatEditPinned");
+  const defaultChk = document.getElementById("formatEditIsDefault");
   const itemsHost = document.getElementById("formatEditItems");
   if (!_currentEdit || !nameInp) return;
   const t = _currentEdit.target;
   nameInp.value = t.name;
-  if (panelSel) panelSel.value = t.panel;
   if (typeSel) typeSel.value = t.type;
   if (joinerInp) joinerInp.value = t.joiner;
   if (pinnedChk) pinnedChk.checked = !!t.pinned;
+  if (defaultChk) {
+    defaultChk.checked = !!t.isDefault;
+    // numeric では isDefault を無効化 (normal 値を持たないため fallback として描画不可)
+    defaultChk.disabled = (t.type !== "text");
+    defaultChk.parentElement.style.opacity = (t.type === "text") ? "1" : "0.5";
+  }
   if (itemsHost) renderFormatEditItems(itemsHost);
 }
 
@@ -361,10 +372,10 @@ function renderFormatEditItems(host) {
 function saveFormatEdit() {
   if (!_currentEdit) { closeFormatEditModal(); return; }
   const nameInp = document.getElementById("formatEditName");
-  const panelSel = document.getElementById("formatEditPanel");
   const typeSel = document.getElementById("formatEditType");
   const joinerInp = document.getElementById("formatEditJoiner");
   const pinnedChk = document.getElementById("formatEditPinned");
+  const defaultChk = document.getElementById("formatEditIsDefault");
 
   const t = _currentEdit.target;
   const name = String(nameInp?.value || "").trim();
@@ -381,12 +392,20 @@ function saveFormatEdit() {
   }
 
   t.name = name;
-  t.panel = FORMAT_PANELS.includes(panelSel?.value) ? panelSel.value : "O";
-  t.type = FORMAT_TYPES.includes(typeSel?.value) ? typeSel.value : "numeric";
+  // panel はモーダル外で固定。typeSel と pinned/isDefault のみ反映
+  t.type = FORMAT_TYPES.includes(typeSel?.value) ? typeSel.value : t.type;
   t.joiner = String(joinerInp?.value ?? (t.type === "text" ? "\n" : ", "));
   t.pinned = !!pinnedChk?.checked;
+  t.isDefault = (t.type === "text") ? !!defaultChk?.checked : false;
   // 空ラベル項目を除外
   t.items = t.items.filter(it => String(it.label || "").trim());
+
+  // 同一パネル内に isDefault は 1 つだけ。他はクリア
+  if (t.isDefault) {
+    for (const f of all) {
+      if (f.id !== t.id && f.panel === t.panel) f.isDefault = false;
+    }
+  }
 
   if (_currentEdit.isNew) {
     if (!Array.isArray(settings.formats)) settings.formats = [];
@@ -429,9 +448,10 @@ function addFormatItem() {
 // ============================
 // 設定画面側の CRUD ヘルパ (settings-view.js から呼ばれる)
 // ============================
-export function startNewFormat(onSaved) {
+// panel が省略された場合は O。設定画面から呼ぶ場合は必ず panel を指定する
+export function startNewFormat(onSaved, panel) {
   _justCreated = true;
-  openFormatEditModal(null, "O", onSaved);
+  openFormatEditModal(null, panel || "O", onSaved);
 }
 
 export function startEditFormat(format, onSaved) {
@@ -480,8 +500,9 @@ export function initFormats() {
         ? { label: it.label || "", unit: it.unit || "" }
         : { label: it.label || "", normal: it.normal || "" }
     ));
-    const itemsHost = document.getElementById("formatEditItems");
-    if (itemsHost) renderFormatEditItems(itemsHost);
+    // 規定文チェックは numeric では使えない
+    if (_currentEdit.target.type !== "text") _currentEdit.target.isDefault = false;
+    renderFormatEditForm();
   });
 
   const pickerOverlay = document.getElementById("formatPickerOverlay");

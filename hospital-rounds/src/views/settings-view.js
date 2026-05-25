@@ -25,22 +25,24 @@ const CLEAR_ITEM_TITLE = {
   statusBlue: "ステータス：青（追記）",
 };
 
-function renderFormatList() {
-  const host = document.getElementById("setFormats");
+const PANELS_IN_ORDER = ["S", "O", "A", "P"];
+
+function renderFormatListForPanel(panel) {
+  const host = document.getElementById("setFormats_" + panel);
   if (!host) return;
   host.textContent = "";
-  const list = Array.isArray(settings.formats) ? settings.formats : [];
+  const all = Array.isArray(settings.formats) ? settings.formats : [];
+  const list = all.filter(f => f.panel === panel);
   if (list.length === 0) {
     const empty = document.createElement("div");
     empty.style.padding = "8px 4px";
     empty.style.color = "#6b7280";
     empty.style.fontSize = "13px";
-    empty.textContent = "フォーマットが登録されていません。右上の + から追加してください。";
+    empty.textContent = "未登録。右上の + から追加してください。";
     host.appendChild(empty);
     return;
   }
-  for (let i = 0; i < list.length; i++) {
-    const f = list[i];
+  for (const f of list) {
     const row = document.createElement("div");
     row.className = "formatListRow";
 
@@ -51,7 +53,14 @@ function renderFormatList() {
 
     const meta = document.createElement("span");
     meta.className = "formatListMeta";
-    meta.textContent = `${f.panel} / ${f.type === "numeric" ? "数値" : "文字"}`;
+    meta.textContent = f.type === "numeric" ? "数値" : "文字";
+    if (f.isDefault) {
+      const defChip = document.createElement("span");
+      defChip.className = "formatListDefaultChip";
+      defChip.textContent = "規定";
+      defChip.title = "空欄時の fallback として使用";
+      meta.appendChild(defChip);
+    }
     if (f.pinned) {
       const pin = document.createElement("span");
       pin.className = "formatListPinChip";
@@ -95,6 +104,10 @@ function renderFormatList() {
     row.appendChild(actions);
     host.appendChild(row);
   }
+}
+
+function renderFormatList() {
+  for (const panel of PANELS_IN_ORDER) renderFormatListForPanel(panel);
 }
 
 function buildClearTargetLabelContent(key) {
@@ -457,14 +470,6 @@ function renderTagsList() {
 }
 
 export function renderSettings() {
-  const setSDefault = document.getElementById("setSDefault");
-  const setADefault = document.getElementById("setADefault");
-  const setPDefault = document.getElementById("setPDefault");
-
-  if (setSDefault) setSDefault.value = String(settings?.defaults?.s ?? "");
-  if (setADefault) setADefault.value = String(settings?.defaults?.a ?? "");
-  if (setPDefault) setPDefault.value = String(settings?.defaults?.p ?? "");
-
   renderClearTargets();
   renderAdminToggles();
   renderAdminExtras();
@@ -484,37 +489,20 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
   _renderQrFn = renderQrFn;
   _renderPatientUIFn = renderPatientUIFn;
 
-  const setSDefault = document.getElementById("setSDefault");
-  const setADefault = document.getElementById("setADefault");
-  const setPDefault = document.getElementById("setPDefault");
-  const addFormatBtn = document.getElementById("addFormatBtn");
   const addTagBtn = document.getElementById("addTagBtn");
   const resetTagsBtn = document.getElementById("resetTagsBtn");
 
-  if (setSDefault) setSDefault.addEventListener("input", () => {
-    settings.defaults.s = String(setSDefault.value ?? "");
-    saveSettings();
-    if (_renderQrFn) _renderQrFn();
-  });
-
-  if (setADefault) setADefault.addEventListener("input", () => {
-    settings.defaults.a = String(setADefault.value ?? "");
-    saveSettings();
-    if (_renderQrFn) _renderQrFn();
-  });
-
-  if (setPDefault) setPDefault.addEventListener("input", () => {
-    settings.defaults.p = String(setPDefault.value ?? "");
-    saveSettings();
-    if (_renderQrFn) _renderQrFn();
-  });
-
-  if (addFormatBtn) addFormatBtn.addEventListener("click", () => {
-    startNewFormat(() => {
-      renderFormatList();
-      if (_renderDetailFn) _renderDetailFn();
+  // S/O/A/P それぞれの「+」ボタンをそのパネル用にバインド
+  for (const panel of PANELS_IN_ORDER) {
+    const btn = document.getElementById("addFormatBtn" + panel);
+    if (!btn) continue;
+    btn.addEventListener("click", () => {
+      startNewFormat(() => {
+        renderFormatList();
+        if (_renderDetailFn) _renderDetailFn();
+      }, panel);
     });
-  });
+  }
 
   const adminEnableBtn = document.getElementById("adminEnableBtn");
   if (adminEnableBtn) adminEnableBtn.addEventListener("click", () => {

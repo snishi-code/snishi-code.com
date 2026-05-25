@@ -801,15 +801,17 @@
        フォーマット入力モーダル
        ============================ */
     .popupMenu.formatInputMenu {
-      width: auto;
-      min-width: 280px;
+      width: min(92vw, 520px);
+      min-width: 0;
       max-width: 520px;
-      padding: 14px 18px;
+      padding: 14px 16px;
+      box-sizing: border-box;
     }
 
     .formatInputBody {
       max-height: 60vh;
       overflow-y: auto;
+      overflow-x: hidden;
       padding: 4px 0;
     }
 
@@ -819,22 +821,25 @@
       gap: 6px;
       margin-bottom: 8px;
       flex-wrap: wrap;
+      min-width: 0;
     }
 
     .formatInputLabel {
-      flex: 0 0 70px;
+      flex: 0 0 64px;
       font-weight: 700;
       font-size: 14px;
       color: var(--text);
+      min-width: 0;
     }
 
     .formatInputValue {
       flex: 1 1 80px;
-      min-width: 60px;
+      min-width: 0;
       padding: 6px 8px;
       border: 1px solid var(--line);
       border-radius: 6px;
       font-size: 14px;
+      box-sizing: border-box;
     }
 
     .formatInputText {
@@ -851,11 +856,13 @@
     }
 
     .formatInputMemo {
-      flex: 1 1 100px;
+      flex: 1 1 80px;
+      min-width: 0;
       padding: 6px 8px;
       border: 1px solid var(--line);
       border-radius: 6px;
       font-size: 13px;
+      box-sizing: border-box;
     }
 
     .formatInputNormalBtn {
@@ -897,9 +904,10 @@
        フォーマット選択ピッカー
        ============================ */
     .popupMenu.formatPickerMenu {
-      width: auto;
-      min-width: 240px;
+      width: min(92vw, 360px);
+      min-width: 0;
       max-width: 360px;
+      box-sizing: border-box;
     }
 
     .formatPickerList {
@@ -941,18 +949,20 @@
     }
 
     /* ============================
-       フォーマット編集モーダル
+       フォーマット編集モーダル (レスポンシブ。ビューポートに収まる)
        ============================ */
     .popupMenu.formatEditMenu {
-      width: auto;
-      min-width: 320px;
+      width: min(92vw, 480px);
+      min-width: 0;
       max-width: 480px;
-      padding: 14px 18px;
+      padding: 14px 16px;
+      box-sizing: border-box;
     }
 
     .formatEditBody {
       max-height: 65vh;
       overflow-y: auto;
+      overflow-x: hidden;
     }
 
     .formatEditField {
@@ -976,15 +986,18 @@
       border-radius: 6px;
       font-size: 14px;
       font-weight: 500;
+      box-sizing: border-box;
     }
 
     .formatEditFieldRow {
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
     }
 
     .formatEditFieldRow .formatEditField {
-      flex: 1 1 0;
+      flex: 1 1 120px;
+      min-width: 0;
     }
 
     .formatEditCheckRow {
@@ -999,6 +1012,7 @@
     .formatEditCheckRow input {
       width: 18px;
       height: 18px;
+      flex: 0 0 auto;
     }
 
     .formatEditItemsHead {
@@ -1013,6 +1027,7 @@
       align-items: center;
       gap: 6px;
       margin-bottom: 6px;
+      min-width: 0;
     }
 
     .formatEditItemLabel,
@@ -1022,18 +1037,20 @@
       border: 1px solid var(--line);
       border-radius: 6px;
       font-size: 13px;
+      min-width: 0;
+      box-sizing: border-box;
     }
 
     .formatEditItemLabel {
-      flex: 0 0 90px;
+      flex: 1 1 80px;
     }
 
     .formatEditItemUnit {
-      flex: 0 0 80px;
+      flex: 0 1 70px;
     }
 
     .formatEditItemNormal {
-      flex: 1 1 auto;
+      flex: 2 1 100px;
     }
 
     .formatEditItemDel {
@@ -1049,7 +1066,7 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      flex: 0 0 auto;
+      flex: 0 0 32px;
     }
 
     .formatEditActions {
@@ -1104,6 +1121,16 @@
       color: var(--status-blue-text);
       font-size: 11px;
       font-weight: 700;
+    }
+
+    .formatListDefaultChip {
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--status-yellow-bg, #fef3c7);
+      color: var(--status-yellow-text, #92400e);
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid var(--status-yellow-bd, #d97706);
     }
 
     .formatListActions {

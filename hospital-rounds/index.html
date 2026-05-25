@@ -357,39 +357,48 @@
       <div class="card">
         <div class="cardHead">
           <div class="label">S</div>
+          <button class="iconBtn" id="addFormatBtnS" type="button" title="フォーマット追加" aria-label="フォーマット追加">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
         </div>
         <div class="cardBody">
-          <textarea id="setSDefault"></textarea>
+          <div id="setFormats_S"></div>
         </div>
       </div>
 
       <div class="card">
         <div class="cardHead">
-          <div class="label">フォーマット</div>
-          <button class="iconBtn" id="addFormatBtn" type="button" title="フォーマット追加" aria-label="フォーマット追加">
+          <div class="label">O</div>
+          <button class="iconBtn" id="addFormatBtnO" type="button" title="フォーマット追加" aria-label="フォーマット追加">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
         </div>
         <div class="cardBody">
-          <div id="setFormats"></div>
+          <div id="setFormats_O"></div>
         </div>
       </div>
 
       <div class="card">
         <div class="cardHead">
           <div class="label">A</div>
+          <button class="iconBtn" id="addFormatBtnA" type="button" title="フォーマット追加" aria-label="フォーマット追加">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
         </div>
         <div class="cardBody">
-          <textarea id="setADefault" placeholder="例) 著変なし" style="min-height:90px"></textarea>
+          <div id="setFormats_A"></div>
         </div>
       </div>
 
       <div class="card">
         <div class="cardHead">
           <div class="label">P</div>
+          <button class="iconBtn" id="addFormatBtnP" type="button" title="フォーマット追加" aria-label="フォーマット追加">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
         </div>
         <div class="cardBody">
-          <textarea id="setPDefault" placeholder="例) 現行加療継続" style="min-height:90px"></textarea>
+          <div id="setFormats_P"></div>
         </div>
       </div>
 
@@ -518,6 +527,7 @@
       <div class="card">
         <div class="cardHead">
           <div class="label">S</div>
+          <div class="formatStrip" id="sFormatStrip"></div>
         </div>
         <div class="cardBody">
           <textarea id="sText"></textarea>
@@ -648,28 +658,24 @@
           </label>
           <div class="formatEditFieldRow">
             <label class="formatEditField">
-              <span>パネル</span>
-              <select id="formatEditPanel">
-                <option value="O">O</option>
-                <option value="A">A</option>
-                <option value="P">P</option>
+              <span>種類</span>
+              <select id="formatEditType">
+                <option value="text">文字</option>
+                <option value="numeric">数値</option>
               </select>
             </label>
             <label class="formatEditField">
-              <span>種類</span>
-              <select id="formatEditType">
-                <option value="numeric">数値</option>
-                <option value="text">文字</option>
-              </select>
+              <span>区切り</span>
+              <input type="text" id="formatEditJoiner" placeholder=", ">
             </label>
           </div>
-          <label class="formatEditField">
-            <span>区切り</span>
-            <input type="text" id="formatEditJoiner" placeholder=", ">
-          </label>
           <label class="formatEditCheckRow">
             <input type="checkbox" id="formatEditPinned">
             <span>パネルにクイックアクセスを表示する</span>
+          </label>
+          <label class="formatEditCheckRow">
+            <input type="checkbox" id="formatEditIsDefault">
+            <span>このフォーマットを規定文にする (空欄時の fallback)</span>
           </label>
           <div class="formatEditItemsHead">項目</div>
           <div id="formatEditItems"></div>
