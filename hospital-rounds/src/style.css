@@ -2125,6 +2125,139 @@
       margin-bottom: 0;
     }
 
+    /* ============================
+       入出力 chooser (端末ファイル ↔ DB スナップショット)
+       ============================ */
+    .popupMenu.ioChooserMenu {
+      width: min(92vw, 420px);
+      max-width: 420px;
+      box-sizing: border-box;
+    }
+
+    .ioSourceToggleRow {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+      background: #f1f5f9;
+      padding: 4px;
+      border-radius: 8px;
+    }
+
+    .ioSourceToggleBtn {
+      flex: 1 1 auto;
+      width: auto !important;
+      margin: 0 !important;
+      padding: 8px 6px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .ioSourceToggleBtn.selected {
+      background: #ffffff;
+      color: var(--text);
+      border-color: var(--line);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .ioPanel {
+      margin-bottom: 4px;
+    }
+
+    .ioHint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    .ioDbLabelInp {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 8px;
+      box-sizing: border-box;
+    }
+
+    .ioDbList {
+      max-height: 280px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 4px;
+      background: #fafafa;
+    }
+
+    .ioDbList:empty::before {
+      content: "保存されたスナップショットはありません";
+      display: block;
+      padding: 16px 8px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .ioDbRow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      margin: 2px 0;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .ioDbRowMain {
+      flex: 1 1 auto;
+      min-width: 0;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .ioDbRowMain:hover { background: #f3f4f6; }
+
+    .ioDbRowLabel {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ioDbRowMeta {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .ioDbRowDel {
+      flex: 0 0 auto;
+      width: 32px !important;
+      height: 32px;
+      padding: 4px !important;
+      margin: 0 !important;
+      border: 1px solid var(--status-red-bd, #dc2626);
+      background: #fff;
+      color: var(--status-red-bd, #dc2626);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ioDbRowDel:hover {
+      background: #fee2e2;
+    }
+
     /* 患者操作メニュー: 2x2 アイコングリッド + 下に閉じるバツ。
        色は +1/+5 = 患者ボタンの青ステータス、-1/-5 = danger 赤。
        形 (+/−) と色の両方で差別化 (D/P 型色覚配慮)。

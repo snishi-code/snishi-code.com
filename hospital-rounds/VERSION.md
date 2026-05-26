@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 4.0.0
+現在のバージョン: 4.1.0
 
 ## バージョニング方針
 
@@ -14,6 +14,12 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **4.1.0**: ヘッダーメニューの入出力に「端末ファイル / DB スナップショット」トグル UI を追加
+  - 取込・保存いずれも `ioChooserOverlay` を経由するように変更。トグルで「端末ファイル」「DB スナップショット」を切替
+  - 取込: DB タブで保存済みスナップショット一覧を表示、行タップで取込 (取込後は既存の「設定込み / 患者のみ」ダイアログに合流)。各行に削除ボタン
+  - 保存: DB タブでラベル入力欄 + 保存ボタン。`snap_<timestamp>_<rand>` の ID で新規エントリを作成。アクティブ bundle (`"default"`) とは分離して保管。下に既存スナップショット一覧 (削除可) も併設
+  - `storage.js` を拡張: `saveBundle(bundle, id, label)` で第 3 引数 label を受けるように、`listBundles()` が label を含めて返すように、新規 `deleteBundle(id)` (active bundle は誤削除防止)、`newSnapshotId()` を追加
+  - ファイル import 経路と DB import 経路は内部 `importFromBundle()` を共有。挙動は完全に同一 (空なら全置換、データありなら askImportAction で patients-only / include-settings 選択)
 - **4.0.0** (**breaking**): 永続化バックエンドを localStorage から IndexedDB に移行 + 起動を async 化
   - `storage.js` を全面書き換え。`hospital-rounds` DB の `bundles` object store に bundle を 1 件 (id="default") として保存。`createIndex("updatedAt")` も先に貼って将来の multi-bundle / 並べ替えに備える
   - 初回起動時のみ localStorage の旧キー (`rounds_v2_soap_ryoyo_ward_bundle_v1` 他) を read-once フォールバックとして取り込む。次回 save で自動的に IDB に乗り換わる。localStorage 側は削除せず rollback hatch として残す

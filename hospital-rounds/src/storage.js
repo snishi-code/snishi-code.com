@@ -159,11 +159,12 @@ export async function loadBundle(id = ACTIVE_BUNDLE_ID) {
   return null;
 }
 
-export async function saveBundle(bundle, id = ACTIVE_BUNDLE_ID) {
+export async function saveBundle(bundle, id = ACTIVE_BUNDLE_ID, label = "") {
   const db = await openDb();
   if (!db) return; // IDB 不可環境 (テスト等) は no-op
   const rec = {
     id,
+    label: String(label || ""),
     title: bundle?.sections?.meta?.title || "",
     updatedAt: Date.now(),
     bundle,
@@ -186,6 +187,7 @@ export async function listBundles() {
     const all = await idbReq(tx.objectStore(STORE_NAME).getAll());
     return all.map(r => ({
       id: r.id,
+      label: r.label || "",
       title: r.title || "",
       updatedAt: r.updatedAt || 0,
     }));
@@ -193,6 +195,30 @@ export async function listBundles() {
     console.warn("idb list failed:", e);
     return [];
   }
+}
+
+// 指定 ID の bundle を削除。active bundle (= "default") は誤削除防止のため拒否。
+export async function deleteBundle(id) {
+  if (id === ACTIVE_BUNDLE_ID) {
+    throw new Error("cannot delete the active bundle");
+  }
+  const db = await openDb();
+  if (!db) return;
+  try {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).delete(id);
+    await idbTxDone(tx);
+  } catch (e) {
+    console.error("idb delete failed:", e);
+    throw e;
+  }
+}
+
+// 新しいスナップショット用 ID を生成。snap_<タイムスタンプ>_<rand>
+export function newSnapshotId() {
+  const ts = Date.now().toString(36);
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `snap_${ts}_${rand}`;
 }
 
 // ============================

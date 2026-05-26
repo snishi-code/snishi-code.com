@@ -688,6 +688,48 @@
         <button class="secondary" id="importCancelBtn">キャンセル</button>
       </div>
     </div>
+
+    <!-- 入出力 chooser: 端末ファイル / DB スナップショット をトグル選択 -->
+    <div class="popupMenuOverlay" id="ioChooserOverlay">
+      <div class="popupMenu ioChooserMenu">
+        <div class="popupTitle" id="ioChooserTitle">データを取り込む</div>
+
+        <div class="ioSourceToggleRow">
+          <button class="ioSourceToggleBtn selected" type="button" data-source="file">端末ファイル</button>
+          <button class="ioSourceToggleBtn" type="button" data-source="db">DB スナップショット</button>
+        </div>
+
+        <!-- 端末ファイル: 取込 -->
+        <div class="ioPanel" id="ioPanelFileImport" style="display:none;">
+          <div class="ioHint">JSON ファイルから取り込みます</div>
+          <button class="primary" id="ioFilePickBtn" type="button">ファイルを選択</button>
+        </div>
+
+        <!-- 端末ファイル: 保存 -->
+        <div class="ioPanel" id="ioPanelFileExport" style="display:none;">
+          <div class="ioHint">現在のデータを JSON ファイルとしてダウンロードします</div>
+          <button class="primary" id="ioFileSaveBtn" type="button">ダウンロード</button>
+        </div>
+
+        <!-- DB: 取込 (スナップショット一覧) -->
+        <div class="ioPanel" id="ioPanelDbImport" style="display:none;">
+          <div class="ioHint">取り込むスナップショットをタップで選択</div>
+          <div class="ioDbList" id="ioDbImportList"></div>
+        </div>
+
+        <!-- DB: 保存 (ラベル入力 + 既存スナップショット一覧) -->
+        <div class="ioPanel" id="ioPanelDbExport" style="display:none;">
+          <div class="ioHint">現在のデータを名前を付けて DB に保存します</div>
+          <input type="text" id="ioDbLabelInp" class="ioDbLabelInp" placeholder="例: 2026-05-26 朝回診" autocomplete="off" />
+          <button class="primary" id="ioDbSaveBtn" type="button">DB に保存</button>
+          <div class="ioHint" style="margin-top:14px;">既存のスナップショット</div>
+          <div class="ioDbList" id="ioDbExportList"></div>
+        </div>
+
+        <div style="height:10px;"></div>
+        <button class="secondary" id="ioChooserCancelBtn" type="button">閉じる</button>
+      </div>
+    </div>
   </main>
 
   <script type="module" src="/src/main.js"></script>
