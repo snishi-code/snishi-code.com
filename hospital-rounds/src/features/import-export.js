@@ -287,6 +287,13 @@ export function initImportExport(callbacks) {
     if (!ioWorkspaceList) return;
     ioWorkspaceList.textContent = "";
     const all = await listBundles();
+    if (!all.length) {
+      const empty = document.createElement("div");
+      empty.className = "ioDbListEmpty";
+      empty.textContent = t("io.ws.list.empty");
+      ioWorkspaceList.appendChild(empty);
+      return;
+    }
     const activeId = getActiveWorkspaceId();
     // active が一番上、その他は updatedAt 降順
     const sorted = all.slice().sort((a, b) => {
@@ -303,7 +310,7 @@ export function initImportExport(callbacks) {
         const mark = document.createElement("div");
         mark.className = "ioDbRowActiveMark";
         mark.textContent = "★";
-        mark.title = "現在のワークスペース";
+        mark.title = t("io.ws.active.tooltip");
         row.appendChild(mark);
       }
 
@@ -311,7 +318,7 @@ export function initImportExport(callbacks) {
       main.className = "ioDbRowMain";
       const lbl = document.createElement("div");
       lbl.className = "ioDbRowLabel";
-      lbl.textContent = r.label || r.title || "(無題)";
+      lbl.textContent = r.label || r.title || t("io.ws.untitled");
       const meta = document.createElement("div");
       meta.className = "ioDbRowMeta";
       meta.textContent = `${fmtTimestamp(r.updatedAt)} ・ ${r.title || ""}`;
@@ -325,7 +332,7 @@ export function initImportExport(callbacks) {
             closeIoChooser();
           } catch (err) {
             console.error("workspace switch failed:", err);
-            alert("ワークスペース切替に失敗しました");
+            alert(t("io.ws.switch.failed"));
           }
         });
       } else {
@@ -338,18 +345,19 @@ export function initImportExport(callbacks) {
         const del = document.createElement("button");
         del.type = "button";
         del.className = "ioDbRowDel";
-        del.title = "削除";
-        del.setAttribute("aria-label", "削除");
+        del.title = t("common.delete");
+        del.setAttribute("aria-label", t("common.delete"));
         del.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
         del.addEventListener("click", async (e) => {
           e.stopPropagation();
-          if (!confirm(`ワークスペース「${r.label || r.title || "(無題)"}」を削除しますか？`)) return;
+          const name = r.label || r.title || t("io.ws.untitled");
+          if (!confirm(t("io.ws.delete.confirm", { name }))) return;
           try {
             await deleteBundle(r.id);
             await renderWorkspaceList();
           } catch (err) {
             console.error("workspace delete failed:", err);
-            alert("削除に失敗しました");
+            alert(t("io.ws.delete.failed"));
           }
         });
         row.appendChild(del);
@@ -406,7 +414,7 @@ export function initImportExport(callbacks) {
     ioWsCreateBtn.addEventListener("click", async () => {
       const label = String(ioWsLabelInp?.value || "").trim();
       if (!label) {
-        alert("ワークスペース名を入力してください");
+        alert(t("io.ws.name.required"));
         if (ioWsLabelInp) ioWsLabelInp.focus();
         return;
       }
@@ -416,7 +424,7 @@ export function initImportExport(callbacks) {
         closeIoChooser();
       } catch (err) {
         console.error("workspace create failed:", err);
-        alert("ワークスペース作成に失敗しました");
+        alert(t("io.ws.create.failed"));
       }
     });
   }

@@ -222,6 +222,33 @@
   "tagStatus.yellow": "黄",
   "tagStatus.green": "緑",
   "tagStatus.gray": "灰",
-  "tagStatus.blue": "青"
+  "tagStatus.blue": "青",
+
+  "io.title": "データ管理",
+  "io.tab.workspace": "ワークスペース",
+  "io.tab.file": "端末ファイル",
+  "io.file.import.hint": "JSON ファイルから取り込みます (現在のワークスペースに追加)",
+  "io.file.import.action": "ファイルを選択",
+  "io.file.export.hint": "現在のワークスペースを JSON ファイルとしてダウンロードします",
+  "io.file.export.action": "ダウンロード",
+  "io.ws.list.hint": "タップで切替。★ が現在のワークスペース。",
+  "io.ws.list.empty": "登録されたワークスペースはありません",
+  "io.ws.untitled": "(無題)",
+  "io.ws.active.tooltip": "現在のワークスペース",
+  "io.ws.create.hint": "新規ワークスペース (空)",
+  "io.ws.create.placeholder": "例: 病棟A",
+  "io.ws.create.action": "新規作成して切替え",
+  "io.ws.delete.confirm": "ワークスペース「{name}」を削除しますか？",
+  "io.ws.delete.failed": "削除に失敗しました",
+  "io.ws.switch.failed": "ワークスペース切替に失敗しました",
+  "io.ws.create.failed": "ワークスペース作成に失敗しました",
+  "io.ws.name.required": "ワークスペース名を入力してください",
+
+  "pwa.init.title": "テスト用データが残っています",
+  "pwa.init.body": "ブラウザでのテストデータが端末に残っています。\n削除してアプリを始めますか？それとも続きから使いますか？",
+  "pwa.init.clear": "削除して開始",
+  "pwa.init.keep": "続きから使う",
+
+  "web.warning.banner": "⚠ Web 版です。実データの入力は PWA (ホーム画面に追加) からどうぞ"
 }
 

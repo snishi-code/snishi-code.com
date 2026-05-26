@@ -35,6 +35,11 @@
 </head>
 
 <body>
+  <!-- Web 版警告バナー: PWA (standalone) でない時のみ表示。main.js が toggle -->
+  <div id="webWarningBanner" class="webWarningBanner" style="display:none;" data-i18n="web.warning.banner">
+    ⚠ Web 版です。実データの入力は PWA (ホーム画面に追加) からどうぞ
+  </div>
+
   <header>
     <div class="headerInner">
       <div class="appTitle">
@@ -689,40 +694,51 @@
       </div>
     </div>
 
+    <!-- PWA 初回起動: ブラウザに残ったテストデータをクリアするか確認 -->
+    <div class="popupMenuOverlay" id="pwaInitOverlay">
+      <div class="popupMenu">
+        <div class="popupTitle" data-i18n="pwa.init.title">テスト用データが残っています</div>
+        <div style="font-size:13px;color:#333;line-height:1.5;margin-bottom:12px;white-space:pre-line;" data-i18n="pwa.init.body">ブラウザでのテストデータが端末に残っています。
+削除してアプリを始めますか？それとも続きから使いますか？</div>
+        <button class="primary" id="pwaInitClearBtn" type="button" data-i18n="pwa.init.clear">削除して開始</button>
+        <button class="secondary" id="pwaInitKeepBtn" type="button" data-i18n="pwa.init.keep">続きから使う</button>
+      </div>
+    </div>
+
     <!-- 入出力 chooser: 端末ファイル / ワークスペース をトグル選択 -->
     <div class="popupMenuOverlay" id="ioChooserOverlay">
       <div class="popupMenu ioChooserMenu">
-        <div class="popupTitle" id="ioChooserTitle">データ管理</div>
+        <div class="popupTitle" id="ioChooserTitle" data-i18n="io.title">データ管理</div>
 
         <div class="ioSourceToggleRow">
-          <button class="ioSourceToggleBtn" type="button" data-source="ws">ワークスペース</button>
-          <button class="ioSourceToggleBtn selected" type="button" data-source="file">端末ファイル</button>
+          <button class="ioSourceToggleBtn" type="button" data-source="ws" data-i18n="io.tab.workspace">ワークスペース</button>
+          <button class="ioSourceToggleBtn selected" type="button" data-source="file" data-i18n="io.tab.file">端末ファイル</button>
         </div>
 
         <!-- 端末ファイル: 取込 -->
         <div class="ioPanel" id="ioPanelFileImport" style="display:none;">
-          <div class="ioHint">JSON ファイルから取り込みます (現在のワークスペースに追加)</div>
-          <button class="primary" id="ioFilePickBtn" type="button">ファイルを選択</button>
+          <div class="ioHint" data-i18n="io.file.import.hint">JSON ファイルから取り込みます (現在のワークスペースに追加)</div>
+          <button class="primary" id="ioFilePickBtn" type="button" data-i18n="io.file.import.action">ファイルを選択</button>
         </div>
 
         <!-- 端末ファイル: 保存 -->
         <div class="ioPanel" id="ioPanelFileExport" style="display:none;">
-          <div class="ioHint">現在のワークスペースを JSON ファイルとしてダウンロードします</div>
-          <button class="primary" id="ioFileSaveBtn" type="button">ダウンロード</button>
+          <div class="ioHint" data-i18n="io.file.export.hint">現在のワークスペースを JSON ファイルとしてダウンロードします</div>
+          <button class="primary" id="ioFileSaveBtn" type="button" data-i18n="io.file.export.action">ダウンロード</button>
         </div>
 
         <!-- ワークスペース: 一覧 + 切替 + 新規作成 -->
         <div class="ioPanel" id="ioPanelWorkspaces" style="display:none;">
-          <div class="ioHint">タップで切替。★ が現在のワークスペース。</div>
+          <div class="ioHint" data-i18n="io.ws.list.hint">タップで切替。★ が現在のワークスペース。</div>
           <div class="ioDbList" id="ioWorkspaceList"></div>
 
-          <div class="ioHint" style="margin-top:14px;">新規ワークスペース (空)</div>
-          <input type="text" id="ioWsLabelInp" class="ioDbLabelInp" placeholder="例: 病棟A" autocomplete="off" />
-          <button class="primary" id="ioWsCreateBtn" type="button">新規作成して切替え</button>
+          <div class="ioHint" style="margin-top:14px;" data-i18n="io.ws.create.hint">新規ワークスペース (空)</div>
+          <input type="text" id="ioWsLabelInp" class="ioDbLabelInp" data-i18n-placeholder="io.ws.create.placeholder" placeholder="例: 病棟A" autocomplete="off" />
+          <button class="primary" id="ioWsCreateBtn" type="button" data-i18n="io.ws.create.action">新規作成して切替え</button>
         </div>
 
         <div style="height:10px;"></div>
-        <button class="secondary" id="ioChooserCancelBtn" type="button">閉じる</button>
+        <button class="secondary" id="ioChooserCancelBtn" type="button" data-i18n="common.close">閉じる</button>
       </div>
     </div>
   </main>

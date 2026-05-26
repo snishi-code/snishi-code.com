@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 5.0.0
+現在のバージョン: 5.1.0
 
 ## バージョニング方針
 
@@ -14,6 +14,11 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **5.1.0**: PWA 初回起動時のデータ整理ダイアログ + Web 版警告バナー + ワークスペース UI の i18n 整備
+  - `src/features/pwa-init.js` を新設。`display-mode: standalone` / `navigator.standalone` で PWA 起動を判定し、localStorage の MARKER が未設定なら overlay で「削除して開始 / 続きから使う」を提示。「削除」を選んだ場合は `indexedDB.deleteDatabase` + アプリ関連 localStorage キー全消去 + リロード
+  - Web 版警告バナー: `<div id="webWarningBanner">` を header 直前に配置 (sticky)、PWA でない時のみ表示。「⚠ Web 版です。実データの入力は PWA (ホーム画面に追加) からどうぞ」
+  - v5.0 で追加した workspace UI の動的文字列を `t()` 化、index.html の静的文字列を `data-i18n` / `data-i18n-placeholder` に置き換え。`strings.ja.json` に `io.*` / `pwa.init.*` / `web.warning.banner` のキーを追加
+  - 空一覧の表示を CSS `:empty::before` から JS 駆動 (`.ioDbListEmpty` + `t("io.ws.list.empty")`) に変更して i18n 対応
 - **5.0.0** (**breaking**): DB をワークスペースモデルに刷新 + roster は 30 日ローリング baseSnapshot で Git 管理 + SOAP/メモ/共有/設定はスナップショット
   - **データモデル**: IDB の `bundles` object store は「ワークスペース = 病棟・運用単位」のレコード集合。アクティブワークスペース ID は `localStorage["hospital_rounds_active_workspace_id"]` に保存 (= 同期 API で読みたい・ サイズ小)。既存 `default` レコードはそのままアクティブとして引き継ぐ
   - **切替 UX**: ワークスペース一覧でタップ → store が現アクティブを保存 → ポインタ更新 → 新ワークスペースを IDB から読み込み → live state 差し替え → `setOnWorkspaceChanged` ハンドラで全画面 re-render。「ぱっと入れ替わる」体験

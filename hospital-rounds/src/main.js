@@ -38,6 +38,15 @@ import { isAdminTerminal, isNonAdminTerminal, isAdminEnabled, findIncompleteAdmi
 import { flushCommit, compactHistory } from "./features/roster.js";
 import { initDocsDemo, renderDocsDemo, resetDocsDemo } from "./docs/docs-demo.js";
 import { initNoAutofill } from "./features/no-autofill.js";
+import { maybeShowPwaInitDialog } from "./features/pwa-init.js";
+
+// ============================
+// PWA 初回起動チェック
+// ============================
+// 初回 PWA 起動 (= Safari でテスト入力したデータが PWA 側に共有されている状態)
+// に限り、ユーザに「テスト用データを削除して開始するか」を確認する。
+// 「削除して開始」を選ぶと内部で reload するため戻ってこない。
+await maybeShowPwaInitDialog();
 
 // ============================
 // Async hydration (IndexedDB)
@@ -599,6 +608,18 @@ const storageKeyLabel = document.getElementById("storageKeyLabel");
 if (storageKeyLabel) storageKeyLabel.textContent = `${STORAGE_KEYS.db}.${STORAGE_KEYS.store}`;
 
 requestStoragePersistence();
+
+// ============================
+// Web 版警告バナー: PWA (standalone) でない時のみ表示
+// ============================
+// iOS Safari は navigator.standalone、それ以外は matchMedia('(display-mode: standalone)') で判定
+{
+  const banner = document.getElementById("webWarningBanner");
+  const isStandalone =
+    (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)
+    || window.navigator.standalone === true;
+  if (banner) banner.style.display = isStandalone ? "none" : "";
+}
 
 // 説明書ビューのインタラクティブデモバーを初期化 (リロード btn 紐づけ)。
 // state は docs-demo.js 内のメモリのみ。実患者・実 settings に影響なし。

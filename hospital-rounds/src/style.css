@@ -56,6 +56,25 @@
       border-bottom: 1px solid var(--line);
     }
 
+    /* Web 版警告バー: PWA (standalone) でない時だけ表示。
+       目立つ橙系の薄色背景 + 細字。実データを Web 版に入れて困らないよう注意喚起。
+       sticky で上部固定、header の上にスタック。 */
+    .webWarningBanner {
+      position: sticky;
+      top: 0;
+      z-index: 11;
+      padding: 6px 12px;
+      background: #fef3c7;
+      color: #92400e;
+      border-bottom: 1px solid #d97706;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.3;
+    }
+    /* バナーが表示されている時は header の sticky top をずらす必要がある。
+       実測ベースで JS が --headerH を管理しているので、ここは padding を持つだけ。 */
+
     /* ── ヘッダー共通 (本番/テストともに白) ──
        環境色はロゴバッジ (左上の丸) にだけ残す。
        PWA テーマカラーも合わせて白に変更し、ステータスバーとの段差を消す。 */
@@ -2194,9 +2213,7 @@
       background: #fafafa;
     }
 
-    .ioDbList:empty::before {
-      content: "登録されたワークスペースはありません";
-      display: block;
+    .ioDbListEmpty {
       padding: 16px 8px;
       color: var(--muted);
       font-size: 13px;
