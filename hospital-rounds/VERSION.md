@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 3.3.0
+現在のバージョン: 3.3.1
 
 ## バージョニング方針
 
@@ -14,6 +14,8 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **3.3.1**: フォーマット編集モーダルの項目追加・既存編集が無反応になるバグ修正
+  - `features/formats.js` の `renderFormatEditForm` / `renderFormatEditItems` / `saveFormatEdit` / `addFormatItem` で `const t = _currentEdit.target` がインポート済み i18n `t()` をシャドウし、項目行描画時の `t("format.placeholder.label")` 等で TypeError が発生していた。局所変数を `target` にリネームして衝突を解消
 - **3.3.0**: 既定値の JSON 分離 + i18n 基盤導入 + 取りこぼし回収
   - `src/defaults.json` を新設。`DEFAULT_FORMATS` / `DEFAULT_CLEAR_TARGETS` / アプリ内定数等の初期値を 1 ファイルに集約。`constants.js` は JSON を import して名前付き re-export するだけになり、「何を変更すれば既定が変わるか」が明示
   - `src/strings.ja.json` + `src/i18n.js` で多言語化基盤を導入。`t(key, params)` ヘルパでプレースホルダ展開、`applyI18n()` で HTML 内 `data-i18n-{title,aria,placeholder}` 属性を起動時に展開。未知 key は console.warn + key 自身を返すフェイルセーフ

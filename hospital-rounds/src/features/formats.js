@@ -344,25 +344,25 @@ function renderFormatEditForm() {
   const defaultChk = document.getElementById("formatEditIsDefault");
   const itemsHost = document.getElementById("formatEditItems");
   if (!_currentEdit || !nameInp) return;
-  const t = _currentEdit.target;
-  nameInp.value = t.name;
-  if (typeSel) typeSel.value = t.type;
-  if (joinerInp) joinerInp.value = t.joiner;
-  if (pinnedChk) pinnedChk.checked = !!t.pinned;
+  const target = _currentEdit.target;
+  nameInp.value = target.name;
+  if (typeSel) typeSel.value = target.type;
+  if (joinerInp) joinerInp.value = target.joiner;
+  if (pinnedChk) pinnedChk.checked = !!target.pinned;
   if (defaultChk) {
-    defaultChk.checked = !!t.isDefault;
+    defaultChk.checked = !!target.isDefault;
     // numeric では isDefault を無効化 (normal 値を持たないため fallback として描画不可)
-    defaultChk.disabled = (t.type !== "text");
-    defaultChk.parentElement.style.opacity = (t.type === "text") ? "1" : "0.5";
+    defaultChk.disabled = (target.type !== "text");
+    defaultChk.parentElement.style.opacity = (target.type === "text") ? "1" : "0.5";
   }
   if (itemsHost) renderFormatEditItems(itemsHost);
 }
 
 function renderFormatEditItems(host) {
   host.textContent = "";
-  const t = _currentEdit.target;
-  for (let i = 0; i < t.items.length; i++) {
-    const item = t.items[i];
+  const target = _currentEdit.target;
+  for (let i = 0; i < target.items.length; i++) {
+    const item = target.items[i];
     const row = document.createElement("div");
     row.className = "formatEditItemRow";
 
@@ -374,7 +374,7 @@ function renderFormatEditItems(host) {
     label.addEventListener("input", () => { item.label = String(label.value || ""); });
     row.appendChild(label);
 
-    if (t.type === "numeric") {
+    if (target.type === "numeric") {
       const unit = document.createElement("input");
       unit.type = "text";
       unit.className = "formatEditItemUnit";
@@ -399,7 +399,7 @@ function renderFormatEditItems(host) {
     del.setAttribute("aria-label", t("format.deleteItem.aria"));
     del.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
     del.addEventListener("click", () => {
-      t.items.splice(i, 1);
+      target.items.splice(i, 1);
       renderFormatEditItems(host);
     });
     row.appendChild(del);
@@ -416,7 +416,7 @@ function saveFormatEdit() {
   const pinnedChk = document.getElementById("formatEditPinned");
   const defaultChk = document.getElementById("formatEditIsDefault");
 
-  const t = _currentEdit.target;
+  const target = _currentEdit.target;
   const name = String(nameInp?.value || "").trim();
   if (!name) {
     alert(t("format.name.required"));
@@ -424,47 +424,47 @@ function saveFormatEdit() {
   }
   // 同名チェック (タグの挙動と同じ: 既存と同名なら reject)
   const all = Array.isArray(settings.formats) ? settings.formats : [];
-  const dup = all.find(f => f.id !== t.id && f.name === name);
+  const dup = all.find(f => f.id !== target.id && f.name === name);
   if (dup) {
     alert(t("format.name.duplicate"));
     return;
   }
 
-  t.name = name;
+  target.name = name;
   // panel はモーダル外で固定。typeSel と pinned/isDefault のみ反映
-  t.type = FORMAT_TYPES.includes(typeSel?.value) ? typeSel.value : t.type;
-  t.joiner = String(joinerInp?.value ?? (t.type === "text" ? "\n" : ", "));
-  t.pinned = !!pinnedChk?.checked;
-  t.isDefault = (t.type === "text") ? !!defaultChk?.checked : false;
+  target.type = FORMAT_TYPES.includes(typeSel?.value) ? typeSel.value : target.type;
+  target.joiner = String(joinerInp?.value ?? (target.type === "text" ? "\n" : ", "));
+  target.pinned = !!pinnedChk?.checked;
+  target.isDefault = (target.type === "text") ? !!defaultChk?.checked : false;
   // 項目の除外ルール:
   //   text 型:    label / normal どちらか入力があれば保持 (規定文「著変なし」など
   //               ラベルなし正常文のみのケースを許容)
   //   numeric 型: label がなければ意味を成さないので除外
-  t.items = t.items.filter(it => {
+  target.items = target.items.filter(it => {
     const label = String(it.label || "").trim();
-    if (t.type === "numeric") return !!label;
+    if (target.type === "numeric") return !!label;
     const normal = String(it.normal || "").trim();
     return !!label || !!normal;
   });
 
   // 同一パネル内に isDefault は 1 つだけ。他はクリア
-  if (t.isDefault) {
+  if (target.isDefault) {
     for (const f of all) {
-      if (f.id !== t.id && f.panel === t.panel) f.isDefault = false;
+      if (f.id !== target.id && f.panel === target.panel) f.isDefault = false;
     }
   }
 
   if (_currentEdit.isNew) {
     if (!Array.isArray(settings.formats)) settings.formats = [];
-    settings.formats.push(t);
+    settings.formats.push(target);
   } else {
-    const idx = all.findIndex(f => f.id === t.id);
-    if (idx >= 0) settings.formats[idx] = t;
-    else settings.formats.push(t);
+    const idx = all.findIndex(f => f.id === target.id);
+    if (idx >= 0) settings.formats[idx] = target;
+    else settings.formats.push(target);
   }
   saveSettings();
   const cb = _currentEdit.onSaved;
-  const savedTarget = t;
+  const savedTarget = target;
   closeFormatEditModal();
   if (cb) cb(savedTarget);
   // 保存後は単に閉じるのみ。入力モーダルへの自動遷移は廃止
@@ -480,9 +480,9 @@ export function closeFormatEditModal() {
 
 function addFormatItem() {
   if (!_currentEdit) return;
-  const t = _currentEdit.target;
-  if (t.type === "numeric") t.items.push({ label: "", unit: "" });
-  else t.items.push({ label: "", normal: "" });
+  const target = _currentEdit.target;
+  if (target.type === "numeric") target.items.push({ label: "", unit: "" });
+  else target.items.push({ label: "", normal: "" });
   const itemsHost = document.getElementById("formatEditItems");
   if (itemsHost) renderFormatEditItems(itemsHost);
 }
