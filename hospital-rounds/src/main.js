@@ -39,6 +39,7 @@ import { flushCommit, compactHistory } from "./features/roster.js";
 import { initDocsDemo, renderDocsDemo, resetDocsDemo } from "./docs/docs-demo.js";
 import { initNoAutofill } from "./features/no-autofill.js";
 import { maybeShowPwaInitDialog } from "./features/pwa-init.js";
+import { maybeShowDisclaimer } from "./features/splash-disclaimer.js";
 
 // ============================
 // PWA 初回起動チェック
@@ -662,3 +663,8 @@ doRenderHome();
 setSelectedNo(1);
 doRenderDetail();
 showView("home");
+
+// 月 1 回程度、「これは個人メモであり正式な医療記録ではない」旨のスプラッシュを表示。
+// home が描画されてから出すので、ユーザは閉じた瞬間にホーム画面に戻れる。
+// データ削除の可能性がある pwa-init とは違い await の必要はないが、await しても安全。
+maybeShowDisclaimer();

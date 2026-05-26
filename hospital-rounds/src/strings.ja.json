@@ -113,7 +113,14 @@
   "admin.toggle.confirm.on": "この端末を管理端末にします。同じ病棟・チーム内で 1 台のみにしてください。\nよろしいですか？",
   "admin.toggle.confirm.off": "管理機能をオフにします。よろしいですか？",
   "admin.toggle.locked": "この端末は管理端末から名簿を受け取っているためオフにできません。\n管理から外れたい場合は、管理機能オフの端末から名簿を取り直してください。",
-  "admin.passphrase.prompt": "名簿コピーに使う「合言葉」を設定してください。\n日本語・英語など自由。受信側にも口頭などで共有してください。",
+  "admin.passphrase.prompt": "名簿コピーに使う「合言葉」を設定してください。\n12 文字以上、日本語・英語・記号など自由。受信側にも口頭などで共有してください。",
+  "admin.passphrase.tooShort": "合言葉は 12 文字以上にしてください (現在 {len} 文字)。",
+  "admin.passphrase.hint.minlen": "12 文字以上。英数字・記号や日本語を混ぜると強くなります。",
+  "admin.passphrase.strength.tooShort": "短すぎる",
+  "admin.passphrase.strength.weak": "弱い",
+  "admin.passphrase.strength.ok": "可",
+  "admin.passphrase.strength.good": "良い",
+  "admin.passphrase.strength.strong": "強い",
 
   "qr.scanner.unsupported": "このブラウザはカメラ非対応",
   "qr.send.title": "送信",
@@ -249,6 +256,10 @@
   "pwa.init.clear": "削除して開始",
   "pwa.init.keep": "続きから使う",
 
-  "web.warning.banner": "⚠ Web 版です。実データの入力は PWA (ホーム画面に追加) からどうぞ"
+  "web.warning.banner": "⚠ Web 版です。実データの入力は PWA (ホーム画面に追加) からどうぞ",
+
+  "disclaimer.title": "これは個人メモです",
+  "disclaimer.body": "本アプリは医師個人の業務支援メモであり、正式な医療記録ではありません。\n正式な診療記録は電子カルテにご記載ください。\n\n入力不可:\n・フルネーム / 患者 ID / 生年月日 / 住所 / 連絡先 / 画像\n\n表示は月 1 回程度です。",
+  "disclaimer.ack": "確認しました"
 }
 

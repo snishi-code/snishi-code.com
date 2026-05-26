@@ -2,7 +2,10 @@
 
 // AES-GCM + PBKDF2 with WebCrypto. Returns a versioned, URL-safe-ish text payload.
 
-const PBKDF2_ITER = 100000;
+// OWASP 2023 推奨値 (SHA-256 + PBKDF2)。E1 wire 形式のまま反復数だけ引き上げる。
+// 旧 100k で作られた payload は復号できないため、相互運用には全端末を更新する
+// (院内パイロットでは同一タグからフォークするので問題なし)。
+const PBKDF2_ITER = 600000;
 const PBKDF2_HASH = "SHA-256";
 const AES_NAME = "AES-GCM";
 const AES_LEN = 256;

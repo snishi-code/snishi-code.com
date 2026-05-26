@@ -605,6 +605,33 @@ await test("t() returns key on missing entry", async () => {
 });
 
 // ============================
+// 9b) passphrase strength: 12 文字未満は短すぎる扱い、文字種多様性でスコア加算
+// ============================
+section("passphrase strength");
+
+await test("computePassphraseStrength: < 12 chars is tooShort (score 0)", async () => {
+  const m = await import("../src/features/passphrase-strength.js");
+  assert.equal(m.PASSPHRASE_MIN_LEN, 12);
+  assert.deepEqual(m.computePassphraseStrength(""), { score: 0, level: "empty" });
+  assert.equal(m.computePassphraseStrength("short").level, "tooShort");
+  assert.equal(m.computePassphraseStrength("abcdefghijk").level, "tooShort"); // 11 chars
+});
+
+await test("computePassphraseStrength: 12+ chars gets at least weak", async () => {
+  const m = await import("../src/features/passphrase-strength.js");
+  const r = m.computePassphraseStrength("abcdefghijkl");
+  assert.ok(r.score >= 1);
+  assert.ok(r.level !== "tooShort" && r.level !== "empty");
+});
+
+await test("computePassphraseStrength: char-class diversity raises score", async () => {
+  const m = await import("../src/features/passphrase-strength.js");
+  const weak = m.computePassphraseStrength("aaaaaaaaaaaa"); // 12 lowers only
+  const strong = m.computePassphraseStrength("Abcdefgh1234!@");  // 14 with mix
+  assert.ok(strong.score > weak.score);
+});
+
+// ============================
 // 10) defaults.json: 既定値が JSON 由来で読み込めること
 // ============================
 section("defaults.json");

@@ -722,6 +722,58 @@
       box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
     }
 
+    .passStrengthRow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+      min-height: 18px;
+    }
+
+    .passStrengthBars {
+      display: flex;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .passStrengthBar {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: #e5e7eb;
+    }
+
+    .passStrengthLabel {
+      font-size: 11px;
+      color: #6b7280;
+      min-width: 4em;
+      text-align: right;
+    }
+
+    /* 段階別の色 (D/P 型でも識別可能なペール+濃色の3層構造を踏襲) */
+    .passStrengthRow[data-level="tooShort"] .passStrengthBar.filled,
+    .passStrengthRow[data-level="weak"] .passStrengthBar.filled {
+      background: #d97706; /* amber-600 */
+    }
+    .passStrengthRow[data-level="tooShort"] .passStrengthLabel,
+    .passStrengthRow[data-level="weak"] .passStrengthLabel {
+      color: #92400e;
+    }
+    .passStrengthRow[data-level="ok"] .passStrengthBar.filled {
+      background: #2563eb; /* blue-600 */
+    }
+    .passStrengthRow[data-level="ok"] .passStrengthLabel {
+      color: #1e3a8a;
+    }
+    .passStrengthRow[data-level="good"] .passStrengthBar.filled,
+    .passStrengthRow[data-level="strong"] .passStrengthBar.filled {
+      background: #16a34a; /* green-600 */
+    }
+    .passStrengthRow[data-level="good"] .passStrengthLabel,
+    .passStrengthRow[data-level="strong"] .passStrengthLabel {
+      color: #166534;
+    }
+
     .card {
       border: 1px solid var(--line);
       border-radius: 14px;

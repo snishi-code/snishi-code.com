@@ -1,4 +1,4 @@
-const CACHE = 'hospital-rounds-v10';
+const CACHE = 'hospital-rounds-v11';
 
 // SW のスコープ（=sw.js が置かれているディレクトリ）。本番では '/hospital-rounds/'、
 // テスト(サブドメイン)では '/' になる。相対URL は self.registration.scope を起点に解決。
@@ -30,9 +30,13 @@ async function precacheAll() {
   } catch (_) { /* first install offline: shell only, images fill in on next online visit */ }
 }
 
+// 自動更新の無効化:
+//   - skipWaiting() を呼ばないので、新しい SW は 'waiting' 状態に留まる
+//   - clients.claim() を呼ばないので、既に開いている PWA は古い SW を使い続ける
+//   - 結果として「ユーザが明示的にアプリを完全に閉じて開き直す」まで更新は適用されない
+//   - 院内運用では「ホーム画面から削除 → 再追加」を更新フローとするため、これで十分
 self.addEventListener('install', (e) => {
   e.waitUntil(precacheAll());
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {
@@ -41,7 +45,6 @@ self.addEventListener('activate', (e) => {
       Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
     )
   );
-  self.clients.claim();
 });
 
 // Cache-first with network fallback that fills the cache; on total failure, return the SPA shell.

@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 5.1.0
+現在のバージョン: 6.0.0
 
 ## バージョニング方針
 
@@ -14,6 +14,13 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **6.0.0** (**breaking**): 院内パイロット向けセキュリティ強化 (PBKDF2 600k / CSP / SW 自動更新無効化 / 合言葉 12 文字制限 / 月次注意スプラッシュ)
+  - **PBKDF2 iteration 100,000 → 600,000** (OWASP 2023 推奨値)。`src/features/crypto.js` の `PBKDF2_ITER` 定数のみ変更。E1 wire 形式は据え置きだが、旧 100k で作られた payload は復号できないため **breaking** (旧バージョンの端末と QR で相互運用しない前提)
+  - **CSP メタタグ**: `index.html` の `<head>` に `Content-Security-Policy` meta タグを追加。`default-src 'self'` で外部送信を遮断、`connect-src 'self'` で fetch/XHR/WebSocket も同一オリジンに限定。inline script/style は単一HTML構成の都合上 `'unsafe-inline'` を許容、QR canvas のため `img-src` に `data:` / `blob:` を追加。`frame-ancestors` 等の HTTP-header-only ディレクティブは含めない
+  - **Service Worker 自動更新の無効化**: `public/sw.js` から `skipWaiting()` と `clients.claim()` を撤去。新しい SW は `waiting` 状態に留まり、ユーザが PWA を完全に閉じて開き直すまで適用されない。院内運用は「ホーム画面から削除 → 再追加」での更新を前提に。SW キャッシュバージョンを v11 に bump
+  - **合言葉 12 文字以上 + 強度メーター**: `src/features/passphrase-strength.js` を新設。長さ + 文字種多様性 (lower / upper / digit / symbol / 非 ASCII) で 4 段階スコア。設定画面の合言葉入力欄下にバー型メーターを表示 (D/P 型でも識別可能な amber/blue/green の3層パレット)。管理機能ON時の `prompt()` フローも 12 文字未満なら再入力を促すループに変更。`PASSPHRASE_MIN_LEN = 12` 定数で集中管理
+  - **月次の利用注意スプラッシュ**: `src/features/splash-disclaimer.js` を新設。`hospital_rounds_disclaimer_last_shown_ms` を localStorage に保存し、30 日経過したら「これは個人メモであり正式な医療記録ではない / 入力不可項目」のダイアログを表示。home 描画後に await で 1 回呼ぶ
+  - **テスト**: 合言葉強度関数のスモークテストを追加 (51 件全通過)
 - **5.1.0**: PWA 初回起動時のデータ整理ダイアログ + Web 版警告バナー + ワークスペース UI の i18n 整備
   - `src/features/pwa-init.js` を新設。`display-mode: standalone` / `navigator.standalone` で PWA 起動を判定し、localStorage の MARKER が未設定なら overlay で「削除して開始 / 続きから使う」を提示。「削除」を選んだ場合は `indexedDB.deleteDatabase` + アプリ関連 localStorage キー全消去 + リロード
   - Web 版警告バナー: `<div id="webWarningBanner">` を header 直前に配置 (sticky)、PWA でない時のみ表示。「⚠ Web 版です。実データの入力は PWA (ホーム画面に追加) からどうぞ」

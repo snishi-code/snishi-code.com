@@ -8,6 +8,7 @@ import { renameTagAt, deleteTagAt, moveTag, isTagGroupingEnabled, getUserGroups,
 import { GROUP_MODE_SINGLE, GROUP_MODE_MULTI } from "../constants.js";
 import { bindLongPressAndDrag } from "../features/drag.js";
 import { startNewFormat, startEditFormat, deleteFormatById } from "../features/formats.js";
+import { renderPassphraseStrength, PASSPHRASE_MIN_LEN } from "../features/passphrase-strength.js";
 import { t } from "../i18n.js";
 
 const STATUS_SWATCHES = { statusYellow: "#f59e0b", statusGreen: "#14b8a6", statusGray: "#6b7280", statusBlue: "#2563eb" };
@@ -159,6 +160,8 @@ function renderAdminExtras() {
   if (wrap) wrap.style.display = (settings.adminEnabled && settings.adminTerminal) ? "" : "none";
   const passInp = document.getElementById("rosterPassphraseInput");
   if (passInp) passInp.value = String(settings.rosterPassphrase || "");
+  const meter = document.getElementById("passphraseStrengthMeter");
+  if (meter) renderPassphraseStrength(meter, settings.rosterPassphrase || "");
   const idLabel = document.getElementById("rosterIdLabel");
   if (idLabel) idLabel.textContent = rosterState?.rosterId ? rosterState.rosterId.slice(0, 18) : "—";
 }
@@ -515,8 +518,18 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
       settings.adminEnabled = true;
       settings.adminTerminal = true;
       if (!settings.rosterPassphrase) {
-        const phrase = prompt(t("admin.passphrase.prompt"));
-        if (phrase && phrase.trim()) settings.rosterPassphrase = phrase.trim();
+        // 12 文字未満なら再入力を促す。キャンセルは何もせず終了。
+        while (true) {
+          const phrase = prompt(t("admin.passphrase.prompt"));
+          if (phrase === null) break;
+          const trimmed = phrase.trim();
+          if ([...trimmed].length < PASSPHRASE_MIN_LEN) {
+            alert(t("admin.passphrase.tooShort", { len: [...trimmed].length }));
+            continue;
+          }
+          settings.rosterPassphrase = trimmed;
+          break;
+        }
       }
     }
     saveSettings();
@@ -529,6 +542,8 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
   const rosterPassphraseInput = document.getElementById("rosterPassphraseInput");
   if (rosterPassphraseInput) rosterPassphraseInput.addEventListener("input", () => {
     settings.rosterPassphrase = String(rosterPassphraseInput.value ?? "");
+    const meter = document.getElementById("passphraseStrengthMeter");
+    if (meter) renderPassphraseStrength(meter, settings.rosterPassphrase);
     saveSettings();
   });
 
