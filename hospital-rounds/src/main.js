@@ -10,7 +10,7 @@ import {
   saveNow, scheduleSave, saveSettings,
   normalizeLoaded, ensurePatientsHaveAllOKeys,
   setMarkUpdatedHandler, requestStoragePersistence,
-  initStore, flushSavePending,
+  initStore, flushSavePending, setOnWorkspaceChanged,
 } from "./store.js";
 
 import { renderHome, updateCountChip, setHomeEditMode } from "./views/home.js";
@@ -35,7 +35,7 @@ import { sortPatientsByRoom, invalidateSortSnapshot } from "./features/room.js";
 import { initAdminUI, refreshAdminAvailability, setAdminAppliedHandler } from "./features/admin-ui.js";
 import { scanQR, isScannerSupported } from "./features/qr-scan.js";
 import { isAdminTerminal, isNonAdminTerminal, isAdminEnabled, findIncompleteAdminPatients, clearIncompleteAdminPatients } from "./features/admin.js";
-import { flushCommit } from "./features/roster.js";
+import { flushCommit, compactHistory } from "./features/roster.js";
 import { initDocsDemo, renderDocsDemo, resetDocsDemo } from "./docs/docs-demo.js";
 import { initNoAutofill } from "./features/no-autofill.js";
 
@@ -48,6 +48,11 @@ import { initNoAutofill } from "./features/no-autofill.js";
 // ES modules の top-level await により main.js モジュール全体が suspend し、
 // vite/ブラウザの ESM ローダがその完了を待ってくれる。
 await initStore();
+
+// アクティブワークスペースの roster commits のうち 30 日より古いものを
+// baseSnapshot に折りたたむ (個人情報の長期保持を避けるため)。
+// 起動直後に 1 回呼ぶだけで idempotent。
+try { compactHistory(); } catch (e) { console.warn("compactHistory failed:", e); }
 
 // ============================
 // Wrappers that capture current context
@@ -494,6 +499,18 @@ document.addEventListener("visibilitychange", () => {
     try { flushCommit(); } catch (_) {}
     try { flushSavePending(); } catch (_) {}
   }
+});
+
+// Workspace 切替時に画面全体を再描画する。store 側で live state は既に
+// 入れ替わっているので、ここでは render を走らせるだけ。
+setOnWorkspaceChanged(() => {
+  refreshPatientUI();
+  // ホーム選択もリセット (前のワークスペースの患者 index を引きずらないように)
+  setSelectedNo(1);
+  // タイトル / app タイトル入力欄も新しい workspace のものに同期
+  const appTitleInput = document.getElementById("appTitleInput");
+  if (appTitleInput) appTitleInput.value = appState.title;
+  document.title = appState.title;
 });
 
 // タイトル入力欄: 共通の編集トグルで管理。普段は readonly でタップ＝ホーム遷移。

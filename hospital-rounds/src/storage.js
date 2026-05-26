@@ -1,21 +1,23 @@
 "use strict";
 
-// Async persistence backed by IndexedDB.
+// Workspace-backed persistence on IndexedDB.
 //
-// Public surface (all async):
-//   loadBundle(id?)   -> parsed bundle | null
-//   saveBundle(b, id?) -> void
-//   listBundles()     -> [{id, title, updatedAt}]
+// データモデル:
+//   - `bundles` object store の 1 レコード = 1 ワークスペース
+//   - 「アクティブワークスペース」を 1 個だけ指し示すポインタを別管理
+//     (= localStorage に保存。サイズが小さく同期 API で済むため)
+//   - 編集中のオートセーブは常にアクティブワークスペースを上書きする
+//   - 切替時はアクティブを保存 → 新ワークスペースをロード → live state 差し替え
 //
-// Migration path:
-//   - On first read, if IndexedDB is empty we also try the legacy localStorage
-//     keys (single-bundle layout used before v4.0). Anything found there is
-//     returned to the caller; the next save automatically lands it in IDB.
-//     localStorage entries are *not* deleted — they remain as a manual rollback
-//     hatch until we decide they are no longer needed.
-//   - In non-browser environments (tests in Node without fake-indexeddb), IDB
-//     is unavailable and load/save become no-ops. Tests should inject state
-//     via `initStore({ bundle: rawFixture })` rather than relying on storage.
+// public surface (すべて async):
+//   loadBundle(id?)            -> parsed bundle | null    (id 省略時は active)
+//   saveBundle(b, id?, label?) -> void                    (id 省略時は active)
+//   listBundles()              -> [{id, label, title, updatedAt}]
+//   deleteBundle(id)           -> void                    (active は拒否)
+//   createWorkspaceRecord(label, bundle) -> id            (新規ワークスペースを作成)
+//
+//   getActiveWorkspaceId()     -> string  (active workspace の ID。同期)
+//   setActiveWorkspaceId(id)   -> void    (同期)
 
 import { BUNDLE_FORMAT, parseBundle } from "./bundle.js";
 
@@ -23,24 +25,46 @@ const DB_NAME = "hospital-rounds";
 const DB_VERSION = 1;
 const STORE_NAME = "bundles";
 
-// 単一 bundle 運用の固定 ID。multi-bundle 化したらここを動的に振り直す。
-export const ACTIVE_BUNDLE_ID = "default";
+// 初回起動時 / v4 系からのマイグレーション時に既定で active になる ID。
+// 既存ユーザの "default" レコードがそのままアクティブになる。
+const DEFAULT_WORKSPACE_ID = "default";
+export const DEFAULT_WORKSPACE_LABEL = "メイン";
+
+// active workspace ID は IDB ではなく localStorage に置く:
+//   - 値は短い文字列 (= 容量問題なし)
+//   - module 初期化や render 直前で同期に読みたい
+//   - 別タブが workspace 切替したとき storage event で気付ける
+const ACTIVE_KEY = "hospital_rounds_active_workspace_id";
 
 // Legacy localStorage keys (pre-IDB). Read-only migration source.
 const LEGACY_BUNDLE_KEY = "rounds_v2_soap_ryoyo_ward_bundle_v1";
 const LEGACY_STATE_KEY = "rounds_v2_soap_ryoyo_ward";
 const LEGACY_SETTINGS_KEY = "rounds_v2_soap_ryoyo_ward_settings_v1";
 
-// デバッグ用 (設定画面の小さなラベル表示など)。本来は内部実装の詳細だが
-// 既存 UI の互換のため公開している。
 export const STORAGE_KEYS = Object.freeze({
   db: DB_NAME,
   store: STORE_NAME,
-  activeBundle: ACTIVE_BUNDLE_ID,
+  defaultWorkspace: DEFAULT_WORKSPACE_ID,
+  activeKey: ACTIVE_KEY,
   legacyBundle: LEGACY_BUNDLE_KEY,
   legacyState: LEGACY_STATE_KEY,
   legacySettings: LEGACY_SETTINGS_KEY,
 });
+
+// ============================
+// Active workspace pointer (localStorage)
+// ============================
+
+export function getActiveWorkspaceId() {
+  if (typeof localStorage === "undefined") return DEFAULT_WORKSPACE_ID;
+  return localStorage.getItem(ACTIVE_KEY) || DEFAULT_WORKSPACE_ID;
+}
+
+export function setActiveWorkspaceId(id) {
+  if (typeof localStorage === "undefined") return;
+  if (!id || typeof id !== "string") return;
+  localStorage.setItem(ACTIVE_KEY, id);
+}
 
 // ============================
 // DB open (lazy, memoized)
@@ -58,7 +82,7 @@ function openDb() {
     _dbPromise = Promise.resolve(null);
     return _dbPromise;
   }
-  _dbPromise = new Promise((resolve, reject) => {
+  _dbPromise = new Promise((resolve) => {
     let req;
     try { req = indexedDB.open(DB_NAME, DB_VERSION); }
     catch (e) { resolve(null); return; }
@@ -66,7 +90,6 @@ function openDb() {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
-        // updatedAt index は将来の一覧並べ替え用。今は使っていない
         store.createIndex("updatedAt", "updatedAt", { unique: false });
       }
     };
@@ -76,14 +99,13 @@ function openDb() {
       resolve(null);
     };
     req.onblocked = () => {
-      console.warn("indexedDB open blocked (other tab holds older version)");
+      console.warn("indexedDB open blocked");
       resolve(null);
     };
   });
   return _dbPromise;
 }
 
-// IDBRequest -> Promise<result>
 function idbReq(req) {
   return new Promise((resolve, reject) => {
     req.onsuccess = () => resolve(req.result);
@@ -91,7 +113,6 @@ function idbReq(req) {
   });
 }
 
-// transaction.oncomplete を待つ。put/delete 後の永続化保証に使う。
 function idbTxDone(tx) {
   return new Promise((resolve, reject) => {
     tx.oncomplete = () => resolve();
@@ -119,7 +140,6 @@ function readLegacyFromLocalStorage() {
     const stateRaw = localStorage.getItem(LEGACY_STATE_KEY);
     const settingsRaw = localStorage.getItem(LEGACY_SETTINGS_KEY);
     if (stateRaw || settingsRaw) {
-      // parseBundle が legacy {appState, settings} 形式を受け付ける
       return {
         appState: stateRaw ? JSON.parse(stateRaw) : null,
         settings: settingsRaw ? JSON.parse(settingsRaw) : null,
@@ -135,13 +155,14 @@ function readLegacyFromLocalStorage() {
 // Public API
 // ============================
 
-export async function loadBundle(id = ACTIVE_BUNDLE_ID) {
+export async function loadBundle(id) {
+  const targetId = id || getActiveWorkspaceId();
   // 1) IDB 優先
   try {
     const db = await openDb();
     if (db) {
       const tx = db.transaction(STORE_NAME, "readonly");
-      const rec = await idbReq(tx.objectStore(STORE_NAME).get(id));
+      const rec = await idbReq(tx.objectStore(STORE_NAME).get(targetId));
       if (rec && rec.bundle) {
         try { return parseBundle(rec.bundle); }
         catch (e) { console.warn("idb bundle parse failed:", e); }
@@ -150,21 +171,36 @@ export async function loadBundle(id = ACTIVE_BUNDLE_ID) {
   } catch (e) {
     console.warn("idb load failed:", e);
   }
-  // 2) localStorage 由来 legacy データ (初回起動時のみヒット)
-  const legacy = readLegacyFromLocalStorage();
-  if (legacy) {
-    try { return parseBundle(legacy); }
-    catch (e) { console.warn("legacy parse failed:", e); }
+  // 2) アクティブが "default" の時のみ legacy fallback (v4 以前の起動時)
+  if (targetId === DEFAULT_WORKSPACE_ID) {
+    const legacy = readLegacyFromLocalStorage();
+    if (legacy) {
+      try { return parseBundle(legacy); }
+      catch (e) { console.warn("legacy parse failed:", e); }
+    }
   }
   return null;
 }
 
-export async function saveBundle(bundle, id = ACTIVE_BUNDLE_ID, label = "") {
+export async function saveBundle(bundle, id, label) {
+  const targetId = id || getActiveWorkspaceId();
   const db = await openDb();
   if (!db) return; // IDB 不可環境 (テスト等) は no-op
+  // label が未指定なら既存レコードの label を温存。新規作成だけ default label
+  let finalLabel = label;
+  if (finalLabel == null) {
+    try {
+      const txR = db.transaction(STORE_NAME, "readonly");
+      const existing = await idbReq(txR.objectStore(STORE_NAME).get(targetId));
+      if (existing && typeof existing.label === "string") finalLabel = existing.label;
+    } catch (_) { /* ignore */ }
+  }
+  if (finalLabel == null) {
+    finalLabel = (targetId === DEFAULT_WORKSPACE_ID) ? DEFAULT_WORKSPACE_LABEL : "";
+  }
   const rec = {
-    id,
-    label: String(label || ""),
+    id: targetId,
+    label: String(finalLabel),
     title: bundle?.sections?.meta?.title || "",
     updatedAt: Date.now(),
     bundle,
@@ -187,7 +223,7 @@ export async function listBundles() {
     const all = await idbReq(tx.objectStore(STORE_NAME).getAll());
     return all.map(r => ({
       id: r.id,
-      label: r.label || "",
+      label: r.label || (r.id === DEFAULT_WORKSPACE_ID ? DEFAULT_WORKSPACE_LABEL : ""),
       title: r.title || "",
       updatedAt: r.updatedAt || 0,
     }));
@@ -197,10 +233,11 @@ export async function listBundles() {
   }
 }
 
-// 指定 ID の bundle を削除。active bundle (= "default") は誤削除防止のため拒否。
+// active workspace は誤削除防止。それ以外は削除可。
 export async function deleteBundle(id) {
-  if (id === ACTIVE_BUNDLE_ID) {
-    throw new Error("cannot delete the active bundle");
+  if (!id) throw new Error("delete: id required");
+  if (id === getActiveWorkspaceId()) {
+    throw new Error("cannot delete the active workspace");
   }
   const db = await openDb();
   if (!db) return;
@@ -214,19 +251,25 @@ export async function deleteBundle(id) {
   }
 }
 
-// 新しいスナップショット用 ID を生成。snap_<タイムスタンプ>_<rand>
-export function newSnapshotId() {
+// 新規ワークスペースの ID を発番。
+export function newWorkspaceId() {
   const ts = Date.now().toString(36);
   const rand = Math.random().toString(36).slice(2, 8);
-  return `snap_${ts}_${rand}`;
+  return `ws_${ts}_${rand}`;
+}
+
+// 新規ワークスペースを作成して IDB に保存。switch はしない (caller の責務)。
+// bundle が空ならアプリ既定の bundle 形を caller 側で構築して渡す想定。
+export async function createWorkspaceRecord(label, bundle) {
+  const id = newWorkspaceId();
+  await saveBundle(bundle, id, String(label || ""));
+  return id;
 }
 
 // ============================
 // Test hooks
 // ============================
 
-// テスト・開発で「DB ハンドルを捨てて再オープン」させたい時用。
-// 通常コードからは呼ばない。
 export function _resetDbForTests() {
   _dbPromise = null;
 }

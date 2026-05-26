@@ -284,3 +284,38 @@ export function appendCommits(commits) {
   }
   scheduleSave();
 }
+
+// ============================
+// 30 日ローリング baseSnapshot (= roster の Git 風コンパクション)
+//
+// `commits[]` のうち `cutoff` より古いものを baseSnapshot に畳み込み、
+// commits[] から落とす。`maxAgeDays` 日より古いデータは原則として
+// 「再生できない」状態にすることで個人情報の長期保持を避ける。
+//
+// 通常はアプリ起動直後に一度呼ぶだけで足りる:
+//   - 起動した日に古い commit があれば前進
+//   - 1 日に何度起動しても idempotent (cutoff より古いものが既に無ければ何もしない)
+// ============================
+export function compactHistory(maxAgeDays = ROSTER_DIFF_WINDOW_DAYS) {
+  if (!rosterState) return false;
+  const commits = rosterState.commits;
+  if (!Array.isArray(commits) || commits.length === 0) return false;
+  const cutoff = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
+  const oldCommits = commits.filter(c => typeof c.ts === "number" && c.ts < cutoff);
+  if (oldCommits.length === 0) return false;
+  // baseSnapshot に古い ops を順に適用
+  let view = {
+    patients: (rosterState.baseSnapshot?.patients || []).map(p => ({ ...p, tags: (p.tags || []).slice() })),
+    tags: (rosterState.baseSnapshot?.tags || []).slice(),
+  };
+  for (const c of oldCommits) view = applyOpsToView(view, c.ops);
+  rosterState.baseSnapshot = {
+    patients: view.patients,
+    tags: view.tags,
+    ts: oldCommits[oldCommits.length - 1].ts,
+  };
+  rosterState.commits = commits.filter(c => !(typeof c.ts === "number" && c.ts < cutoff));
+  // 折りたたんだ結果を次回の save で永続化させる
+  scheduleSave();
+  return true;
+}

@@ -2195,11 +2195,24 @@
     }
 
     .ioDbList:empty::before {
-      content: "保存されたスナップショットはありません";
+      content: "登録されたワークスペースはありません";
       display: block;
       padding: 16px 8px;
       color: var(--muted);
       font-size: 13px;
+      text-align: center;
+    }
+
+    /* active workspace 行: ★ 表示 + 太枠 + 背景色 */
+    .ioDbRow.activeRow {
+      border-color: var(--status-blue-bd);
+      background: var(--status-blue-bg);
+    }
+    .ioDbRowActiveMark {
+      flex: 0 0 auto;
+      width: 18px;
+      color: var(--status-blue-bd);
+      font-weight: 900;
       text-align: center;
     }
 

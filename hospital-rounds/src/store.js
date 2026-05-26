@@ -9,7 +9,12 @@ import {
   clone,
 } from "./constants.js";
 import { projectBundle, parseBundle, getSection, SECTION } from "./bundle.js";
-import { loadBundle as storageLoad, saveBundle as storageSave } from "./storage.js";
+import {
+  loadBundle as storageLoad,
+  saveBundle as storageSave,
+  createWorkspaceRecord,
+  setActiveWorkspaceId,
+} from "./storage.js";
 
 // ============================
 // Settings defaults & normalization
@@ -443,6 +448,71 @@ export function flushSavePending() {
     saveNow();
   }
 }
+
+// ============================
+// Workspace 切替・作成
+// ============================
+//
+// switchWorkspace(targetId):
+//   1) 現在のアクティブを debounce 中のものも含めて確実に保存
+//   2) アクティブポインタを切替
+//   3) 新しいワークスペースを IDB から読み込み live state に適用
+//   4) re-render は caller の責務 (= main.js が wire したコールバック経由)
+//
+// 切替自体は async で 100ms 程度。ユーザ視点では「タップしたらぱっと中身が
+// 入れ替わる」体験になる。
+export async function switchWorkspace(targetId) {
+  if (!targetId) throw new Error("switchWorkspace: targetId required");
+  // 1) 現アクティブを必ず保存
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  try {
+    await storageSave(projectBundle({ appState, rosterState, settings }));
+  } catch (e) {
+    console.error("save before switch failed:", e);
+  }
+  // 2) ポインタ切替
+  setActiveWorkspaceId(targetId);
+  // 3) ロード + 適用
+  let bundle = null;
+  try { bundle = await storageLoad(targetId); }
+  catch (e) { console.warn("load after switch failed:", e); }
+  applyBundleToLive(bundle);
+  // 切替で notify
+  if (_onWorkspaceChanged) {
+    try { _onWorkspaceChanged(targetId); } catch (_) {}
+  }
+}
+
+// 空の新規ワークスペースを作成し、そのワークスペースに切替える。
+// label はユーザが画面で入力した名前。
+export async function createWorkspace(label) {
+  // 1) 現アクティブを保存
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  try {
+    await storageSave(projectBundle({ appState, rosterState, settings }));
+  } catch (e) {
+    console.error("save before create failed:", e);
+  }
+  // 2) 空の bundle を構築 (default 50 患者 + 既定 settings)
+  const emptyAppState = { v: 3, title: "回診", patients: normalizePatientArray(null) };
+  const emptyBundle = projectBundle({
+    appState: emptyAppState,
+    rosterState: null,
+    settings: defaultSettings(),
+  });
+  // 3) IDB に新規エントリを作成
+  const newId = await createWorkspaceRecord(label, emptyBundle);
+  // 4) アクティブを切替えて live state に適用
+  setActiveWorkspaceId(newId);
+  applyBundleToLive(parseBundle(emptyBundle));
+  if (_onWorkspaceChanged) {
+    try { _onWorkspaceChanged(newId); } catch (_) {}
+  }
+  return newId;
+}
+
+let _onWorkspaceChanged = null;
+export function setOnWorkspaceChanged(fn) { _onWorkspaceChanged = fn; }
 
 // Settings is part of the same bundle now, so saving settings rewrites the
 // whole snapshot. The function name is kept so existing call sites don't have

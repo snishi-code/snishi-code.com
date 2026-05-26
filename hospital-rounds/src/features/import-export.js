@@ -5,14 +5,14 @@ import {
   setAppState, setSettings, setRosterState,
   saveNow, saveSettings, normalizeLoaded, normalizeRosterMeta,
   ensurePatientsHaveAllOKeys,
+  switchWorkspace, createWorkspace,
 } from "../store.js";
 import { STATUS } from "../constants.js";
 import {
   projectBundle, parseBundle, getSection, SECTION,
 } from "../bundle.js";
 import {
-  listBundles, loadBundle, saveBundle, deleteBundle, newSnapshotId,
-  ACTIVE_BUNDLE_ID,
+  listBundles, deleteBundle, getActiveWorkspaceId,
 } from "../storage.js";
 import { recordOp } from "./roster.js";
 import { t } from "../i18n.js";
@@ -250,25 +250,23 @@ export function initImportExport(callbacks) {
   }
 
   // ============================
-  // 入出力 chooser: 端末ファイル ↔ DB スナップショット トグル
+  // 入出力 chooser: ワークスペース ↔ 端末ファイル トグル
   // ============================
   const ioOverlay = document.getElementById("ioChooserOverlay");
   const ioTitle = document.getElementById("ioChooserTitle");
   const ioToggleBtns = ioOverlay ? ioOverlay.querySelectorAll(".ioSourceToggleBtn") : [];
   const ioPanelFileImport = document.getElementById("ioPanelFileImport");
   const ioPanelFileExport = document.getElementById("ioPanelFileExport");
-  const ioPanelDbImport = document.getElementById("ioPanelDbImport");
-  const ioPanelDbExport = document.getElementById("ioPanelDbExport");
+  const ioPanelWorkspaces = document.getElementById("ioPanelWorkspaces");
   const ioFilePickBtn = document.getElementById("ioFilePickBtn");
   const ioFileSaveBtn = document.getElementById("ioFileSaveBtn");
-  const ioDbImportList = document.getElementById("ioDbImportList");
-  const ioDbExportList = document.getElementById("ioDbExportList");
-  const ioDbLabelInp = document.getElementById("ioDbLabelInp");
-  const ioDbSaveBtn = document.getElementById("ioDbSaveBtn");
+  const ioWorkspaceList = document.getElementById("ioWorkspaceList");
+  const ioWsLabelInp = document.getElementById("ioWsLabelInp");
+  const ioWsCreateBtn = document.getElementById("ioWsCreateBtn");
   const ioCancelBtn = document.getElementById("ioChooserCancelBtn");
 
-  let _ioMode = "import"; // "import" | "export"
-  let _ioSource = "file"; // "file" | "db"
+  let _ioMode = "import"; // "import" (取込) | "export" (保存)
+  let _ioSource = "ws";   // "ws" (ワークスペース) | "file" (端末ファイル)
 
   function closeIoChooser() {
     if (ioOverlay) ioOverlay.classList.remove("active");
@@ -285,60 +283,85 @@ export function initImportExport(callbacks) {
     return `${yy}-${mm}-${dd} ${hh}:${mi}`;
   }
 
-  function renderDbList(hostEl, { allowImport, allowDelete, onImport, onDelete }) {
-    if (!hostEl) return Promise.resolve();
-    hostEl.textContent = "";
-    return listBundles().then(all => {
-      // active bundle (= "default") は「現在のデータ」なので一覧から除外。
-      // 取込/削除対象になるのはユーザが明示的に作ったスナップショットのみ。
-      const snaps = all
-        .filter(r => r.id !== ACTIVE_BUNDLE_ID)
-        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-      for (const r of snaps) {
-        const row = document.createElement("div");
-        row.className = "ioDbRow";
-
-        const main = document.createElement("div");
-        main.className = "ioDbRowMain";
-        const lbl = document.createElement("div");
-        lbl.className = "ioDbRowLabel";
-        lbl.textContent = r.label || r.title || "(無題)";
-        const meta = document.createElement("div");
-        meta.className = "ioDbRowMeta";
-        meta.textContent = `${fmtTimestamp(r.updatedAt)} ・ ${r.title || ""}`;
-        main.appendChild(lbl);
-        main.appendChild(meta);
-        if (allowImport) {
-          main.addEventListener("click", () => onImport && onImport(r));
-        } else {
-          main.style.cursor = "default";
-        }
-        row.appendChild(main);
-
-        if (allowDelete) {
-          const del = document.createElement("button");
-          del.type = "button";
-          del.className = "ioDbRowDel";
-          del.title = "削除";
-          del.setAttribute("aria-label", "削除");
-          del.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
-          del.addEventListener("click", (e) => {
-            e.stopPropagation();
-            onDelete && onDelete(r);
-          });
-          row.appendChild(del);
-        }
-
-        hostEl.appendChild(row);
-      }
+  async function renderWorkspaceList() {
+    if (!ioWorkspaceList) return;
+    ioWorkspaceList.textContent = "";
+    const all = await listBundles();
+    const activeId = getActiveWorkspaceId();
+    // active が一番上、その他は updatedAt 降順
+    const sorted = all.slice().sort((a, b) => {
+      if (a.id === activeId) return -1;
+      if (b.id === activeId) return 1;
+      return (b.updatedAt || 0) - (a.updatedAt || 0);
     });
+    for (const r of sorted) {
+      const isActive = (r.id === activeId);
+      const row = document.createElement("div");
+      row.className = "ioDbRow" + (isActive ? " activeRow" : "");
+
+      if (isActive) {
+        const mark = document.createElement("div");
+        mark.className = "ioDbRowActiveMark";
+        mark.textContent = "★";
+        mark.title = "現在のワークスペース";
+        row.appendChild(mark);
+      }
+
+      const main = document.createElement("div");
+      main.className = "ioDbRowMain";
+      const lbl = document.createElement("div");
+      lbl.className = "ioDbRowLabel";
+      lbl.textContent = r.label || r.title || "(無題)";
+      const meta = document.createElement("div");
+      meta.className = "ioDbRowMeta";
+      meta.textContent = `${fmtTimestamp(r.updatedAt)} ・ ${r.title || ""}`;
+      main.appendChild(lbl);
+      main.appendChild(meta);
+      if (!isActive) {
+        main.addEventListener("click", async () => {
+          try {
+            await switchWorkspace(r.id);
+            vibrate();
+            closeIoChooser();
+          } catch (err) {
+            console.error("workspace switch failed:", err);
+            alert("ワークスペース切替に失敗しました");
+          }
+        });
+      } else {
+        main.style.cursor = "default";
+      }
+      row.appendChild(main);
+
+      // active は誤削除防止
+      if (!isActive) {
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "ioDbRowDel";
+        del.title = "削除";
+        del.setAttribute("aria-label", "削除");
+        del.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+        del.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          if (!confirm(`ワークスペース「${r.label || r.title || "(無題)"}」を削除しますか？`)) return;
+          try {
+            await deleteBundle(r.id);
+            await renderWorkspaceList();
+          } catch (err) {
+            console.error("workspace delete failed:", err);
+            alert("削除に失敗しました");
+          }
+        });
+        row.appendChild(del);
+      }
+
+      ioWorkspaceList.appendChild(row);
+    }
   }
 
   function applyIoMode(mode) {
     _ioMode = mode;
-    if (ioTitle) {
-      ioTitle.textContent = mode === "import" ? "データを取り込む" : "データを保存";
-    }
+    if (ioTitle) ioTitle.textContent = mode === "import" ? "データを取り込む" : "データを保存";
     applyIoSource(_ioSource);
   }
 
@@ -349,62 +372,16 @@ export function initImportExport(callbacks) {
     }
     if (ioPanelFileImport) ioPanelFileImport.style.display = (_ioMode === "import" && source === "file") ? "" : "none";
     if (ioPanelFileExport) ioPanelFileExport.style.display = (_ioMode === "export" && source === "file") ? "" : "none";
-    if (ioPanelDbImport)   ioPanelDbImport.style.display   = (_ioMode === "import" && source === "db")   ? "" : "none";
-    if (ioPanelDbExport)   ioPanelDbExport.style.display   = (_ioMode === "export" && source === "db")   ? "" : "none";
+    // ワークスペースタブは import/export 共通 (タップで切替、入力で新規作成)
+    if (ioPanelWorkspaces) ioPanelWorkspaces.style.display = (source === "ws") ? "" : "none";
 
-    if (_ioMode === "import" && source === "db") {
-      renderDbList(ioDbImportList, {
-        allowImport: true,
-        allowDelete: true,
-        onImport: async (rec) => {
-          try {
-            const bundle = await loadBundle(rec.id);
-            if (!bundle) {
-              alert("選択したスナップショットを読み込めませんでした");
-              return;
-            }
-            closeIoChooser();
-            await importFromBundle(bundle);
-          } catch (err) {
-            console.error("db import failed:", err);
-            alert("DB からの取込に失敗しました");
-          }
-        },
-        onDelete: async (rec) => {
-          if (!confirm(`スナップショット「${rec.label || rec.title || "(無題)"}」を削除しますか？`)) return;
-          try {
-            await deleteBundle(rec.id);
-            applyIoSource("db"); // 同じ panel を再描画
-          } catch (err) {
-            console.error("db delete failed:", err);
-            alert("削除に失敗しました");
-          }
-        },
-      });
-    }
-    if (_ioMode === "export" && source === "db") {
-      renderDbList(ioDbExportList, {
-        allowImport: false,
-        allowDelete: true,
-        onDelete: async (rec) => {
-          if (!confirm(`スナップショット「${rec.label || rec.title || "(無題)"}」を削除しますか？`)) return;
-          try {
-            await deleteBundle(rec.id);
-            await applyIoSource("db"); // re-render
-          } catch (err) {
-            console.error("db delete failed:", err);
-            alert("削除に失敗しました");
-          }
-        },
-      });
-    }
+    if (source === "ws") renderWorkspaceList();
   }
 
   function openIoChooser(mode) {
     if (!ioOverlay) return;
     applyIoMode(mode);
-    // 保存モード時はラベル入力欄を空にしてフォーカス
-    if (mode === "export" && ioDbLabelInp) ioDbLabelInp.value = "";
+    if (ioWsLabelInp) ioWsLabelInp.value = "";
     ioOverlay.classList.add("active");
   }
 
@@ -425,25 +402,21 @@ export function initImportExport(callbacks) {
       downloadCurrentAsJson();
     });
   }
-  if (ioDbSaveBtn) {
-    ioDbSaveBtn.addEventListener("click", async () => {
-      const label = String(ioDbLabelInp?.value || "").trim();
+  if (ioWsCreateBtn) {
+    ioWsCreateBtn.addEventListener("click", async () => {
+      const label = String(ioWsLabelInp?.value || "").trim();
       if (!label) {
-        alert("名前を入力してください");
-        if (ioDbLabelInp) ioDbLabelInp.focus();
+        alert("ワークスペース名を入力してください");
+        if (ioWsLabelInp) ioWsLabelInp.focus();
         return;
       }
       try {
-        const bundle = projectBundle({ appState, rosterState, settings });
-        const id = newSnapshotId();
-        await saveBundle(bundle, id, label);
+        await createWorkspace(label);
         vibrate();
-        // 保存後は一覧を更新して残す (連続保存しないなら閉じてもよいが、確認できた方が安心)
-        await applyIoSource("db");
-        if (ioDbLabelInp) ioDbLabelInp.value = "";
+        closeIoChooser();
       } catch (err) {
-        console.error("db save failed:", err);
-        alert("DB への保存に失敗しました");
+        console.error("workspace create failed:", err);
+        alert("ワークスペース作成に失敗しました");
       }
     });
   }

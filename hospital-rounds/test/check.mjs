@@ -45,13 +45,19 @@ const {
   SECTION, getSection, BUNDLE_FORMAT,
 } = await import(bundleUrl);
 
-// store.js を毎回フレッシュに読み直すヘルパ。
+// store.js を「同じインスタンスで再初期化」するヘルパ。
 // - opts.bundle: 直接渡せば storage を経由せず initStore がそれを採用
 // - opts.legacy: localStorage に legacy bundle を仕込んでから initStore する
 //   (storage.js の localStorage fallback 経路を検査するため)
+//
+// 注意: 以前は import URL に query string を付けてキャッシュバスティングしていたが、
+// store.js と roster.js が別 module instance になると `rosterState` が共有されず
+// テスト失敗するため、同じインスタンスを共有して _resetInitForTests で
+// 内部状態だけリセットする方式に変更。
+let _storeMod = null;
 async function freshStore({ bundle = null, legacy = null } = {}) {
-  // モジュールキャッシュをバイパス。query string で URL を変えるたび新規ロード
-  const mod = await import(storeUrl + `?t=${Math.random()}`);
+  if (!_storeMod) _storeMod = await import(storeUrl);
+  _storeMod._resetInitForTests();
   localStorage.clear();
   if (legacy) {
     if (legacy.bundle) {
@@ -64,8 +70,8 @@ async function freshStore({ bundle = null, legacy = null } = {}) {
       localStorage.setItem("rounds_v2_soap_ryoyo_ward_settings_v1", JSON.stringify(legacy.settings));
     }
   }
-  await mod.initStore(bundle ? { bundle } : undefined);
-  return mod;
+  await _storeMod.initStore(bundle ? { bundle } : undefined);
+  return _storeMod;
 }
 
 // ============================
@@ -495,7 +501,88 @@ await test("storage.loadBundle returns null on clean state", async () => {
 });
 
 // ============================
-// 9) i18n: t() ヘルパが strings.ja.json を引けること
+// 9) roster compactHistory: 古い commit を baseSnapshot に折りたたむ
+// ============================
+section("roster compactHistory (30日ローリング)");
+
+// freshStore と同じ instance を使うことで rosterState を roster.js と共有
+const rosterUrl = pathToFileURL(join(srcDir, "features", "roster.js")).href;
+const rosterMod = await import(rosterUrl);
+
+await test("compactHistory folds old commits into baseSnapshot", async () => {
+  const store = await freshStore();
+  // admin を有効にして rosterState が記録される状態に
+  store.settings.adminEnabled = true;
+  rosterMod.ensureRosterState();
+
+  const now = Date.now();
+  // baseSnapshot は空、commits に「40日前」と「3日前」を 1 つずつ仕込む
+  store.rosterState.baseSnapshot = { patients: [], tags: [], ts: now - 60 * 86400_000 };
+  store.rosterState.commits = [
+    {
+      id: "c1", parent: null, ts: now - 40 * 86400_000, deviceId: "x",
+      ops: [{ type: "add", at: 0, patient: { pid: "p1", name: "古い患者", room: "101", tags: [] } }],
+    },
+    {
+      id: "c2", parent: "c1", ts: now - 3 * 86400_000, deviceId: "x",
+      ops: [{ type: "add", at: 1, patient: { pid: "p2", name: "新しい患者", room: "102", tags: [] } }],
+    },
+  ];
+
+  const changed = rosterMod.compactHistory(30);
+  assert.equal(changed, true, "compaction reported changes");
+  assert.equal(store.rosterState.commits.length, 1, "only the recent commit remains");
+  assert.equal(store.rosterState.commits[0].id, "c2");
+  assert.equal(store.rosterState.baseSnapshot.patients.length, 1, "old commit was folded in");
+  assert.equal(store.rosterState.baseSnapshot.patients[0].name, "古い患者");
+});
+
+await test("compactHistory is idempotent when no old commits", async () => {
+  const store = await freshStore();
+  store.settings.adminEnabled = true;
+  rosterMod.ensureRosterState();
+
+  const now = Date.now();
+  store.rosterState.commits = [
+    { id: "c1", parent: null, ts: now - 1 * 86400_000, deviceId: "x", ops: [] },
+  ];
+  const changed = rosterMod.compactHistory(30);
+  assert.equal(changed, false, "no compaction when all commits are recent");
+  assert.equal(store.rosterState.commits.length, 1);
+});
+
+// ============================
+// 10) storage workspace API: createWorkspaceRecord / getActiveWorkspaceId
+// ============================
+section("storage workspace API");
+
+await test("getActiveWorkspaceId returns 'default' when unset", async () => {
+  const storageUrl = pathToFileURL(join(srcDir, "storage.js")).href;
+  localStorage.clear();
+  const storage = await import(storageUrl + `?t=${Math.random()}`);
+  assert.equal(storage.getActiveWorkspaceId(), "default");
+});
+
+await test("setActiveWorkspaceId persists via localStorage", async () => {
+  const storageUrl = pathToFileURL(join(srcDir, "storage.js")).href;
+  localStorage.clear();
+  const storage = await import(storageUrl + `?t=${Math.random()}`);
+  storage.setActiveWorkspaceId("ws_test123");
+  assert.equal(storage.getActiveWorkspaceId(), "ws_test123");
+});
+
+await test("newWorkspaceId is unique and prefixed 'ws_'", async () => {
+  const storageUrl = pathToFileURL(join(srcDir, "storage.js")).href;
+  const storage = await import(storageUrl + `?t=${Math.random()}`);
+  const a = storage.newWorkspaceId();
+  const b = storage.newWorkspaceId();
+  assert.ok(a.startsWith("ws_"));
+  assert.ok(b.startsWith("ws_"));
+  assert.notEqual(a, b);
+});
+
+// ============================
+// 11) i18n: t() ヘルパが strings.ja.json を引けること
 // ============================
 section("i18n");
 

@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 4.1.1
+現在のバージョン: 5.0.0
 
 ## バージョニング方針
 
@@ -14,6 +14,19 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **5.0.0** (**breaking**): DB をワークスペースモデルに刷新 + roster は 30 日ローリング baseSnapshot で Git 管理 + SOAP/メモ/共有/設定はスナップショット
+  - **データモデル**: IDB の `bundles` object store は「ワークスペース = 病棟・運用単位」のレコード集合。アクティブワークスペース ID は `localStorage["hospital_rounds_active_workspace_id"]` に保存 (= 同期 API で読みたい・ サイズ小)。既存 `default` レコードはそのままアクティブとして引き継ぐ
+  - **切替 UX**: ワークスペース一覧でタップ → store が現アクティブを保存 → ポインタ更新 → 新ワークスペースを IDB から読み込み → live state 差し替え → `setOnWorkspaceChanged` ハンドラで全画面 re-render。「ぱっと入れ替わる」体験
+  - **新規ワークスペース**: 入力欄の名前で `ws_<ts>_<rand>` の ID を発番し、空の bundle (default 50 患者 + 既定 settings) を作成、自動切替
+  - **roster の 30 日ローリング**: `compactHistory(maxAgeDays)` を新設。`commits[]` のうち cutoff より古いものを baseSnapshot に折りたたみ、commits[] から落とす。アプリ起動直後に 1 回呼ぶだけで idempotent。個人情報の長期保持を回避する設計
+  - **データ分類**:
+    - Git 管理 (commit log + 30 日 baseSnapshot): roster identity (患者の名前・部屋・タグ・追加/削除/移動・タグリスト)
+    - スナップショット (latest only): patients[].s / o / a / p / oFree / memo / shared / settings / meta
+    - 切替はスナップショットを丸ごと入れ替え。SOAP は私物として保持されるが、別ワークスペースに切替えると当然見えなくなる (各ワークスペースは独立した bundle)
+  - **UI 変更**: 入出力 chooser のタブを「ワークスペース」「端末ファイル」に再構成。`snap_*` の概念は撤廃 (既存の `snap_*` レコードはそのままワークスペースとして昇格して残る)。アクティブ workspace の行に ★ マークと色枠
+  - **storage.js API**: `getActiveWorkspaceId()` / `setActiveWorkspaceId(id)` / `newWorkspaceId()` / `createWorkspaceRecord(label, bundle)` を新規 export。旧 `ACTIVE_BUNDLE_ID` / `newSnapshotId` は撤去
+  - **store.js API**: `switchWorkspace(id)` / `createWorkspace(label)` / `setOnWorkspaceChanged(fn)` を新規 export
+  - **テスト**: roster compactHistory のスモークテスト、storage workspace API のテストを追加 (48 件全通過)
 - **4.1.1**: iOS でフォーマット入力モーダルの数値→備考/テキスト欄に移った時にテンキーが残るバグを修正
   - `buildNumericRow` の memo (`<input type=text>`) と `buildTextRow` の textarea に `inputMode = "text"` を明示的に指定。iOS Safari が直前 input の inputMode を引きずる既知バグへの対処
 - **4.1.0**: ヘッダーメニューの入出力に「端末ファイル / DB スナップショット」トグル UI を追加
