@@ -807,7 +807,30 @@
       padding: 4px 0;
     }
 
-    .formatInputRow {
+    /* 数値型: 4 列 grid で行間を縦揃え (label / value / unit / memo)。
+       value は実数値より極端に広くならないよう minmax で上限を抑える。
+       memo は残り全幅。 */
+    .formatInputBody.numeric {
+      display: grid;
+      grid-template-columns: max-content minmax(72px, 96px) max-content minmax(80px, 1fr);
+      column-gap: 8px;
+      row-gap: 8px;
+      align-items: center;
+    }
+    .formatInputBody.numeric .formatInputRow.numeric {
+      display: contents;
+    }
+
+    /* 狭幅 (~480px 未満) では値欄をやや広げて触りやすく */
+    @media (max-width: 480px) {
+      .formatInputBody.numeric {
+        grid-template-columns: max-content minmax(64px, 1fr) max-content minmax(80px, 1.4fr);
+        column-gap: 6px;
+      }
+    }
+
+    /* text 型: 従来の flex (1 行 = label + textarea + 規定文ボタン) */
+    .formatInputBody.text .formatInputRow {
       display: flex;
       align-items: center;
       gap: 6px;
@@ -817,21 +840,27 @@
     }
 
     .formatInputLabel {
-      flex: 0 0 64px;
       font-weight: 700;
       font-size: 14px;
       color: var(--text);
       min-width: 0;
     }
+    .formatInputBody.text .formatInputLabel {
+      flex: 0 0 64px;
+    }
 
     .formatInputValue {
-      flex: 1 1 80px;
       min-width: 0;
+      width: 100%;
       padding: 6px 8px;
       border: 1px solid var(--line);
       border-radius: 6px;
       font-size: 14px;
       box-sizing: border-box;
+    }
+    .formatInputBody.text .formatInputValue {
+      flex: 1 1 80px;
+      width: auto;
     }
 
     .formatInputText {
@@ -844,12 +873,12 @@
     .formatInputUnit {
       font-size: 12px;
       color: var(--muted, #6b7280);
-      flex: 0 0 auto;
+      min-width: 0;
     }
 
     .formatInputMemo {
-      flex: 1 1 80px;
       min-width: 0;
+      width: 100%;
       padding: 6px 8px;
       border: 1px solid var(--line);
       border-radius: 6px;
@@ -1720,6 +1749,20 @@
       width: 16px;
       height: 16px;
       flex-shrink: 0;
+    }
+
+    /* onItemClick あり picker (= format picker): 名前は独立クリック領域。
+       checkbox = お気に入りトグル / 名前タップ = 呼び出し と役割を分離する。
+       hover でクリック可能であることを示す。 */
+    .tagPickerOptName {
+      flex: 1 1 auto;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+    .tagPickerOptName:hover {
+      background: var(--status-blue-bg);
+      color: var(--status-blue-text);
     }
 
     .tagPickerEmpty {

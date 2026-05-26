@@ -70,7 +70,7 @@ function makeAddFormatWidget(panel, onAdded) {
 }
 
 // パネルごとに 1 つ作る format picker (タグピッカーと同じ UI = makeTagPicker を再利用)。
-// 「選択=お気に入り (pinned 全患者共通)」「+ で新規フォーマット作成」。
+// 「checkbox=お気に入り (pinned 全患者共通) / 名前タップ=入力モーダル直開」と役割分離。
 // アイコンはハンバーガー (一覧を開く意味)。strip 右端の単一エントリポイントを兼ねる。
 function makeFormatPicker(panel, onChange) {
   return makeTagPicker({
@@ -85,6 +85,10 @@ function makeFormatPicker(panel, onChange) {
     iconOnly: true,
     iconHtml: FORMAT_PICKER_HAMBURGER_SVG,
     addWidget: (onAdded) => makeAddFormatWidget(panel, onAdded),
+    onItemClick: (entry) => {
+      const f = formatsForPanel(panel).find(x => x.id === entry.value);
+      if (f) openFormatInputModal(f, panel);
+    },
   });
 }
 
@@ -128,6 +132,9 @@ function openFormatInputModal(format, panel) {
 
   title.textContent = format.name;
   body.textContent = "";
+  // 数値型は CSS grid で縦揃え (label / value / unit / memo の 4 列)。
+  // text 型は従来の flex のまま (1 行 = label + textarea + 規定文ボタン)。
+  body.className = "formatInputBody " + (format.type === "numeric" ? "numeric" : "text");
   _currentInput = { format, panel, rowEls: [] };
 
   for (const item of format.items) {
@@ -147,6 +154,7 @@ function openFormatInputModal(format, panel) {
 }
 
 function buildNumericRow(host, item) {
+  // display: contents で 4 子要素を body の grid に直接展開し、行間で縦揃え
   const row = document.createElement("div");
   row.className = "formatInputRow numeric";
 
@@ -161,12 +169,11 @@ function buildNumericRow(host, item) {
   val.className = "formatInputValue";
   row.appendChild(val);
 
-  if (item.unit) {
-    const unit = document.createElement("span");
-    unit.className = "formatInputUnit";
-    unit.textContent = item.unit;
-    row.appendChild(unit);
-  }
+  // unit セルは常に出す (item.unit が無くても grid 列を揃える)
+  const unit = document.createElement("span");
+  unit.className = "formatInputUnit";
+  unit.textContent = item.unit || "";
+  row.appendChild(unit);
 
   const memo = document.createElement("input");
   memo.type = "text";

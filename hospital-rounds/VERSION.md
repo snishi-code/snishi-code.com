@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 3.4.0
+現在のバージョン: 3.5.0
 
 ## バージョニング方針
 
@@ -14,6 +14,12 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **3.5.0**: フォーマット picker で「checkbox = お気に入り / 名前タップ = 呼び出し」と役割分離 + 数値型入力モーダルを grid で縦揃え
+  - `makeTagPicker` に `onItemClick(entry)` オプションを追加。指定時は行を `<label>` から `<div>` に切り替え、checkbox は従来通り選択トグル、名前部 `.tagPickerOptName` を独立クリック領域にする。フォーマット picker でこれを使い、お気に入り未登録のフォーマットも一度のタップで入力モーダルを開けるように
+  - 副次バグ修正: `makeTagPicker` 非グループ経路の末尾 `+` ボタンが `addWidget` 上書きを無視して `makeAddTagWidget` 固定だった (= フォーマット picker でも `+` がタグ追加 UI を出してしまうケース)。`buildAddWidget` に統一
+  - 数値型 (`format.type === "numeric"`) の入力モーダル本体を `display: grid` 化し、`label / value / unit / memo` の 4 列で行間縦揃え。`.formatInputRow` は `display: contents` で grid に直接展開
+  - value 入力欄は `minmax(72px, 96px)` で「実数値より極端に広くならない」幅を強制。狭幅 (~480px 未満) では `minmax(64px, 1fr)` に切り替えてタッチしやすく
+  - unit セルは値が無くても常に出して列を揃える (RR のような単位なしの行で memo の位置がズレないように)
 - **3.4.0**: タグ・フォーマット strip のはみ出し挙動を `…` → 横スクロールに変更 + フォーマット strip をハンバーガー 1 個に集約
   - `inlineTagsRow` (患者ヘッダのタグ表示) を `overflow: hidden` + `::after "…"` から `overflow-x: auto` に変更。`recomputeInlineTagsOverflow` / ResizeObserver も撤去 (CSS のみで完結)
   - `formatStrip` を `[左 picker-icon][pinned chips][右 ≡]` から `[pinned chips (横スクロール)][右 ハンバーガー picker]` に再構成。左右の picker icon と `≡` が同じ「全フォーマット一覧」機能で重複していたのを 1 個に集約

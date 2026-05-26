@@ -437,6 +437,8 @@ export function makeTagPicker(opts) {
     iconOnly = false,          // trigger に選択チップを出さず、アイコンだけ表示する
     iconHtml = null,           // iconOnly のときに使う SVG 文字列 (省略時は TAG_SVG)
     addWidget = null,          // (onAddedCb) => element. 省略時は makeAddTagWidget
+    onItemClick = null,        // (entry) => void. 指定時は名前タップで popup を閉じてこれを呼ぶ
+                               //                  (checkbox はそのままお気に入りトグル)
   } = opts;
 
   // 追加ウィジェット (タグ用は makeAddTagWidget、フォーマット用は外から差し替え可能)
@@ -554,8 +556,10 @@ export function makeTagPicker(opts) {
     }
     const current = new Set(getSelected());
     for (const e of list) {
-      const lbl = document.createElement("label");
-      lbl.className = "tagPickerOpt";
+      // onItemClick あり: 行は <div>。checkbox = お気に入り、name = 呼び出しと役割分離
+      // onItemClick なし: 行は <label>。clickable area 全体で checkbox トグル (現状互換)
+      const row = document.createElement(onItemClick ? "div" : "label");
+      row.className = "tagPickerOpt";
       const cb = document.createElement("input");
       cb.type = "checkbox";
       cb.checked = current.has(e.value);
@@ -567,22 +571,30 @@ export function makeTagPicker(opts) {
         refreshTrigger();
         if (onChange) _pendingOnChange = onChange;
       });
-      lbl.appendChild(cb);
+      row.appendChild(cb);
       if (e.color) {
         // Status color: show only the color swatch (no text label, per spec)
         const sw = document.createElement("span");
         sw.style.cssText = `display:inline-block;width:18px;height:18px;border-radius:4px;background:${e.color};border:1px solid ${e.borderColor || "rgba(0,0,0,.2)"};flex-shrink:0;`;
         sw.title = e.label;
         sw.setAttribute("aria-label", e.label);
-        lbl.appendChild(sw);
+        row.appendChild(sw);
       } else {
         const txt = document.createElement("span");
         txt.textContent = e.label;
-        lbl.appendChild(txt);
+        if (onItemClick) {
+          txt.className = "tagPickerOptName";
+          txt.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            closeOpenPopup();
+            onItemClick(e);
+          });
+        }
+        row.appendChild(txt);
       }
-      popup.appendChild(lbl);
+      popup.appendChild(row);
     }
-    popup.appendChild(makeAddTagWidget({ onAdded: () => { refreshPopup(); refreshTrigger(); } }));
+    popup.appendChild(buildAddWidget(() => { refreshPopup(); refreshTrigger(); }));
   }
 
   trigger.addEventListener("click", (e) => {
