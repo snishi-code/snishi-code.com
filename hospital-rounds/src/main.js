@@ -10,6 +10,7 @@ import {
   saveNow, scheduleSave, saveSettings,
   normalizeLoaded, ensurePatientsHaveAllOKeys,
   setMarkUpdatedHandler, requestStoragePersistence,
+  initStore, flushSavePending,
 } from "./store.js";
 
 import { renderHome, updateCountChip, setHomeEditMode } from "./views/home.js";
@@ -37,6 +38,16 @@ import { isAdminTerminal, isNonAdminTerminal, isAdminEnabled, findIncompleteAdmi
 import { flushCommit } from "./features/roster.js";
 import { initDocsDemo, renderDocsDemo, resetDocsDemo } from "./docs/docs-demo.js";
 import { initNoAutofill } from "./features/no-autofill.js";
+
+// ============================
+// Async hydration (IndexedDB)
+// ============================
+// store.js は module-init 時に state を読み込まなくなったので、ここで明示的に
+// 待つ。以降のすべての top-level コード (renderHome / appTitleInput.value =
+// appState.title 等) は hydration 完了後に実行される。
+// ES modules の top-level await により main.js モジュール全体が suspend し、
+// vite/ブラウザの ESM ローダがその完了を待ってくれる。
+await initStore();
 
 // ============================
 // Wrappers that capture current context
@@ -471,9 +482,19 @@ function updateAppTitle(val) {
 // Drop the room-sort snapshot whenever any patient is edited
 setMarkUpdatedHandler(() => invalidateSortSnapshot());
 
-// Flush any pending op-batch when leaving the app or backgrounding
-window.addEventListener("beforeunload", () => { try { flushCommit(); } catch (_) {} });
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") { try { flushCommit(); } catch (_) {} } });
+// Flush any pending op-batch + debounce 中の save を、離脱・バックグラウンド化時に
+// 即時フラッシュ。IDB は async だが microtask 単位で transaction が開始されれば
+// page hide 中も完了することが多い。
+window.addEventListener("beforeunload", () => {
+  try { flushCommit(); } catch (_) {}
+  try { flushSavePending(); } catch (_) {}
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    try { flushCommit(); } catch (_) {}
+    try { flushSavePending(); } catch (_) {}
+  }
+});
 
 // タイトル入力欄: 共通の編集トグルで管理。普段は readonly でタップ＝ホーム遷移。
 // 鉛筆タップで編集モード、外側クリック・ビュー遷移・Enter で確定。
@@ -558,7 +579,7 @@ document.getElementById("settingsImportBtn")?.addEventListener("click", closeHea
 document.getElementById("settingsExportBtn")?.addEventListener("click", closeHeaderMenu);
 
 const storageKeyLabel = document.getElementById("storageKeyLabel");
-if (storageKeyLabel) storageKeyLabel.textContent = STORAGE_KEYS.bundle;
+if (storageKeyLabel) storageKeyLabel.textContent = `${STORAGE_KEYS.db}.${STORAGE_KEYS.store}`;
 
 requestStoragePersistence();
 

@@ -8,7 +8,7 @@ import {
   DEFAULT_ROSTER_PASSPHRASE, DEFAULT_TAG_GROUPING_ENABLED,
   clone,
 } from "./constants.js";
-import { projectBundle, getSection, SECTION } from "./bundle.js";
+import { projectBundle, parseBundle, getSection, SECTION } from "./bundle.js";
 import { loadBundle as storageLoad, saveBundle as storageSave } from "./storage.js";
 
 // ============================
@@ -384,30 +384,71 @@ function applyBundleToLive(bundle) {
   });
 }
 
-// Module-init load: hydrate from storage before any other module reads state.
-applyBundleToLive(storageLoad());
+// Async hydration. main.js must `await initStore()` before rendering anything
+// that reads state. Subsequent calls are idempotent (the promise is memoized).
+//
+// Tests can pass `{ bundle: rawFixture }` to inject state directly without
+// touching the storage backend. `parseBundle` runs on raw input so both bundle
+// format and legacy {appState, settings} shapes are accepted.
+let _initPromise = null;
+
+export function initStore(opts) {
+  if (_initPromise) return _initPromise;
+  _initPromise = (async () => {
+    let bundle = null;
+    if (opts && opts.bundle) {
+      try { bundle = parseBundle(opts.bundle); }
+      catch (e) { console.warn("initStore: seed parse failed:", e); }
+    } else {
+      try { bundle = await storageLoad(); }
+      catch (e) { console.warn("initStore: storage load failed:", e); }
+    }
+    applyBundleToLive(bundle);
+  })();
+  return _initPromise;
+}
+
+// テスト用: 次の initStore() を再実行できるよう内部状態をリセットする。
+// 通常コードからは呼ばない。
+export function _resetInitForTests() {
+  _initPromise = null;
+}
 
 let saveTimer = null;
 
 export function scheduleSave() {
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveNow, 180);
+  saveTimer = setTimeout(() => { saveNow(); }, 180);
 }
 
-export function saveNow() {
+// async になったが「fire and forget」呼び出しが多いので返り値を await する
+// 義務はない。内部 try/catch で失敗は console に出すだけ。
+export async function saveNow() {
   saveTimer = null;
   try {
-    storageSave(projectBundle({ appState, rosterState, settings }));
+    await storageSave(projectBundle({ appState, rosterState, settings }));
   } catch (e) {
     console.error("save failed:", e);
+  }
+}
+
+// beforeunload / visibilitychange="hidden" で呼ぶ用。debounce 中のセーブを
+// 即時実行に切り替える。IDB トランザクションは microtask レベルで開始すれば
+// page hide 中も完了することが多い (Chrome / Safari)。
+export function flushSavePending() {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    // 戻り値は捨てる。unload 経路で await できないため fire and forget
+    saveNow();
   }
 }
 
 // Settings is part of the same bundle now, so saving settings rewrites the
 // whole snapshot. The function name is kept so existing call sites don't have
 // to change.
-export function saveSettings() {
-  saveNow();
+export async function saveSettings() {
+  return saveNow();
 }
 
 // Legacy compat: returns the clinical-only appState. Roster meta and settings

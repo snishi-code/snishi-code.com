@@ -6,6 +6,10 @@
 // store.js のコールド／ウォームブートまで一通り走らせ、main の挙動に近い経路で
 // データ層が壊れていないかを確認する。
 //
+// v4 以降: 永続化は IndexedDB だが Node には indexedDB が無いため、
+// テストは「fixture を初期 bundle として直接 initStore に渡す」方式で
+// 状態を仕込む (storage.js には触らない)。
+//
 // 使い方:   npm test
 
 import { strict as assert } from "node:assert";
@@ -16,6 +20,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // ============================
 // Browser API stubs
 // ============================
+// localStorage stub は legacy fallback 経路を含めて検査するため残す
+// (IDB が空でかつ legacy localStorage に bundle がある時の挙動)
 class LocalStorageStub {
   constructor() { this._data = {}; }
   getItem(k) { return this._data[k] ?? null; }
@@ -39,11 +45,27 @@ const {
   SECTION, getSection, BUNDLE_FORMAT,
 } = await import(bundleUrl);
 
-// Re-import store.js with a unique URL each time so the module-init code
-// (which reads localStorage) runs fresh against whatever fixture we just
-// loaded into the stub.
-async function freshStore() {
-  return await import(storeUrl + `?t=${Math.random()}`);
+// store.js を毎回フレッシュに読み直すヘルパ。
+// - opts.bundle: 直接渡せば storage を経由せず initStore がそれを採用
+// - opts.legacy: localStorage に legacy bundle を仕込んでから initStore する
+//   (storage.js の localStorage fallback 経路を検査するため)
+async function freshStore({ bundle = null, legacy = null } = {}) {
+  // モジュールキャッシュをバイパス。query string で URL を変えるたび新規ロード
+  const mod = await import(storeUrl + `?t=${Math.random()}`);
+  localStorage.clear();
+  if (legacy) {
+    if (legacy.bundle) {
+      localStorage.setItem("rounds_v2_soap_ryoyo_ward_bundle_v1", JSON.stringify(legacy.bundle));
+    }
+    if (legacy.appState) {
+      localStorage.setItem("rounds_v2_soap_ryoyo_ward", JSON.stringify(legacy.appState));
+    }
+    if (legacy.settings) {
+      localStorage.setItem("rounds_v2_soap_ryoyo_ward_settings_v1", JSON.stringify(legacy.settings));
+    }
+  }
+  await mod.initStore(bundle ? { bundle } : undefined);
+  return mod;
 }
 
 // ============================
@@ -74,8 +96,7 @@ function section(label) {
 // ============================
 section("cold boot");
 
-await test("clean localStorage → defaults populated", async () => {
-  localStorage.clear();
+await test("empty storage → defaults populated", async () => {
   const store = await freshStore();
   assert.equal(store.appState.patients.length, 50, "50 default patient slots");
   assert.equal(store.appState.title, "回診");
@@ -156,22 +177,13 @@ for (const [name, raw] of Object.entries(fixtures)) {
 }
 
 // ============================
-// 4) Warm boot: fixture in storage → store.js hydrates
+// 4) Warm boot: fixture as initStore seed
 // ============================
 section("warm boot from fixture");
 
 for (const [name, raw] of Object.entries(fixtures)) {
   await test(`${name} hydrates store.js`, async () => {
-    localStorage.clear();
-    if (raw.format === BUNDLE_FORMAT) {
-      localStorage.setItem("rounds_v2_soap_ryoyo_ward_bundle_v1", JSON.stringify(raw));
-    } else if (raw.appState) {
-      localStorage.setItem("rounds_v2_soap_ryoyo_ward", JSON.stringify(raw.appState));
-      if (raw.settings) {
-        localStorage.setItem("rounds_v2_soap_ryoyo_ward_settings_v1", JSON.stringify(raw.settings));
-      }
-    }
-    const store = await freshStore();
+    const store = await freshStore({ bundle: raw });
 
     // Title round-trips through normalizeLoaded
     const expectedTitle = raw.format === BUNDLE_FORMAT
@@ -209,14 +221,12 @@ for (const [name, raw] of Object.entries(fixtures)) {
 section("isPatientEmpty");
 
 await test("default patient (status NONE, all empty) IS empty", async () => {
-  localStorage.clear();
   const store = await freshStore();
   const p = store.makeDefaultPatient();
   assert.equal(store.isPatientEmpty(p), true);
 });
 
 await test("status NONE + name set is NOT empty", async () => {
-  localStorage.clear();
   const store = await freshStore();
   const p = store.makeDefaultPatient();
   p.name = "山田";
@@ -224,7 +234,6 @@ await test("status NONE + name set is NOT empty", async () => {
 });
 
 await test("status NONE + room set is NOT empty", async () => {
-  localStorage.clear();
   const store = await freshStore();
   const p = store.makeDefaultPatient();
   p.room = "301";
@@ -232,7 +241,6 @@ await test("status NONE + room set is NOT empty", async () => {
 });
 
 await test("status NONE + tag set is NOT empty", async () => {
-  localStorage.clear();
   const store = await freshStore();
   const p = store.makeDefaultPatient();
   p.tags = ["A"];
@@ -240,7 +248,6 @@ await test("status NONE + tag set is NOT empty", async () => {
 });
 
 await test("status NONE + SOAP s is NOT empty", async () => {
-  localStorage.clear();
   const store = await freshStore();
   const p = store.makeDefaultPatient();
   p.s = "発熱あり";
@@ -248,7 +255,6 @@ await test("status NONE + SOAP s is NOT empty", async () => {
 });
 
 await test("status NONE + memo is NOT empty", async () => {
-  localStorage.clear();
   const store = await freshStore();
   const p = store.makeDefaultPatient();
   p.memo = "メモ";
@@ -256,7 +262,6 @@ await test("status NONE + memo is NOT empty", async () => {
 });
 
 await test("status NONE + shared is NOT empty", async () => {
-  localStorage.clear();
   const store = await freshStore();
   const p = store.makeDefaultPatient();
   p.shared = "共有";
@@ -264,7 +269,6 @@ await test("status NONE + shared is NOT empty", async () => {
 });
 
 await test("status NONE + oFree text is NOT empty", async () => {
-  localStorage.clear();
   const store = await freshStore();
   const p = store.makeDefaultPatient();
   p.oFree = "BP 128/76";
@@ -272,7 +276,6 @@ await test("status NONE + oFree text is NOT empty", async () => {
 });
 
 await test("status GRAY (終了マーク) with empty fields is NOT empty", async () => {
-  localStorage.clear();
   const store = await freshStore();
   const p = store.makeDefaultPatient();
   p.status = "gray";
@@ -280,7 +283,6 @@ await test("status GRAY (終了マーク) with empty fields is NOT empty", async
 });
 
 await test("status YELLOW with empty fields is NOT empty", async () => {
-  localStorage.clear();
   const store = await freshStore();
   const p = store.makeDefaultPatient();
   p.status = "yellow";
@@ -288,7 +290,6 @@ await test("status YELLOW with empty fields is NOT empty", async () => {
 });
 
 await test("status GREEN with empty fields is NOT empty", async () => {
-  localStorage.clear();
   const store = await freshStore();
   const p = store.makeDefaultPatient();
   p.status = "green";
@@ -296,7 +297,6 @@ await test("status GREEN with empty fields is NOT empty", async () => {
 });
 
 await test("status BLUE with empty fields is NOT empty", async () => {
-  localStorage.clear();
   const store = await freshStore();
   const p = store.makeDefaultPatient();
   p.status = "blue";
@@ -309,8 +309,6 @@ await test("status BLUE with empty fields is NOT empty", async () => {
 section("legacy migration (vitals + o → oFree)");
 
 await test("legacy vitals are folded into oFree text", async () => {
-  localStorage.clear();
-  // 旧スキーマの bundle を直接保存して読み直す
   const legacyBundle = {
     format: BUNDLE_FORMAT,
     schema: 1,
@@ -334,8 +332,7 @@ await test("legacy vitals are folded into oFree text", async () => {
       }],
     },
   };
-  localStorage.setItem("rounds_v2_soap_ryoyo_ward_bundle_v1", JSON.stringify(legacyBundle));
-  const store = await freshStore();
+  const store = await freshStore({ bundle: legacyBundle });
   const found = store.appState.patients.find(p => p.pid === "p_test_vit");
   assert.ok(found, "patient hydrated");
   assert.equal(found.vitals, undefined, "vitals stripped");
@@ -346,7 +343,6 @@ await test("legacy vitals are folded into oFree text", async () => {
 });
 
 await test("legacy o structured findings fold into oFree with labels", async () => {
-  localStorage.clear();
   const legacyBundle = {
     format: BUNDLE_FORMAT,
     schema: 1,
@@ -377,8 +373,7 @@ await test("legacy o structured findings fold into oFree with labels", async () 
       }],
     },
   };
-  localStorage.setItem("rounds_v2_soap_ryoyo_ward_bundle_v1", JSON.stringify(legacyBundle));
-  const store = await freshStore();
+  const store = await freshStore({ bundle: legacyBundle });
   const found = store.appState.patients.find(p => p.pid === "p_test_o");
   assert.ok(found, "patient hydrated");
   assert.equal(found.o, undefined, "structured o stripped");
@@ -387,7 +382,6 @@ await test("legacy o structured findings fold into oFree with labels", async () 
 });
 
 await test("existing oFree is preserved when vitals/o also present", async () => {
-  localStorage.clear();
   const legacyBundle = {
     format: BUNDLE_FORMAT,
     schema: 1,
@@ -411,8 +405,7 @@ await test("existing oFree is preserved when vitals/o also present", async () =>
       }],
     },
   };
-  localStorage.setItem("rounds_v2_soap_ryoyo_ward_bundle_v1", JSON.stringify(legacyBundle));
-  const store = await freshStore();
+  const store = await freshStore({ bundle: legacyBundle });
   const found = store.appState.patients.find(p => p.pid === "p_test_both");
   assert.ok(found.oFree.includes("既存メモ"), "existing oFree preserved");
   assert.ok(found.oFree.includes("SpO2 98"), "migrated SpO2 appended");
@@ -424,7 +417,6 @@ await test("existing oFree is preserved when vitals/o also present", async () =>
 section("formats");
 
 await test("default formats include バイタル (numeric) and 身体所見 (text)", async () => {
-  localStorage.clear();
   const store = await freshStore();
   const fmts = store.settings.formats;
   assert.ok(Array.isArray(fmts) && fmts.length >= 2, "at least 2 default formats");
@@ -440,13 +432,11 @@ await test("default formats include バイタル (numeric) and 身体所見 (tex
 });
 
 await test("settings.defaults is removed from defaultSettings", async () => {
-  localStorage.clear();
   const store = await freshStore();
   assert.equal(store.settings.defaults, undefined, "no defaults field");
 });
 
 await test("legacy settings.defaults.{a,p} migrate to isDefault text formats", async () => {
-  localStorage.clear();
   const legacyBundle = {
     format: BUNDLE_FORMAT,
     schema: 1,
@@ -458,8 +448,7 @@ await test("legacy settings.defaults.{a,p} migrate to isDefault text formats", a
       patients: [],
     },
   };
-  localStorage.setItem("rounds_v2_soap_ryoyo_ward_bundle_v1", JSON.stringify(legacyBundle));
-  const store = await freshStore();
+  const store = await freshStore({ bundle: legacyBundle });
   const fmts = store.settings.formats;
   const aDef = fmts.find(f => f.panel === "A" && f.isDefault);
   const pDef = fmts.find(f => f.panel === "P" && f.isDefault);
@@ -473,7 +462,40 @@ await test("legacy settings.defaults.{a,p} migrate to isDefault text formats", a
 });
 
 // ============================
-// 8) i18n: t() ヘルパが strings.ja.json を引けること
+// 8) localStorage legacy fallback: 旧 v3 ユーザの初回起動 → IDB 無しでも
+// 既存 localStorage から bundle を拾えること
+// ============================
+section("localStorage legacy fallback (storage.js)");
+
+await test("storage.loadBundle picks up legacy localStorage bundle when IDB unavailable", async () => {
+  const storageUrl = pathToFileURL(join(srcDir, "storage.js")).href;
+  const storage = await import(storageUrl + `?t=${Math.random()}`);
+  localStorage.clear();
+  const legacyBundle = {
+    format: BUNDLE_FORMAT,
+    schema: 1,
+    sections: {
+      meta: { title: "持ち越し" },
+      settings: {},
+      patients: [],
+    },
+  };
+  localStorage.setItem("rounds_v2_soap_ryoyo_ward_bundle_v1", JSON.stringify(legacyBundle));
+  const loaded = await storage.loadBundle();
+  assert.ok(loaded, "loadBundle returned non-null");
+  assert.equal(loaded.sections.meta.title, "持ち越し");
+});
+
+await test("storage.loadBundle returns null on clean state", async () => {
+  const storageUrl = pathToFileURL(join(srcDir, "storage.js")).href;
+  const storage = await import(storageUrl + `?t=${Math.random()}`);
+  localStorage.clear();
+  const loaded = await storage.loadBundle();
+  assert.equal(loaded, null);
+});
+
+// ============================
+// 9) i18n: t() ヘルパが strings.ja.json を引けること
 // ============================
 section("i18n");
 
@@ -496,7 +518,7 @@ await test("t() returns key on missing entry", async () => {
 });
 
 // ============================
-// 9) defaults.json: 既定値が JSON 由来で読み込めること
+// 10) defaults.json: 既定値が JSON 由来で読み込めること
 // ============================
 section("defaults.json");
 

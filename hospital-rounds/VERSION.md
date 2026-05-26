@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 3.5.0
+現在のバージョン: 4.0.0
 
 ## バージョニング方針
 
@@ -14,6 +14,15 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **4.0.0** (**breaking**): 永続化バックエンドを localStorage から IndexedDB に移行 + 起動を async 化
+  - `storage.js` を全面書き換え。`hospital-rounds` DB の `bundles` object store に bundle を 1 件 (id="default") として保存。`createIndex("updatedAt")` も先に貼って将来の multi-bundle / 並べ替えに備える
+  - 初回起動時のみ localStorage の旧キー (`rounds_v2_soap_ryoyo_ward_bundle_v1` 他) を read-once フォールバックとして取り込む。次回 save で自動的に IDB に乗り換わる。localStorage 側は削除せず rollback hatch として残す
+  - `loadBundle / saveBundle / listBundles` を Promise ベースに統一。`saveNow / saveSettings` も async に
+  - `store.js`: module-init 時の同期 hydrate を撤去し、`initStore({bundle?})` を export。テストは `bundle` を直接渡せばストレージを経由しない (fake-indexeddb 等の依存追加なしで Node 上で動かせる)
+  - `main.js`: 起動冒頭に `await initStore()` を追加 (top-level await)。これ以降のすべての top-level 処理は hydration 完了後に走る
+  - `flushSavePending()` を追加。`beforeunload` / `visibilitychange="hidden"` で debounce 中の save を即時 transaction 開始に切替え、データ取りこぼしを抑制
+  - 設定画面の「保存キー: ...」表示を「保存先 (IndexedDB): hospital-rounds.bundles」に変更
+  - JSON ファイル import/export 機能は内部実装そのままで温存 (端末間移行・バックアップ用途)
 - **3.5.0**: フォーマット picker で「checkbox = お気に入り / 名前タップ = 呼び出し」と役割分離 + 数値型入力モーダルを grid で縦揃え
   - `makeTagPicker` に `onItemClick(entry)` オプションを追加。指定時は行を `<label>` から `<div>` に切り替え、checkbox は従来通り選択トグル、名前部 `.tagPickerOptName` を独立クリック領域にする。フォーマット picker でこれを使い、お気に入り未登録のフォーマットも一度のタップで入力モーダルを開けるように
   - 副次バグ修正: `makeTagPicker` 非グループ経路の末尾 `+` ボタンが `addWidget` 上書きを無視して `makeAddTagWidget` 固定だった (= フォーマット picker でも `+` がタグ追加 UI を出してしまうケース)。`buildAddWidget` に統一
