@@ -177,6 +177,9 @@ function buildNumericRow(host, item) {
 
   const memo = document.createElement("input");
   memo.type = "text";
+  // iOS Safari は直前の input の inputMode を引きずってテンキーのままになる
+  // 既知バグがあるため、テキスト入力欄では明示的に "text" を指定する
+  memo.inputMode = "text";
   memo.className = "formatInputMemo";
   memo.placeholder = t("format.placeholder.memo");
   row.appendChild(memo);
@@ -196,6 +199,8 @@ function buildTextRow(host, item) {
 
   const val = document.createElement("textarea");
   val.className = "formatInputValue formatInputText";
+  // 同じく iOS の inputMode 引きずり対策。明示的にテキスト入力を宣言する
+  val.inputMode = "text";
   val.rows = 1;
   row.appendChild(val);
 

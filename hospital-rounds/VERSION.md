@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 4.1.0
+現在のバージョン: 4.1.1
 
 ## バージョニング方針
 
@@ -14,6 +14,8 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **4.1.1**: iOS でフォーマット入力モーダルの数値→備考/テキスト欄に移った時にテンキーが残るバグを修正
+  - `buildNumericRow` の memo (`<input type=text>`) と `buildTextRow` の textarea に `inputMode = "text"` を明示的に指定。iOS Safari が直前 input の inputMode を引きずる既知バグへの対処
 - **4.1.0**: ヘッダーメニューの入出力に「端末ファイル / DB スナップショット」トグル UI を追加
   - 取込・保存いずれも `ioChooserOverlay` を経由するように変更。トグルで「端末ファイル」「DB スナップショット」を切替
   - 取込: DB タブで保存済みスナップショット一覧を表示、行タップで取込 (取込後は既存の「設定込み / 患者のみ」ダイアログに合流)。各行に削除ボタン
