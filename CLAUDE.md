@@ -9,7 +9,7 @@ snishi-code.com のソースリポジトリ。医療・個人向けの PWA / 単
 - **外部送信禁止**: ユーザーが入力したデータは端末内にのみ保存する
   - `fetch` / `XMLHttpRequest` / `WebSocket` / `navigator.sendBeacon` 等による個人・患者データの外部送信は一切実装しない
   - Google Analytics、Sentry、Mixpanel 等のトラッキング・エラー収集ライブラリは導入しない
-- **ストレージ**: `localStorage` を基本とする。外部DBやクラウド同期は使わない
+- **ストレージ**: アプリデータ本体は **IndexedDB**。小さなポインタ・初回起動マーカーなど数バイトの値は `localStorage` を許容 (同期 API で読みたい用途のみ)。外部DBやクラウド同期は使わない
 - **オフライン動作前提**: ネット接続がなくても全機能が使えるように設計する
 
 ## 配布・ビルド
@@ -79,9 +79,45 @@ snishi-code.com のソースリポジトリ。医療・個人向けの PWA / 単
 ### UI・i18n 戦略
 
 - **アイコン中心の UI**: 日本語テキストを極力減らし、UI そのものを言語非依存に保つ
-- 全アイコンに `title` / `aria-label` を付与（スクリーンリーダー対応 + 将来の i18n key 化の足場）
+- 全アイコンに `title` / `aria-label` を付与（スクリーンリーダー対応 + i18n key 化の足場）
 - ユーザー向け説明は **「？」ボタン → 説明書 HTML** に集約。多言語化は説明書HTMLだけ用意すれば済む構造
-- 確認ダイアログ（`confirm()`/`alert()`）は将来的に翻訳対象になるので、文字列を1箇所に集めて i18n 化しやすくしておく
+
+### i18n 実装ルール (新規 UI 追加時は必ず適用)
+
+各アプリには `src/strings.<lang>.json` (例: `strings.ja.json`) と `src/i18n.js` の基盤がある。**ユーザの目に触れる文字列を直接ハードコードしてはいけない**。
+
+**ステップ:**
+
+1. **キー追加**: `src/strings.ja.json` に `"feature.scope.purpose": "実際の文言"` を追加。プレースホルダは `{name}` 形式
+2. **静的 HTML**: 属性で記述
+   ```html
+   <button data-i18n="common.save">保存</button>
+   <button data-i18n-title="patient.delete" data-i18n-aria="patient.delete">×</button>
+   <input data-i18n-placeholder="format.placeholder.name" />
+   ```
+   起動時に `applyI18n()` が `t()` で展開する
+3. **動的 JS で生成する DOM**: `import { t } from "../i18n.js"` して `t("key")` を直接呼ぶ
+   ```js
+   btn.textContent = t("common.save");
+   btn.title = t("common.delete");
+   alert(t("import.read.failed"));
+   if (!confirm(t("format.delete.confirm", { name: fmt.name }))) return;
+   ```
+4. **既存キーを再利用**: `common.*` (save / cancel / close / delete / edit / add / apply / normal …) は最初に確認。同じ意味で別キーを増やさない
+
+**禁止事項:**
+
+- `alert("..." )` / `confirm("...")` / `prompt("...")` に日本語リテラルを直接書く
+- `el.textContent = "..."` で UI 用語を書く (技術的な定数文字列なら OK)
+- `el.title = "..."` / `setAttribute("aria-label", "...")` を直接書く
+- CSS の `content:` に翻訳対象テキストを書く (`:empty::before` 等)。これらは JS で要素を作って `t()` を使う
+
+**例外 (i18n 不要)**:
+- console.log / console.warn / console.error の引数 (開発者向けログ)
+- データ層のフィールド名・定数キー (例: `STATUS.YELLOW = "yellow"`)
+- 形マーク類 (例: `★`, `+`, `-`) と SVG path
+
+確認ダイアログだけでなく、**ツールチップ・aria-label・placeholder・popup タイトル・成功/失敗メッセージなど全てが対象**。新機能追加 PR を書く時は最後に `grep -n '"[ぁ-んァ-ヶ一-龯]"' src/` で漏れがないか確認すると良い。
 
 ### アクセシビリティの基本
 
