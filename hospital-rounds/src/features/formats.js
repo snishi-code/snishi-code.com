@@ -22,8 +22,8 @@ import { FORMAT_PANELS, FORMAT_TYPES } from "../constants.js";
 import { makeTagPicker } from "./tags.js";
 import { t } from "../i18n.js";
 
-// 「定型文/書式」を意味するファイル+リストのアイコン (タグの値札アイコンと意図的に差別化)
-const FORMAT_ICON_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
+// strip 右端のハンバーガー (パネルごとの「全フォーマット一覧 = お気に入りトグル popup」を開く)
+const FORMAT_PICKER_HAMBURGER_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`;
 
 const PANEL_TEXTAREA_ID = { S: "sText", O: "oFreeText", A: "aText", P: "pText" };
 const PANEL_FIELD_KEY   = { S: "s",     O: "oFree",    A: "a",     P: "p"    };
@@ -71,6 +71,7 @@ function makeAddFormatWidget(panel, onAdded) {
 
 // パネルごとに 1 つ作る format picker (タグピッカーと同じ UI = makeTagPicker を再利用)。
 // 「選択=お気に入り (pinned 全患者共通)」「+ で新規フォーマット作成」。
+// アイコンはハンバーガー (一覧を開く意味)。strip 右端の単一エントリポイントを兼ねる。
 function makeFormatPicker(panel, onChange) {
   return makeTagPicker({
     getSelected: () => formatsForPanel(panel).filter(f => f.pinned).map(f => f.id),
@@ -82,7 +83,7 @@ function makeFormatPicker(panel, onChange) {
     entries: () => formatsForPanel(panel).map(f => ({ value: f.id, label: f.name })),
     onChange,
     iconOnly: true,
-    iconHtml: FORMAT_ICON_SVG,
+    iconHtml: FORMAT_PICKER_HAMBURGER_SVG,
     addWidget: (onAdded) => makeAddFormatWidget(panel, onAdded),
   });
 }
@@ -92,14 +93,9 @@ export function renderFormatStrip(panel, hostEl) {
   hostEl.textContent = "";
   hostEl.className = "formatStrip";
 
-  // 1) フォーマットアイコン (タグピッカー流。タップで checkbox 一覧 + 末尾の + で新規)
-  const picker = makeFormatPicker(panel, () => {
-    // ピン状態が変わったら strip 全体を再描画 (チップ表示更新)
-    renderFormatStrip(panel, hostEl);
-  });
-  hostEl.appendChild(picker);
-
-  // 2) お気に入り (pinned) フォーマットをチップ表示。タップで入力モーダル直開
+  // 1) お気に入り (pinned) チップ。横スクロール領域。タップで入力モーダル直開
+  const chips = document.createElement("div");
+  chips.className = "formatStripChips";
   for (const f of pinnedFormatsForPanel(panel)) {
     const chip = document.createElement("button");
     chip.type = "button";
@@ -107,51 +103,16 @@ export function renderFormatStrip(panel, hostEl) {
     chip.textContent = f.name;
     chip.title = t("format.chip.input.title", { name: f.name });
     chip.addEventListener("click", () => openFormatInputModal(f, panel));
-    hostEl.appendChild(chip);
+    chips.appendChild(chip);
   }
+  hostEl.appendChild(chips);
 
-  // 3) [≡] 全フォーマット選択 (お気に入り以外も使うときの導線)
-  const allBtn = document.createElement("button");
-  allBtn.type = "button";
-  allBtn.className = "formatStripBtn formatStripAll";
-  allBtn.title = t("format.picker.all.title");
-  allBtn.setAttribute("aria-label", t("format.picker.all.aria"));
-  allBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`;
-  allBtn.addEventListener("click", () => openFormatPickerModal(panel));
-  hostEl.appendChild(allBtn);
-}
-
-// ============================
-// フォーマット選択モーダル ([≡] から)
-// ============================
-function openFormatPickerModal(panel) {
-  const overlay = document.getElementById("formatPickerOverlay");
-  const list = document.getElementById("formatPickerList");
-  if (!overlay || !list) return;
-  list.textContent = "";
-
-  const fmts = formatsForPanel(panel);
-  if (fmts.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "formatPickerEmpty";
-    empty.textContent = t("format.picker.empty");
-    list.appendChild(empty);
-  } else {
-    for (const f of fmts) {
-      const row = document.createElement("button");
-      row.type = "button";
-      row.className = "formatPickerRow";
-      row.innerHTML = `<span class="formatPickerName">${escapeHtml(f.name)}</span>` +
-        `<span class="formatPickerType">${escapeHtml(t(f.type === "numeric" ? "type.numeric" : "type.text"))}</span>`;
-      row.addEventListener("click", () => {
-        overlay.classList.remove("active");
-        openFormatInputModal(f, panel);
-      });
-      list.appendChild(row);
-    }
-  }
-
-  overlay.classList.add("active");
+  // 2) ハンバーガーピッカー (右端固定)。
+  //    popup でチェック = お気に入りトグル / + で新規作成 (タグ picker と同 UI)
+  const picker = makeFormatPicker(panel, () => {
+    renderFormatStrip(panel, hostEl);
+  });
+  hostEl.appendChild(picker);
 }
 
 // ============================
@@ -544,22 +505,4 @@ export function initFormats() {
     if (_currentEdit.target.type !== "text") _currentEdit.target.isDefault = false;
     renderFormatEditForm();
   });
-
-  const pickerOverlay = document.getElementById("formatPickerOverlay");
-  const pickerClose = document.getElementById("formatPickerCloseBtn");
-  if (pickerOverlay) pickerOverlay.addEventListener("click", (e) => {
-    if (e.target === pickerOverlay) pickerOverlay.classList.remove("active");
-  });
-  if (pickerClose) pickerClose.addEventListener("click", () => {
-    if (pickerOverlay) pickerOverlay.classList.remove("active");
-  });
-}
-
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }

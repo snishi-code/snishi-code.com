@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 3.3.1
+現在のバージョン: 3.4.0
 
 ## バージョニング方針
 
@@ -14,6 +14,11 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **3.4.0**: タグ・フォーマット strip のはみ出し挙動を `…` → 横スクロールに変更 + フォーマット strip をハンバーガー 1 個に集約
+  - `inlineTagsRow` (患者ヘッダのタグ表示) を `overflow: hidden` + `::after "…"` から `overflow-x: auto` に変更。`recomputeInlineTagsOverflow` / ResizeObserver も撤去 (CSS のみで完結)
+  - `formatStrip` を `[左 picker-icon][pinned chips][右 ≡]` から `[pinned chips (横スクロール)][右 ハンバーガー picker]` に再構成。左右の picker icon と `≡` が同じ「全フォーマット一覧」機能で重複していたのを 1 個に集約
+  - ハンバーガー = `makeTagPicker` (iconOnly + ハンバーガー SVG) の薄いラッパで、popup 内のチェックボックスがお気に入りトグル、末尾 `+` で新規作成。チェックボックスなしの旧 `formatPickerOverlay` モーダルとその HTML / CSS / i18n キー (`format.picker.*`) を削除
+  - `formatStrip > .tagPicker` は flex-shrink: 0 で右端固定。popup は `left: auto; right: 0` で右寄せして画面端からはみ出さないように
 - **3.3.1**: フォーマット編集モーダルの項目追加・既存編集が無反応になるバグ修正
   - `features/formats.js` の `renderFormatEditForm` / `renderFormatEditItems` / `saveFormatEdit` / `addFormatItem` で `const t = _currentEdit.target` がインポート済み i18n `t()` をシャドウし、項目行描画時の `t("format.placeholder.label")` 等で TypeError が発生していた。局所変数を `target` にリネームして衝突を解消
 - **3.3.0**: 既定値の JSON 分離 + i18n 基盤導入 + 取りこぼし回収

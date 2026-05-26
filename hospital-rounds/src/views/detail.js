@@ -425,7 +425,7 @@ export function initDetailEvents(renderHomeFn) {
 // 患者ヘッダーのインラインタグを描画する。
 // - 表示順は設定タグ配列の順
 // - 長押しでそのタグを患者から外す（共通ヘルパ bindTapOrLongPress を流用）
-// - はみ出し分は CSS の `.overflowing::after` で「…」を表示
+// - はみ出し分は CSS の overflow-x: auto で横スクロール表示
 function renderInlineTags() {
   const host = document.getElementById("detailInlineTags");
   if (!host) return;
@@ -452,26 +452,6 @@ function renderInlineTags() {
     );
     host.appendChild(chip);
   }
-  recomputeInlineTagsOverflow();
-  setupInlineTagsResizeObserver();
-}
-
-function recomputeInlineTagsOverflow() {
-  const host = document.getElementById("detailInlineTags");
-  if (!host) return;
-  requestAnimationFrame(() => {
-    const overflowing = host.scrollWidth > host.clientWidth + 1;
-    host.classList.toggle("overflowing", overflowing);
-  });
-}
-
-let _inlineTagsRO = null;
-function setupInlineTagsResizeObserver() {
-  if (_inlineTagsRO) return;
-  const host = document.getElementById("detailInlineTags");
-  if (!host || typeof ResizeObserver === "undefined") return;
-  _inlineTagsRO = new ResizeObserver(() => recomputeInlineTagsOverflow());
-  _inlineTagsRO.observe(host);
 }
 
 // 詳細画面の表示モード ↔ 編集モード切替。共通 createEditToggle を使う。
