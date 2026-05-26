@@ -5,6 +5,7 @@ import { finishDataChange } from "./drag.js";
 import { recordOp } from "./roster.js";
 import { createQrFlow } from "./qr-flow.js";
 import { encodePatientList, decodePatientList } from "./qr-patient-list.js";
+import { t } from "../i18n.js";
 
 // ============================
 // ホームQR (名簿: 部屋番号 + 名前 + タグ)
@@ -32,7 +33,7 @@ function uniqueTagName(name, existing) {
 function applyRoster(decoded, ctrl) {
   const { tagNames: senderTagNames, patients: roster } = decoded;
   if (roster.length === 0) {
-    alert("取込内容が空でした。");
+    alert(t("qr.import.empty.home"));
     return;
   }
 

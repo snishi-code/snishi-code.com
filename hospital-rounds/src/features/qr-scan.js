@@ -1,6 +1,7 @@
 "use strict";
 
 import jsQR from "jsqr";
+import { t } from "../i18n.js";
 
 // カメラ＋jsQR ライブスキャナ。
 //   scanQR()           : 1回読んで閉じる（既存）
@@ -38,7 +39,7 @@ export function scanQRStream({ onScan, onCancel } = {}) {
 
 function openScanner({ continuous, onScan, onCancel }) {
   if (!isScannerSupported()) {
-    alert("このブラウザはカメラを利用できません。代わりにテキストを貼り付けてください。");
+    alert(t("qr.scanner.unavailable"));
     return null;
   }
 

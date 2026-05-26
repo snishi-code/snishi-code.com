@@ -4,6 +4,7 @@ import { appState, settings, makeDefaultPatient, scheduleSave, ensurePatientsHav
 import { isNonAdminTerminal } from "./admin.js";
 import { recordOp } from "./roster.js";
 import { formatPatientLabel } from "./room.js";
+import { t } from "../i18n.js";
 
 // Callback registered by main.js to re-render the current view after data changes
 let _onDataChange = null;
@@ -305,7 +306,7 @@ export function initActionMenu() {
     if (indices.length === 0) { closeActionMenu(); return; }
     const target = appState.patients[indices[0]];
     if (!isPatientEmpty(target)) {
-      if (!confirm("この患者には入力データがあります。削除しますか？")) { closeActionMenu(); return; }
+      if (!confirm(t("patient.delete.confirm"))) { closeActionMenu(); return; }
     }
     deletePatientsByIndices(indices);
     closeActionMenu();
@@ -316,7 +317,7 @@ export function initActionMenu() {
     if (indices.length === 0) { closeActionMenu(); return; }
     const allEmpty = indices.every(i => isPatientEmpty(appState.patients[i]));
     if (!allEmpty) {
-      if (!confirm(`${indices.length} 件の中に入力データのある患者が含まれます。すべて削除しますか？`)) { closeActionMenu(); return; }
+      if (!confirm(t("patient.delete.bulk.confirm", { n: indices.length }))) { closeActionMenu(); return; }
     }
     deletePatientsByIndices(indices);
     closeActionMenu();

@@ -8,6 +8,7 @@ import { renameTagAt, deleteTagAt, moveTag, isTagGroupingEnabled, getUserGroups,
 import { GROUP_MODE_SINGLE, GROUP_MODE_MULTI } from "../constants.js";
 import { bindLongPressAndDrag } from "../features/drag.js";
 import { startNewFormat, startEditFormat, deleteFormatById } from "../features/formats.js";
+import { t } from "../i18n.js";
 
 const STATUS_SWATCHES = { statusYellow: "#f59e0b", statusGreen: "#14b8a6", statusGray: "#6b7280", statusBlue: "#2563eb" };
 
@@ -86,7 +87,7 @@ function renderFormatListForPanel(panel) {
     del.setAttribute("aria-label", "削除");
     del.innerHTML = TRASH_SVG;
     del.addEventListener("click", () => {
-      if (!confirm(`フォーマット「${f.name}」を削除します。よろしいですか？`)) return;
+      if (!confirm(t("format.delete.confirm", { name: f.name }))) return;
       deleteFormatById(f.id);
       renderFormatList();
       if (_renderDetailFn) _renderDetailFn();
@@ -204,9 +205,9 @@ function renderTagGroups() {
     nameBtn.textContent = g.name || "（未入力）";
     nameBtn.title = "タップで名前を変更";
     nameBtn.addEventListener("click", () => {
-      const nv = prompt("グループ名", g.name);
+      const nv = prompt(t("settings.tagGroup.rename.prompt"), g.name);
       if (nv === null) return;
-      if (!renameGroup(g.id, nv)) alert("名前が空、または重複しています");
+      if (!renameGroup(g.id, nv)) alert(t("settings.tagGroup.rename.failed"));
       renderTagGroups();
       if (_renderPatientUIFn) _renderPatientUIFn();
     });
@@ -239,7 +240,7 @@ function renderTagGroups() {
     delBtn.title = "グループ削除";
     delBtn.innerHTML = TRASH_SVG;
     delBtn.addEventListener("click", () => {
-      if (!confirm(`グループ「${g.name}」を削除します。含まれていたタグは未分類に戻ります。よろしいですか？`)) return;
+      if (!confirm(t("settings.tagGroup.delete.confirm", { name: g.name }))) return;
       deleteGroup(g.id);
       renderTagGroups();
       if (_renderPatientUIFn) _renderPatientUIFn();
@@ -283,9 +284,9 @@ function renderTagGroups() {
   addGroupBtn.title = "グループ追加";
   addGroupBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
   addGroupBtn.addEventListener("click", () => {
-    const nm = prompt("新しいグループの名前を入力");
+    const nm = prompt(t("settings.tagGroup.add.prompt"));
     if (!nm) return;
-    if (!addGroup(nm)) alert("空、または重複した名前は登録できません");
+    if (!addGroup(nm)) alert(t("settings.tagGroup.add.failed"));
     renderTagGroups();
   });
   host.appendChild(addGroupBtn);
@@ -372,7 +373,7 @@ function makeTagChip(idx) {
     () => idx,
     (fromIdx, toIdx) => { moveTag(fromIdx, toIdx); renderTagsList(); if (_renderPatientUIFn) _renderPatientUIFn(); },
     () => {
-      if (confirm(`タグ「${name}」を削除します。よろしいですか？\n（このタグが付いている患者のタグも一緒に外れます）`)) {
+      if (confirm(t("settings.tag.delete.confirm", { name }))) {
         deleteTagAt(idx);
         renderTagsList();
         if (_renderPatientUIFn) _renderPatientUIFn();
@@ -402,7 +403,7 @@ function openInlineTagEditor(chipWrap, idx) {
       if (!old) {
         // New tag: rename empty entry to new name
         if (settings.tags.includes(next)) {
-          alert("同じ名前のタグが既にあります");
+          alert(t("settings.tag.name.duplicate"));
           settings.tags.splice(idx, 1);
         } else {
           settings.tags[idx] = next;
@@ -411,7 +412,7 @@ function openInlineTagEditor(chipWrap, idx) {
         }
       } else if (next !== old) {
         if (!renameTagAt(idx, next)) {
-          alert("同じ名前のタグが既にあります");
+          alert(t("settings.tag.name.duplicate"));
         }
       }
     } else if (!settings.tags[idx]) {
@@ -502,19 +503,19 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
       // 被管理端末は脱出不可（管理端末から名簿を受け取った時点で固定）。
       // 単に管理機能を切りたいなら、管理機能オフの端末から名簿を取り直すこと。
       if (isNonAdminTerminal()) {
-        alert("この端末は管理端末から名簿を受け取っているためオフにできません。\n管理から外れたい場合は、管理機能オフの端末から名簿を取り直してください。");
+        alert(t("admin.toggle.locked"));
         return;
       }
-      if (!confirm("管理機能をオフにします。よろしいですか？")) return;
+      if (!confirm(t("admin.toggle.confirm.off"))) return;
       settings.adminEnabled = false;
       settings.adminTerminal = false;
     } else {
       // トグルをオン → この端末が管理端末に。
-      if (!confirm("この端末を管理端末にします。同じ病棟・チーム内で 1 台のみにしてください。\nよろしいですか？")) return;
+      if (!confirm(t("admin.toggle.confirm.on"))) return;
       settings.adminEnabled = true;
       settings.adminTerminal = true;
       if (!settings.rosterPassphrase) {
-        const phrase = prompt("名簿コピーに使う「合言葉」を設定してください。\n日本語・英語など自由。受信側にも口頭などで共有してください。");
+        const phrase = prompt(t("admin.passphrase.prompt"));
         if (phrase && phrase.trim()) settings.rosterPassphrase = phrase.trim();
       }
     }

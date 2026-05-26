@@ -23,6 +23,7 @@ import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./fea
 import { DOCS_BUNDLE } from "./docs-bundle.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initFormats, setOnTextChanged as setOnFormatTextChanged } from "./features/formats.js";
+import { t, applyI18n } from "./i18n.js";
 import { initImportExport } from "./features/import-export.js";
 import { initSharedQr, refreshSharedQrIfActive, initMemoQr, refreshMemoQrIfActive } from "./features/qr-shared.js";
 import { initHomeQr, refreshHomeQrIfActive } from "./features/qr-home.js";
@@ -330,7 +331,7 @@ setAdminAppliedHandler(() => {
 
 
 function doSortByRoom() {
-  if (!confirm("部屋番号順に並び替えますか？")) return;
+  if (!confirm(t("main.sortByRoom.confirm"))) return;
   const cur = appState.patients[selectedNo - 1];
   sortPatientsByRoom();
   if (cur) {
@@ -371,7 +372,7 @@ if (memoPasteCloseBtn) {
   memoPasteCloseBtn.addEventListener("click", () => {
     const area = document.getElementById("memoPasteArea");
     const hasContent = !!(area && String(area.value || "").trim());
-    if (hasContent && !confirm("受信メモを閉じます。表示中の内容は消去されます。よろしいですか？")) return;
+    if (hasContent && !confirm(t("main.recvMemo.close.confirm"))) return;
     const card = document.getElementById("memoPasteCard");
     if (card) card.classList.remove("active");
     if (area) area.value = "";
@@ -411,7 +412,7 @@ const resetBtn = document.getElementById("resetBtn");
 if (resetBtn) {
   resetBtn.addEventListener("click", () => {
     closeHeaderMenu();
-    const ok = confirm("全患者の入力を消去します。よろしいですか？");
+    const ok = confirm(t("main.clearAllInput.confirm"));
     if (!ok) return;
     setAppState(normalizeLoaded(null));
     // Roster commits reference the previous pids; drop the sync metadata so a
@@ -428,7 +429,7 @@ const clearAllBtn = document.getElementById("clearAllBtn");
 if (clearAllBtn) {
   clearAllBtn.addEventListener("click", () => {
     closeHeaderMenu();
-    const ok = confirm("全患者の対象項目をクリアします。よろしいですか？");
+    const ok = confirm(t("clear.confirm"));
     if (!ok) return;
     const ct = settings.clearTargets;
     const now = Date.now();
@@ -599,6 +600,9 @@ initDocsDemo();
   }
 }
 
+// HTML 内の data-i18n / data-i18n-title / data-i18n-aria / data-i18n-placeholder を
+// すべて t() で埋める。動的に作る DOM は各 renderer で t() を直接使う。
+applyI18n();
 doRenderHome();
 setSelectedNo(1);
 doRenderDetail();

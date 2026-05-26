@@ -3,6 +3,7 @@
 import { settings, appState, saveSettings, scheduleSave, markUpdated } from "../store.js";
 import { STATUS, STATUS_TAG_PREFIX, TAG_FILTER_MODE_AND, TAG_FILTER_MODE_OR, DEFAULT_TAG_FILTER_MODE, GROUP_MODE_SINGLE, GROUP_MODE_MULTI, STATUS_GROUP_ID } from "../constants.js";
 import { recordOp } from "./roster.js";
+import { t } from "../i18n.js";
 
 function newGroupId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return "g_" + crypto.randomUUID().slice(0, 8);
@@ -401,7 +402,7 @@ export function makeAddTagWidget({ onAdded } = {}) {
           if (onAdded) onAdded(name);
           return;
         }
-        alert("そのタグは既に存在します。");
+        alert(t("tag.exists"));
       }
       showButton();
     }
@@ -501,7 +502,7 @@ export function makeTagPicker(opts) {
       clr.addEventListener("click", (e) => {
         e.stopPropagation();
         if (!getSelected().length) return;
-        if (!confirm("選択中のタグをすべて解除します。よろしいですか？")) return;
+        if (!confirm(t("tag.filter.clear.confirm"))) return;
         setSelected([]);
         refreshPopup();
         refreshTrigger();

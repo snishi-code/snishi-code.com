@@ -4,6 +4,7 @@ import { appState, settings } from "../store.js";
 import { finishDataChange } from "./drag.js";
 import { createQrFlow } from "./qr-flow.js";
 import { encodePatientList, decodePatientList, patientMatchesSharedFilter } from "./qr-patient-list.js";
+import { t } from "../i18n.js";
 
 // ============================
 // メモQR / 共有QR (MM/SH)
@@ -46,7 +47,7 @@ function makeApplyEntries({ fieldName, pasteCardId, pasteAreaId }) {
   return function applyEntries(decoded, ctrl) {
     const { tagNames: senderTagNames, patients: entries } = decoded;
     if (entries.length === 0) {
-      alert("取込対象のエントリがありません。");
+      alert(t("qr.import.empty.shared"));
       return;
     }
     const resolveSenderTag = (idx) => senderTagNames[idx - 1] || null;

@@ -2,6 +2,7 @@
 
 import { settings, setSettings, saveSettings } from "../store.js";
 import { createQrFlow } from "./qr-flow.js";
+import { t } from "../i18n.js";
 
 // ============================
 // 設定QR
@@ -118,18 +119,18 @@ export function setOnSettingsApplied(fn) { onAppliedHandler = fn; }
 
 function applySettings(safe, ctrl) {
   if (!safe) {
-    alert("受信した設定の形式が認識できませんでした。");
+    alert(t("qrSettings.parse.failed"));
     return;
   }
   const summary = [];
-  if (Array.isArray(safe.tags)) summary.push(`タグ ${safe.tags.length} 件`);
-  if (Array.isArray(safe.formats)) summary.push(`フォーマット ${safe.formats.length} 件`);
-  if (safe.defaults) summary.push("デフォルト文");
-  if (safe.clearTargets) summary.push("クリア対象");
-  if (Array.isArray(safe.tagGroups)) summary.push(`タググループ ${safe.tagGroups.length} 件`);
+  if (Array.isArray(safe.tags)) summary.push(t("qrSettings.summary.tags", { n: safe.tags.length }));
+  if (Array.isArray(safe.formats)) summary.push(t("qrSettings.summary.formats", { n: safe.formats.length }));
+  if (safe.defaults) summary.push(t("qrSettings.summary.defaults"));
+  if (safe.clearTargets) summary.push(t("qrSettings.summary.clearTargets"));
+  if (Array.isArray(safe.tagGroups)) summary.push(t("qrSettings.summary.tagGroups", { n: safe.tagGroups.length }));
   const summaryText = summary.length ? `（${summary.join(", ")}）` : "";
 
-  const ok = confirm(`現在の設定 ${summaryText} を上書きします。\n管理機能・端末固有設定は維持されます。よろしいですか？`);
+  const ok = confirm(t("qrSettings.import.confirm", { summary: summaryText }));
   if (!ok) return;
 
   const next = { ...settings };
@@ -140,7 +141,7 @@ function applySettings(safe, ctrl) {
   saveSettings();
   ctrl.close();
   if (onAppliedHandler) onAppliedHandler();
-  alert("設定を取り込みました。");
+  alert(t("qrSettings.imported.alert"));
 }
 
 const flow = createQrFlow({

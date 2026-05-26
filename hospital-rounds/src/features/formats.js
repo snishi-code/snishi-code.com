@@ -20,6 +20,7 @@
 import { appState, settings, selectedNo, saveSettings, scheduleSave, markUpdated } from "../store.js";
 import { FORMAT_PANELS, FORMAT_TYPES } from "../constants.js";
 import { makeTagPicker } from "./tags.js";
+import { t } from "../i18n.js";
 
 // 「定型文/書式」を意味するファイル+リストのアイコン (タグの値札アイコンと意図的に差別化)
 const FORMAT_ICON_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
@@ -55,8 +56,8 @@ function makeAddFormatWidget(panel, onAdded) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "tagSettingAdd";
-  btn.title = "新規フォーマット";
-  btn.setAttribute("aria-label", "新規フォーマット");
+  btn.title = t("format.new");
+  btn.setAttribute("aria-label", t("format.new.aria"));
   btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -104,7 +105,7 @@ export function renderFormatStrip(panel, hostEl) {
     chip.type = "button";
     chip.className = "formatStripBtn formatStripPinned";
     chip.textContent = f.name;
-    chip.title = `${f.name} を入力`;
+    chip.title = t("format.chip.input.title", { name: f.name });
     chip.addEventListener("click", () => openFormatInputModal(f, panel));
     hostEl.appendChild(chip);
   }
@@ -113,8 +114,8 @@ export function renderFormatStrip(panel, hostEl) {
   const allBtn = document.createElement("button");
   allBtn.type = "button";
   allBtn.className = "formatStripBtn formatStripAll";
-  allBtn.title = "フォーマット選択 (全件)";
-  allBtn.setAttribute("aria-label", "フォーマット選択 (全件)");
+  allBtn.title = t("format.picker.all.title");
+  allBtn.setAttribute("aria-label", t("format.picker.all.aria"));
   allBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`;
   allBtn.addEventListener("click", () => openFormatPickerModal(panel));
   hostEl.appendChild(allBtn);
@@ -133,7 +134,7 @@ function openFormatPickerModal(panel) {
   if (fmts.length === 0) {
     const empty = document.createElement("div");
     empty.className = "formatPickerEmpty";
-    empty.textContent = "登録されたフォーマットがありません。[+] から作成してください。";
+    empty.textContent = t("format.picker.empty");
     list.appendChild(empty);
   } else {
     for (const f of fmts) {
@@ -141,7 +142,7 @@ function openFormatPickerModal(panel) {
       row.type = "button";
       row.className = "formatPickerRow";
       row.innerHTML = `<span class="formatPickerName">${escapeHtml(f.name)}</span>` +
-        `<span class="formatPickerType">${f.type === "numeric" ? "数値" : "文字"}</span>`;
+        `<span class="formatPickerType">${escapeHtml(t(f.type === "numeric" ? "type.numeric" : "type.text"))}</span>`;
       row.addEventListener("click", () => {
         overlay.classList.remove("active");
         openFormatInputModal(f, panel);
@@ -209,7 +210,7 @@ function buildNumericRow(host, item) {
   const memo = document.createElement("input");
   memo.type = "text";
   memo.className = "formatInputMemo";
-  memo.placeholder = "備考";
+  memo.placeholder = t("format.placeholder.memo");
   row.appendChild(memo);
 
   host.appendChild(row);
@@ -233,8 +234,8 @@ function buildTextRow(host, item) {
   const normalBtn = document.createElement("button");
   normalBtn.type = "button";
   normalBtn.className = "formatInputNormalBtn";
-  normalBtn.textContent = "正常";
-  normalBtn.title = item.normal ? `正常文 を入力: ${item.normal}` : "正常文が設定されていません";
+  normalBtn.textContent = t("common.normal");
+  normalBtn.title = item.normal ? t("format.normal.tooltip.has", { value: item.normal }) : t("format.normal.tooltip.empty");
   if (!item.normal) normalBtn.disabled = true;
   normalBtn.addEventListener("click", () => {
     val.value = item.normal || "";
@@ -327,7 +328,7 @@ function openFormatEditModal(target, panel, onSaved) {
   // パネル表記をモーダルタイトル横に表示 (固定: ユーザーは変更不可)
   const titleEl = document.querySelector("#formatEditOverlay .popupTitle");
   if (titleEl) {
-    titleEl.textContent = `${_currentEdit.target.panel} 欄のフォーマット ${_currentEdit.isNew ? "新規作成" : "編集"}`;
+    titleEl.textContent = t(_currentEdit.isNew ? "format.editTitle.new" : "format.editTitle.edit", { panel: _currentEdit.target.panel });
   }
   renderFormatEditForm();
   overlay.classList.add("active");
@@ -368,7 +369,7 @@ function renderFormatEditItems(host) {
     const label = document.createElement("input");
     label.type = "text";
     label.className = "formatEditItemLabel";
-    label.placeholder = "ラベル";
+    label.placeholder = t("format.placeholder.label");
     label.value = item.label || "";
     label.addEventListener("input", () => { item.label = String(label.value || ""); });
     row.appendChild(label);
@@ -377,7 +378,7 @@ function renderFormatEditItems(host) {
       const unit = document.createElement("input");
       unit.type = "text";
       unit.className = "formatEditItemUnit";
-      unit.placeholder = "単位";
+      unit.placeholder = t("format.placeholder.unit");
       unit.value = item.unit || "";
       unit.addEventListener("input", () => { item.unit = String(unit.value || ""); });
       row.appendChild(unit);
@@ -385,7 +386,7 @@ function renderFormatEditItems(host) {
       const normal = document.createElement("input");
       normal.type = "text";
       normal.className = "formatEditItemNormal";
-      normal.placeholder = "正常文";
+      normal.placeholder = t("format.placeholder.normal");
       normal.value = item.normal || "";
       normal.addEventListener("input", () => { item.normal = String(normal.value || ""); });
       row.appendChild(normal);
@@ -394,8 +395,8 @@ function renderFormatEditItems(host) {
     const del = document.createElement("button");
     del.type = "button";
     del.className = "formatEditItemDel";
-    del.title = "この項目を削除";
-    del.setAttribute("aria-label", "この項目を削除");
+    del.title = t("format.deleteItem.title");
+    del.setAttribute("aria-label", t("format.deleteItem.aria"));
     del.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
     del.addEventListener("click", () => {
       t.items.splice(i, 1);
@@ -418,14 +419,14 @@ function saveFormatEdit() {
   const t = _currentEdit.target;
   const name = String(nameInp?.value || "").trim();
   if (!name) {
-    alert("フォーマット名を入力してください。");
+    alert(t("format.name.required"));
     return;
   }
   // 同名チェック (タグの挙動と同じ: 既存と同名なら reject)
   const all = Array.isArray(settings.formats) ? settings.formats : [];
   const dup = all.find(f => f.id !== t.id && f.name === name);
   if (dup) {
-    alert("既に同名のフォーマットがあります。別の名前にしてください。");
+    alert(t("format.name.duplicate"));
     return;
   }
 

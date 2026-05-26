@@ -1,0 +1,74 @@
+{
+  "_comment": "アプリの初期値。ユーザーが何も触らずに保存ボタンを押した状態 = この JSON。プログラム内にベタ打ちせずここに集約してメンテナンスしやすくする。",
+
+  "formats": [
+    {
+      "name": "バイタル",
+      "panel": "O",
+      "type": "numeric",
+      "joiner": ", ",
+      "pinned": true,
+      "isDefault": false,
+      "items": [
+        { "label": "BP",   "unit": "mmHg" },
+        { "label": "P",    "unit": "bpm"  },
+        { "label": "SpO2", "unit": "%"    },
+        { "label": "RR",   "unit": ""     },
+        { "label": "T",    "unit": "℃"   }
+      ]
+    },
+    {
+      "name": "身体所見",
+      "panel": "O",
+      "type": "text",
+      "joiner": "\n",
+      "pinned": true,
+      "isDefault": false,
+      "items": [
+        { "label": "General",  "normal": "良好" },
+        { "label": "肺音",     "normal": "明らかなラ音なし" },
+        { "label": "腸音",     "normal": "正常" },
+        { "label": "腹部",     "normal": "平坦軟、圧痛なし" },
+        { "label": "食事",     "normal": "摂取良好" },
+        { "label": "排泄",     "normal": "尿・便ともに特記なし" }
+      ]
+    }
+  ],
+
+  "clearTargets": {
+    "memo": false,
+    "s": true,
+    "o": true,
+    "a": false,
+    "p": false,
+    "shared": false,
+    "statusYellow": true,
+    "statusGreen": true,
+    "statusGray": true,
+    "statusBlue": false
+  },
+
+  "tags": [],
+  "tagGroups": [],
+  "tagGroupAssign": {},
+  "tagGroupingEnabled": false,
+
+  "adminEnabled": false,
+  "adminTerminal": false,
+  "rosterPassphrase": "",
+  "deviceId": "",
+
+  "_app": {
+    "patientCount": 50,
+    "rosterDiffWindowDays": 30
+  },
+
+  "_migration_legacy_o_rules": [
+    { "key": "general",     "label": "General", "normalText": "良好" },
+    { "key": "lung",        "label": "肺音",    "normalText": "明らかなラ音なし" },
+    { "key": "bowel",       "label": "腸音",    "normalText": "正常" },
+    { "key": "abdomen",     "label": "腹部",    "normalText": "平坦軟、圧痛なし" },
+    { "key": "meal",        "label": "食事",    "normalText": "摂取良好" },
+    { "key": "elimination", "label": "排泄",    "normalText": "尿・便ともに特記なし" }
+  ]
+}

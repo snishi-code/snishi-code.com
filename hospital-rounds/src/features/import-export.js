@@ -11,6 +11,7 @@ import {
   projectBundle, parseBundle, getSection, SECTION,
 } from "../bundle.js";
 import { recordOp } from "./roster.js";
+import { t } from "../i18n.js";
 
 // 「設定も取込」「患者のみ」「キャンセル」を返す。データありの時だけ表示する。
 function askImportAction() {
@@ -181,7 +182,7 @@ export function initImportExport(callbacks) {
         settingsExportBtn.blur();
       } catch (err) {
         console.error("Export failed:", err);
-        alert("データの出力に失敗しました。");
+        alert(t("export.failed"));
       }
     });
   }
@@ -214,7 +215,7 @@ export function initImportExport(callbacks) {
           try {
             bundle = parseBundle(parsedRaw);
           } catch (err) {
-            alert("ファイル形式を認識できません。別のJSONファイルをお試しください。");
+            alert(t("import.parse.failed"));
             console.error("parse failed:", err);
             settingsImportFile.value = "";
             return;
@@ -264,7 +265,7 @@ export function initImportExport(callbacks) {
           vibrate();
           rerenderCurrentView();
         } catch (err) {
-          alert("ファイルの読み込みに失敗しました。正しいJSONファイルか確認してください。");
+          alert(t("import.read.failed"));
           console.error("Import failed:", err);
         }
         settingsImportFile.value = "";

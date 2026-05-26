@@ -9,6 +9,7 @@ import {
   parseRosterPages, decodeRosterPayload, applyFullPayload, applyDiffPayload,
 } from "./admin.js";
 import { flushCommit } from "./roster.js";
+import { t } from "../i18n.js";
 
 let _pages = [];
 let _pageIndex = 0;
@@ -175,7 +176,7 @@ async function handleImport() {
     }
   } else {
     // COPY (FULL) needs the 合言葉
-    const phrase = prompt("名簿コピーを取り込みます。送信側と同じ合言葉を入力してください：");
+    const phrase = prompt(t("admin.passphrase.prompt.import"));
     if (!phrase) { if (status) status.textContent = "取込をキャンセルしました"; return; }
     secret = phrase;
   }

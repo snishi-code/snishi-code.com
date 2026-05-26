@@ -473,6 +473,42 @@ await test("legacy settings.defaults.{a,p} migrate to isDefault text formats", a
 });
 
 // ============================
+// 8) i18n: t() ヘルパが strings.ja.json を引けること
+// ============================
+section("i18n");
+
+await test("t() resolves known key", async () => {
+  const { t } = await import("../src/i18n.js");
+  assert.equal(t("common.save"), "保存");
+  assert.equal(t("common.cancel"), "キャンセル");
+});
+
+await test("t() interpolates {placeholder} params", async () => {
+  const { t } = await import("../src/i18n.js");
+  const s = t("format.delete.confirm", { name: "バイタル" });
+  assert.ok(s.includes("バイタル"), "name placeholder filled");
+});
+
+await test("t() returns key on missing entry", async () => {
+  const { t } = await import("../src/i18n.js");
+  const out = t("totally.unknown.key.xyz");
+  assert.equal(out, "totally.unknown.key.xyz");
+});
+
+// ============================
+// 9) defaults.json: 既定値が JSON 由来で読み込めること
+// ============================
+section("defaults.json");
+
+await test("DEFAULT_FORMATS comes from defaults.json", async () => {
+  const c = await import("../src/constants.js");
+  assert.ok(Array.isArray(c.DEFAULT_FORMATS));
+  assert.equal(c.DEFAULT_FORMATS.length, 2);
+  assert.equal(c.DEFAULT_FORMATS[0].name, "バイタル");
+  assert.equal(c.DEFAULT_PATIENT_COUNT, 50);
+});
+
+// ============================
 // Summary
 // ============================
 console.log("");

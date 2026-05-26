@@ -3,6 +3,7 @@
 import { qrcodegen } from "../libs/qrcodegen.js";
 import { scanQRStream, isScannerSupported } from "./qr-scan.js";
 import { encodePages, decodePage, newBatchId } from "./qr-protocol.js";
+import { t } from "../i18n.js";
 
 // ============================
 // QR フロー共通ファクトリ
@@ -167,7 +168,7 @@ export function createQrFlow(cfg) {
             try {
               decodedPayload = cfg.decodePayload(payload);
             } catch (e) {
-              alert(`受信データの解析に失敗しました: ${e.message || e}`);
+              alert(t("qr.recv.parse.failed", { message: e.message || e }));
               return;
             }
             cfg.onApply(decodedPayload, { close });
@@ -177,7 +178,7 @@ export function createQrFlow(cfg) {
         ctrl.setStatus(`${recvPages.size}/${recvTotal} 受信`);
       },
     });
-    if (!session) alert("スキャナを開けませんでした。");
+    if (!session) alert(t("qr.scanner.open.failed"));
   }
 
   function init() {
