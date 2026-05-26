@@ -76,8 +76,8 @@ function encodePayload() {
 
 function decodePayload(payload) {
   const obj = JSON.parse(String(payload || ""));
-  if (!obj || typeof obj !== "object") throw new Error("不正な設定形式");
-  if (obj.v !== WIRE_V) throw new Error(`バージョン不一致 (wire=${obj.v}, expected=${WIRE_V})`);
+  if (!obj || typeof obj !== "object") throw new Error(t("qrSettings.invalid"));
+  if (obj.v !== WIRE_V) throw new Error(t("qrSettings.versionMismatch", { a: obj.v, b: WIRE_V }));
 
   const out = {};
   if (obj.defaults && typeof obj.defaults === "object") {
@@ -146,8 +146,8 @@ function applySettings(safe, ctrl) {
 
 const flow = createQrFlow({
   kind: "ST",
-  kindLabel: "設定QR",
-  emptyMessage: "（設定が空です）",
+  kindLabel: t("qr.kind.settings"),
+  emptyMessage: t("qr.empty.noSettings"),
   ids: {
     wrapId: "settingsQrWrap",
     canvasId: "settingsQrCanvas",

@@ -91,7 +91,9 @@ export function projectBundle({
   };
 
   if (want.has(SECTION.META)) {
-    out.sections.meta = { title: String(appState?.title || "回診管理") };
+    // appState.title が空ならアプリ名フォールバック。bundle.js は import 循環を
+    // 避けるため i18n を直接 import せず、defaults.json のフォールバックを使う
+    out.sections.meta = { title: String(appState?.title || "回診") };
   }
   if (want.has(SECTION.SETTINGS) && settings) {
     out.sections.settings = settings;

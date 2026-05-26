@@ -142,11 +142,7 @@ function validateAdminTerminal() {
   const missing = findIncompleteAdminPatients();
   if (!missing.length) return true;
   const sample = missing.slice(0, 8).join(", ") + (missing.length > 8 ? ", ..." : "");
-  const ok = confirm(
-    `次の位置の患者は部屋番号またはタグが未入力です: ${sample}\n` +
-    `\n[OK]を押して進むと、これらの患者の名前・部屋番号・タグはクリアされます（SOAP・メモ・共有は残ります）。\n` +
-    `[キャンセル]で編集に戻れます。`
-  );
+  const ok = confirm(t("adminTerminal.incompletePatients.confirm", { sample }));
   if (!ok) return false;
   clearIncompleteAdminPatients();
   return true;
@@ -386,7 +382,7 @@ function wireScanButton(btnId, areaId) {
   if (!btn) return;
   if (!isScannerSupported()) {
     btn.disabled = true;
-    btn.title = "このブラウザはカメラ非対応";
+    btn.title = t("qr.scanner.unsupported");
   }
   btn.addEventListener("click", async () => {
     const text = await scanQR();
@@ -459,7 +455,7 @@ if (clearAllBtn) {
 // ============================
 
 function updateAppTitle(val) {
-  appState.title = val || "回診管理";
+  appState.title = val || t("app.title");
   document.title = appState.title;
   const printHead = document.querySelector(".overviewPrintHead");
   if (printHead) printHead.textContent = appState.title + " — 総覧";

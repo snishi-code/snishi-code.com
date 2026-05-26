@@ -2,6 +2,7 @@
 
 import { appState, settings } from "../store.js";
 import { patientMatchesSharedFilter } from "./tags.js";
+import { t } from "../i18n.js";
 
 // ============================
 // 患者リスト系 QR ペイロード (HM/MM/SH 共通)
@@ -92,10 +93,10 @@ export function encodePatientList(cfg) {
 export function decodePatientList(payload) {
   const obj = JSON.parse(String(payload || ""));
   if (!obj || typeof obj !== "object") {
-    throw new Error("不正な患者リスト形式");
+    throw new Error(t("qrSettings.invalid"));
   }
   if (obj.v !== WIRE_V) {
-    throw new Error(`バージョン不一致 (wire=${obj.v}, expected=${WIRE_V})`);
+    throw new Error(t("qrSettings.versionMismatch", { a: obj.v, b: WIRE_V }));
   }
   const tagNames = Array.isArray(obj.tags) ? obj.tags.filter(x => typeof x === "string") : [];
   const rawList = Array.isArray(obj.p) ? obj.p : [];

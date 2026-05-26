@@ -16,12 +16,14 @@ const AND_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" str
 const OR_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" fill-opacity="0.85" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/></svg>`;
 
 // Status virtual tags exposed in filter pickers (palette kept in sync with style.css)
+// ステータス色のメタ。label は t() を遅延参照する getter にして、起動時の文字列
+// キャプチャによる "locale 切替が効かない" 問題を回避する。
 const STATUS_TAG_DEFS = [
-  { value: STATUS_TAG_PREFIX + STATUS.NONE,   label: "白", color: "#ffffff", borderColor: "#9ca3af" },
-  { value: STATUS_TAG_PREFIX + STATUS.YELLOW, label: "黄", color: "#f59e0b", borderColor: "#b45309" },
-  { value: STATUS_TAG_PREFIX + STATUS.GREEN,  label: "緑", color: "#14b8a6", borderColor: "#0f766e" },
-  { value: STATUS_TAG_PREFIX + STATUS.GRAY,   label: "灰", color: "#6b7280" },
-  { value: STATUS_TAG_PREFIX + STATUS.BLUE,   label: "青", color: "#bfdbfe", borderColor: "#2563eb" },
+  { value: STATUS_TAG_PREFIX + STATUS.NONE,   get label() { return t("tagStatus.none"); },   color: "#ffffff", borderColor: "#9ca3af" },
+  { value: STATUS_TAG_PREFIX + STATUS.YELLOW, get label() { return t("tagStatus.yellow"); }, color: "#f59e0b", borderColor: "#b45309" },
+  { value: STATUS_TAG_PREFIX + STATUS.GREEN,  get label() { return t("tagStatus.green"); },  color: "#14b8a6", borderColor: "#0f766e" },
+  { value: STATUS_TAG_PREFIX + STATUS.GRAY,   get label() { return t("tagStatus.gray"); },   color: "#6b7280" },
+  { value: STATUS_TAG_PREFIX + STATUS.BLUE,   get label() { return t("tagStatus.blue"); },   color: "#bfdbfe", borderColor: "#2563eb" },
 ];
 
 export function isStatusTag(value) {
@@ -58,7 +60,7 @@ export function getStatusTagDefs() { return STATUS_TAG_DEFS.slice(); }
 export function isTagGroupingEnabled() { return !!settings.tagGroupingEnabled; }
 
 // Virtual group always present for status colors
-const STATUS_GROUP = { id: STATUS_GROUP_ID, name: "色", mode: GROUP_MODE_SINGLE, virtual: true };
+const STATUS_GROUP = { id: STATUS_GROUP_ID, get name() { return t("tag.statusGroup.name"); }, mode: GROUP_MODE_SINGLE, virtual: true };
 
 export function getAllGroups() {
   const userGroups = Array.isArray(settings.tagGroups) ? settings.tagGroups.slice() : [];
@@ -306,7 +308,7 @@ function buildGroupSection(group, entries, getSelected, setSelected, onChange, r
     const h = document.createElement("div");
     h.className = "tagPickerSectionHead";
     h.innerHTML = `<span>${escapeHtml(group.name)}</span><span class="tagPickerSectionMode">${
-      group.mode === GROUP_MODE_SINGLE ? "・単選択" : ""
+      group.mode === GROUP_MODE_SINGLE ? t("tag.group.singleMark") : ""
     }</span>`;
     sec.appendChild(h);
   }
@@ -373,8 +375,8 @@ export function makeAddTagWidget({ onAdded } = {}) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "tagSettingAdd";
-    btn.title = "新規タグ";
-    btn.setAttribute("aria-label", "新規タグ");
+    btn.title = t("tag.add.title");
+    btn.setAttribute("aria-label", t("tag.add.aria"));
     btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -389,7 +391,7 @@ export function makeAddTagWidget({ onAdded } = {}) {
     const inp = document.createElement("input");
     inp.type = "text";
     inp.className = "tagSettingInput";
-    inp.placeholder = "タグ名";
+    inp.placeholder = t("tag.placeholder");
     activeInput = inp;
     let done = false;
     function finalize(commit) {
@@ -490,14 +492,14 @@ export function makeTagPicker(opts) {
         });
         return b;
       };
-      modeRow.appendChild(mkBtn(TAG_FILTER_MODE_AND, AND_SVG, "AND（すべて満たす）"));
-      modeRow.appendChild(mkBtn(TAG_FILTER_MODE_OR, OR_SVG, "OR（いずれか満たす）"));
+      modeRow.appendChild(mkBtn(TAG_FILTER_MODE_AND, AND_SVG, t("tag.filter.mode.and")));
+      modeRow.appendChild(mkBtn(TAG_FILTER_MODE_OR, OR_SVG, t("tag.filter.mode.or")));
       // Clear button (×) on the right of the mode toggles
       const clr = document.createElement("button");
       clr.type = "button";
       clr.className = "tagPickerClearBtn";
-      clr.title = "選択をすべて解除";
-      clr.setAttribute("aria-label", "選択をすべて解除");
+      clr.title = t("tag.filter.clear.title");
+      clr.setAttribute("aria-label", t("tag.filter.clear.aria"));
       clr.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
       clr.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -534,7 +536,7 @@ export function makeTagPicker(opts) {
       // Unassigned tags
       const unassigned = getUnassignedTags();
       if (unassigned.length) {
-        const unGroup = { id: "__unassigned", name: "未分類", mode: GROUP_MODE_MULTI };
+        const unGroup = { id: "__unassigned", name: t("tag.group.unassigned"), mode: GROUP_MODE_MULTI };
         const unEntries = unassigned.map(t => ({ value: t, label: t }));
         sectionsHost.appendChild(buildGroupSection(unGroup, unEntries, getSelected, setSelected, onChange, refreshTrigger, refreshPopup));
       }

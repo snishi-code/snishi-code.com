@@ -61,7 +61,7 @@ function renderPage() {
   const nextBtn = document.getElementById("adminQrNextBtn");
   if (!_pages.length) {
     if (meta) meta.textContent = "";
-    if (preview) preview.textContent = "（パスフレーズを入力してください）";
+    if (preview) preview.textContent = t("admin.preview.placeholder");
     if (prevBtn) prevBtn.disabled = true;
     if (nextBtn) nextBtn.disabled = true;
     const canvas = document.getElementById("adminQrCanvas");
@@ -88,7 +88,7 @@ async function regenerate() {
       const phrase = settings.rosterPassphrase || "";
       if (!phrase) {
         _pages = [];
-        if (status) status.textContent = "⚠ 設定で合言葉を入力してください。";
+        if (status) status.textContent = t("admin.status.passphraseRequired");
         renderPage();
         return;
       }
@@ -101,12 +101,12 @@ async function regenerate() {
       const r = await buildDiffPages();
       _pages = r.pages;
       _qrSource = "diff";
-      if (status) status.textContent = `直近30日の差分: ${r.count}件のコミット`;
+      if (status) status.textContent = t("admin.status.diff.window", { count: r.count });
     }
     _pageIndex = 0;
     renderPage();
   } catch (e) {
-    if (status) status.textContent = "エラー: " + (e.message || e);
+    if (status) status.textContent = t("admin.status.error", { message: e.message || e });
   }
 }
 
@@ -164,46 +164,49 @@ async function handleImport() {
   const status = document.getElementById("adminImportStatus");
   const text = area ? area.value : "";
   const parsed = parseRosterPages(text);
-  if (!parsed.ok) { if (status) status.textContent = "エラー: " + parsed.error; return; }
+  if (!parsed.ok) { if (status) status.textContent = t("admin.status.error", { message: parsed.error }); return; }
 
   let secret;
   if (parsed.kind === "DIFF") {
     // Diffs are encrypted with the local roster's authentication code (rosterId)
     secret = rosterState?.rosterId || "";
     if (!secret) {
-      if (status) status.textContent = "エラー: ローカルに名簿がありません。先にコピーを取込んでください。";
+      if (status) status.textContent = t("admin.status.localMissing");
       return;
     }
   } else {
     // COPY (FULL) needs the 合言葉
     const phrase = prompt(t("admin.passphrase.prompt.import"));
-    if (!phrase) { if (status) status.textContent = "取込をキャンセルしました"; return; }
+    if (!phrase) { if (status) status.textContent = t("admin.status.canceled"); return; }
     secret = phrase;
   }
 
   const decoded = await decodeRosterPayload(parsed, secret);
-  if (!decoded.ok) { if (status) status.textContent = "エラー: " + decoded.error; return; }
+  if (!decoded.ok) { if (status) status.textContent = t("admin.status.error", { message: decoded.error }); return; }
   const body = decoded.body;
 
   if (body.kind === "full") {
-    const msg = `名簿コピーを取込みます\n- 患者: ${body.base?.patients?.length || 0} 名\n- タグ: ${body.base?.tags?.length || 0} 件\n\n現在のローカル名簿は新しい名簿で置換されます（SOAP・メモ・共有はpid一致で保持）。よろしいですか？`;
+    const msg = t("admin.confirm.copyImport", {
+      patients: body.base?.patients?.length || 0,
+      tags: body.base?.tags?.length || 0,
+    });
     if (!confirm(msg)) return;
     applyFullPayload(body);
     // Inherit the sender's 合言葉 so this receiver can also produce copies later if needed
     if (!settings.rosterPassphrase) {
       settings.rosterPassphrase = secret;
     }
-    if (status) status.textContent = "コピー取込完了。";
+    if (status) status.textContent = t("admin.status.copyDone");
     closeAdminPanel();
     if (_onApplied) _onApplied();
   } else if (body.kind === "diff") {
     const result = applyDiffPayload(body);
-    if (!result.ok) { if (status) status.textContent = "エラー: " + result.error; return; }
-    if (status) status.textContent = `差分取込完了（適用 ${result.applied} 件）`;
+    if (!result.ok) { if (status) status.textContent = t("admin.status.error", { message: result.error }); return; }
+    if (status) status.textContent = t("admin.status.diffDone", { applied: result.applied });
     closeAdminPanel();
     if (_onApplied) _onApplied();
   } else {
-    if (status) status.textContent = "未知のペイロード種別: " + body.kind;
+    if (status) status.textContent = t("admin.status.unknownKind", { kind: body.kind });
   }
 }
 

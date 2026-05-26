@@ -67,8 +67,8 @@ function applyRoster(decoded, ctrl) {
     finishDataChange();
     ctrl.close();
     const msg = senderTagNames.length
-      ? `${roster.length} 件の名簿と ${senderTagNames.length} 件のタグを反映しました。`
-      : `${roster.length} 件の名簿を反映しました。`;
+      ? t("home.qrImport.reflected.full", { roster: roster.length, tags: senderTagNames.length })
+      : t("home.qrImport.reflected.rosterOnly", { roster: roster.length });
     alert(msg);
     return;
   }
@@ -108,19 +108,19 @@ function applyRoster(decoded, ctrl) {
   }
   finishDataChange();
   ctrl.close();
-  const msgs = [`${added.length} 件を末尾に追加しました。`];
+  const msgs = [t("home.qrImport.appended.count", { n: added.length })];
   if (tagsAdded) {
     msgs.push(tagsRenamed
-      ? `新規タグ ${tagsAdded} 件を追加（うち ${tagsRenamed} 件は同名衝突のため A(1)/A(2) 形式に改名）`
-      : `新規タグ ${tagsAdded} 件を追加しました。`);
+      ? t("home.qrImport.tagsAdded.withRename", { added: tagsAdded, renamed: tagsRenamed })
+      : t("home.qrImport.tagsAdded.plain", { added: tagsAdded }));
   }
   alert(msgs.join("\n"));
 }
 
 const flow = createQrFlow({
   kind: "HM",
-  kindLabel: "ホームQR",
-  emptyMessage: "（対象の患者がいません）",
+  kindLabel: t("qr.kind.home"),
+  emptyMessage: t("qr.empty.noTargets"),
   ids: {
     wrapId: "homeQrWrap",
     canvasId: "homeQrCanvas",

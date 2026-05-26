@@ -8,6 +8,7 @@ import {
   canApplyChain, commitsToApply, appendCommits, flushCommit,
   getCommitsWithinWindow,
 } from "./roster.js";
+import { t } from "../i18n.js";
 import { ROSTER_DIFF_WINDOW_DAYS } from "../constants.js";
 import {
   BUNDLE_FORMAT, BUNDLE_SCHEMA, BUNDLE_APP_VERSION,
@@ -171,7 +172,7 @@ export function parseRosterPages(text) {
       rosterId: m[4],
     });
   }
-  if (!markers.length) return { ok: false, error: "名簿QRが見つかりません" };
+  if (!markers.length) return { ok: false, error: t("admin.error.notFound") };
 
   const groups = new Map();
   for (let i = 0; i < markers.length; i++) {
@@ -188,7 +189,7 @@ export function parseRosterPages(text) {
   const [rosterId, g] = groups.entries().next().value;
   const missing = [];
   for (let p = 1; p <= g.total; p++) if (!g.pages.has(p)) missing.push(p);
-  if (missing.length) return { ok: false, error: `ページが不足: ${missing.join(", ")} / ${g.total}` };
+  if (missing.length) return { ok: false, error: t("admin.error.missingPages", { missing: missing.join(", "), total: g.total }) };
   let combined = "";
   for (let p = 1; p <= g.total; p++) combined += g.pages.get(p);
   return { ok: true, kind: g.kind, rosterId, encrypted: combined };
@@ -202,11 +203,11 @@ export async function decodeRosterPayload(parsed, secret) {
   try {
     plaintext = await decryptText(parsed.encrypted, secret, salt);
   } catch (e) {
-    return { ok: false, error: e.message || "復号失敗" };
+    return { ok: false, error: e.message || t("admin.error.decryptFailed") };
   }
   let body;
   try { body = JSON.parse(plaintext); }
-  catch (_) { return { ok: false, error: "ペイロード解析失敗" }; }
+  catch (_) { return { ok: false, error: t("admin.error.parseFailed") }; }
   return { ok: true, body: normalizeRosterPayload(body, parsed.kind) };
 }
 
@@ -265,13 +266,13 @@ export function applyFullPayload(body) {
 export function applyDiffPayload(body) {
   ensureRosterState();
   if (body.rosterId !== rosterState.rosterId) {
-    return { ok: false, error: "別の名簿のQRです（ID不一致）。フルダンプから取込んでください。" };
+    return { ok: false, error: t("admin.error.idMismatch") };
   }
   const fresh = commitsToApply(body.commits || []);
-  if (!fresh.length) return { ok: true, applied: 0, message: "既に最新です" };
+  if (!fresh.length) return { ok: true, applied: 0, message: t("admin.status.alreadyLatest") };
   const chain = canApplyChain(fresh);
   if (!chain.ok) {
-    return { ok: false, error: `欠落しているコミットがあります（${ROSTER_DIFF_WINDOW_DAYS}日以上の更新差。フルダンプで再取込してください）` };
+    return { ok: false, error: t("admin.error.missingCommits", { days: ROSTER_DIFF_WINDOW_DAYS }) };
   }
   appendCommits(fresh);
   const view = rebuildRoster();

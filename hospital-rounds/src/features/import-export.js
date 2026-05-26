@@ -174,7 +174,7 @@ export function initImportExport(callbacks) {
         const dd = String(now.getDate()).padStart(2, "0");
         const hh = String(now.getHours()).padStart(2, "0");
         const min = String(now.getMinutes()).padStart(2, "0");
-        const titleSafe = (appState.title || "回診管理").replace(/[\\/:*?"<>|]/g, "_");
+        const titleSafe = (appState.title || t("app.title")).replace(/[\\/:*?"<>|]/g, "_");
         // 本番以外（test サブドメイン / dev サーバ）の書き出しはファイル名先頭で識別できるようにする
         const envPrefix = document.documentElement.dataset.env === "test" ? "test_" : "";
         a.download = `${envPrefix}${titleSafe}_${yyyy}_${mm}${dd}_${hh}${min}.json`;

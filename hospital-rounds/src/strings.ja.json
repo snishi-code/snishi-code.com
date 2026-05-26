@@ -109,7 +109,6 @@
   "reset.all.confirm2": "本当によろしいですか？この操作は元に戻せません。",
 
   "import.title": "データ取込",
-  "import.desc": "患者は末尾に新規追加されます (青ステータス)。<br>設定も合わせて取り込みますか？<br><span style=\"font-size:12px;color:#6b7280;\">※管理機能の設定は引き継がれません</span>",
   "import.withSettings": "設定も取り込む",
   "import.patientsOnly": "患者のみ取込",
 
@@ -125,11 +124,7 @@
   "qr.recv.title": "受信",
   "qr.notReady": "（受信中）",
 
-  "patient.empty.button.warn": "未使用（白・内容なし）の患者ボタンはありません。",
-  "patient.empty.bulkDelete.confirm": "未使用の患者ボタンを {n} 件まとめて削除します。\n（灰ステータスは「終了マーク」として残ります）\nよろしいですか？",
-
-  "homeRoom.unfilled.warn": "次の位置の患者は部屋番号またはタグが未入力です: {sample}\n",
-  "homeRoom.sort.confirm.continue": "それでもソートを実行しますか？",
+  "adminTerminal.incompletePatients.confirm": "次の位置の患者は部屋番号またはタグが未入力です: {sample}\n\n[OK]を押して進むと、これらの患者の名前・部屋番号・タグはクリアされます（SOAP・メモ・共有は残ります）。\n[キャンセル]で編集に戻れます。",
 
   "qrSettings.summary.tags": "タグ {n} 件",
   "qrSettings.summary.formats": "フォーマット {n} 件",
@@ -175,6 +170,62 @@
   "settings.addFormat.title": "フォーマット追加",
   "settings.addFormat.aria": "フォーマット追加",
 
-  "admin.passphrase.prompt.import": "名簿コピーを取り込みます。送信側と同じ合言葉を入力してください："
+  "admin.passphrase.prompt.import": "名簿コピーを取り込みます。送信側と同じ合言葉を入力してください：",
+
+  "qr.empty.contentless": "（表示する内容がありません）",
+  "qr.empty.noTargets": "（対象の患者がいません）",
+  "qr.empty.noSettings": "（設定が空です）",
+  "qr.kind.home": "ホームQR",
+  "qr.kind.shared": "共有QR",
+  "qr.kind.memo": "メモQR",
+  "qr.kind.settings": "設定QR",
+  "qr.recv.unknownFormat": "QR 形式が認識できません",
+  "qr.recv.wrongKind": "これは {label} ではありません（kind={got}）",
+  "qr.recv.newBatch": "新しいバッチを検出。受信バッファをリセットしました",
+  "qr.recv.duplicate": "重複: {got}/{total} 受信済",
+  "qr.recv.complete": "全 {total} ページ受信完了",
+  "qr.recv.progress": "{got}/{total} 受信",
+
+  "qr.scan.head": "QR スキャン",
+  "qr.scan.hint.stream": "QR を順に読み取ってください",
+  "qr.scan.hint.once": "QR コードを枠内に映してください",
+  "qr.scan.starting": "カメラを起動中...",
+  "qr.scan.startFailed": "カメラを起動できませんでした: {message}",
+
+  "home.qrImport.reflected.full": "{roster} 件の名簿と {tags} 件のタグを反映しました。",
+  "home.qrImport.reflected.rosterOnly": "{roster} 件の名簿を反映しました。",
+  "home.qrImport.appended.count": "{n} 件を末尾に追加しました。",
+  "home.qrImport.tagsAdded.withRename": "新規タグ {added} 件を追加（うち {renamed} 件は同名衝突のため A(1)/A(2) 形式に改名）",
+  "home.qrImport.tagsAdded.plain": "新規タグ {added} 件を追加しました。",
+  "shared.qrImport.applied.count": "{n} 件を反映しました。",
+  "shared.qrImport.noMatch": "未マッチ: {n} 件",
+  "shared.qrImport.multiMatch": "複数マッチで保留: {n} 件",
+  "shared.qrImport.leftoverHeader": "【未反映分】",
+
+  "admin.preview.placeholder": "（パスフレーズを入力してください）",
+  "admin.status.passphraseRequired": "⚠ 設定で合言葉を入力してください。",
+  "admin.status.diff.window": "直近30日の差分: {count}件のコミット",
+  "admin.status.error": "エラー: {message}",
+  "admin.status.canceled": "取込をキャンセルしました",
+  "admin.status.localMissing": "エラー: ローカルに名簿がありません。先にコピーを取込んでください。",
+  "admin.confirm.copyImport": "名簿コピーを取込みます\n- 患者: {patients} 名\n- タグ: {tags} 件\n\n現在のローカル名簿は新しい名簿で置換されます（SOAP・メモ・共有はpid一致で保持）。よろしいですか？",
+  "admin.status.copyDone": "コピー取込完了。",
+  "admin.status.diffDone": "差分取込完了（適用 {applied} 件）",
+  "admin.status.unknownKind": "未知のペイロード種別: {kind}",
+  "admin.error.notFound": "名簿QRが見つかりません",
+  "admin.error.missingPages": "ページが不足: {missing} / {total}",
+  "admin.error.decryptFailed": "復号失敗",
+  "admin.error.parseFailed": "ペイロード解析失敗",
+  "admin.error.idMismatch": "別の名簿のQRです（ID不一致）。フルダンプから取込んでください。",
+  "admin.status.alreadyLatest": "既に最新です",
+  "admin.error.missingCommits": "欠落しているコミットがあります（{days}日以上の更新差。フルダンプで再取込してください）",
+
+  "tag.placeholder": "タグ名",
+  "tag.statusGroup.name": "色",
+  "tagStatus.none": "白",
+  "tagStatus.yellow": "黄",
+  "tagStatus.green": "緑",
+  "tagStatus.gray": "灰",
+  "tagStatus.blue": "青"
 }
 

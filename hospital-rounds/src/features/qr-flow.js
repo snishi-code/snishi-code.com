@@ -81,7 +81,7 @@ export function createQrFlow(cfg) {
     const canvas = document.getElementById(cfg.ids.canvasId);
 
     if (!qrPages || qrPages.length === 0) {
-      if (meta) meta.textContent = cfg.emptyMessage || "（表示する内容がありません）";
+      if (meta) meta.textContent = cfg.emptyMessage || t("qr.empty.contentless");
       if (prevBtn) prevBtn.disabled = true;
       if (nextBtn) nextBtn.disabled = true;
       if (canvas) {
@@ -135,23 +135,23 @@ export function createQrFlow(cfg) {
       onScan: (text, ctrl) => {
         const decoded = decodePage(text);
         if (!decoded) {
-          ctrl.setStatus("QR 形式が認識できません");
+          ctrl.setStatus(t("qr.recv.unknownFormat"));
           return;
         }
         if (decoded.kind !== cfg.kind) {
-          ctrl.setStatus(`これは ${cfg.kindLabel} ではありません（kind=${decoded.kind}）`);
+          ctrl.setStatus(t("qr.recv.wrongKind", { label: cfg.kindLabel, got: decoded.kind }));
           return;
         }
         if (recvBatchId && recvBatchId !== decoded.batchId) {
           resetRecv();
-          ctrl.setStatus("新しいバッチを検出。受信バッファをリセットしました");
+          ctrl.setStatus(t("qr.recv.newBatch"));
         }
         if (!recvBatchId) {
           recvBatchId = decoded.batchId;
           recvTotal = decoded.totalPages;
         }
         if (recvPages.has(decoded.pageNum)) {
-          ctrl.setStatus(`重複: ${recvPages.size}/${recvTotal} 受信済`);
+          ctrl.setStatus(t("qr.recv.duplicate", { got: recvPages.size, total: recvTotal }));
           return;
         }
         recvPages.set(decoded.pageNum, decoded.content);
@@ -161,7 +161,7 @@ export function createQrFlow(cfg) {
           for (let i = 1; i <= recvTotal; i++) full.push(recvPages.get(i));
           const payload = full.join("");
           resetRecv();
-          ctrl.setStatus(`全 ${recvTotal} ページ受信完了`);
+          ctrl.setStatus(t("qr.recv.complete", { total: recvTotal }));
           // スキャナが閉じてから apply（alert がスキャナの裏に隠れないように）
           setTimeout(() => {
             let decodedPayload;
@@ -175,7 +175,7 @@ export function createQrFlow(cfg) {
           }, 100);
           return { stop: true };
         }
-        ctrl.setStatus(`${recvPages.size}/${recvTotal} 受信`);
+        ctrl.setStatus(t("qr.recv.progress", { got: recvPages.size, total: recvTotal }));
       },
     });
     if (!session) alert(t("qr.scanner.open.failed"));
@@ -201,7 +201,7 @@ export function createQrFlow(cfg) {
     if (scanBtn) {
       if (!isScannerSupported()) {
         scanBtn.disabled = true;
-        scanBtn.title = "このブラウザはカメラ非対応";
+        scanBtn.title = t("qr.scanner.unsupported");
       }
       scanBtn.addEventListener("click", startScan);
     }

@@ -543,10 +543,10 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
   const tagGroupingEnableBtn = document.getElementById("tagGroupingEnableBtn");
   if (tagGroupingEnableBtn) tagGroupingEnableBtn.addEventListener("click", () => {
     if (settings.tagGroupingEnabled) {
-      if (!confirm("グループタグ機能をオフにします。グループ定義は保持されますが、タグはフラット表示に戻ります。よろしいですか？")) return;
+      if (!confirm(t("tag.group.disable.confirm"))) return;
       settings.tagGroupingEnabled = false;
     } else {
-      if (!confirm("⚠ グループタグ機能を有効にします。\n\nタグをグループに分け、各グループで単選択／複数選択を切り替えられるようになります。\nスクリーニングはグループ間AND、グループ内ORで評価されます。\n\nよろしいですか？")) return;
+      if (!confirm(t("tag.group.enable.confirm"))) return;
       settings.tagGroupingEnabled = true;
     }
     saveSettings();
@@ -556,7 +556,7 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
   });
 
   if (resetTagsBtn) resetTagsBtn.addEventListener("click", () => {
-    const ok = confirm("タグ一覧を初期状態に戻します。よろしいですか？");
+    const ok = confirm(t("tag.reset.confirm"));
     if (!ok) return;
     settings.tags = clone(DEFAULT_TAGS);
     saveSettings();

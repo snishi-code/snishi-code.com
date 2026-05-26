@@ -32,14 +32,22 @@ export function t(key, params) {
   }
   if (params && typeof params === "object") {
     for (const [k, v] of Object.entries(params)) {
-      s = s.split("{" + k + "}").join(String(v));
+      // replaceAll で 1 パス置換。split().join() 連鎖は値に "{x}" を含む時に
+      // 後続パスが誤展開する (例: replace "{name}" → "山田{age}" → さらに {age} 展開) ため避ける
+      s = s.replaceAll("{" + k + "}", String(v));
     }
   }
   return s;
 }
 
 // HTML 内の data-i18n-* 属性を t() で展開する。
-// 起動時に main.js から 1 回呼べばよい (DOM が描画された後の動的要素は別途 t() を直接使う)。
+//
+// 呼び出し規約:
+//   - 起動時に 1 回 main.js から applyI18n() (= document 全体) を呼ぶ
+//   - 動的に DOM を作る各 render 関数では、生成した root に対して applyI18n(root)
+//     を末尾で呼ぶ。動的部分には textContent などに t() を直接渡しても良い
+//   - 動的 DOM が data-i18n を持たない (= 全部 t() 直接呼出) なら applyI18n(root) は不要
+//
 // サポート属性:
 //   data-i18n             → element.textContent
 //   data-i18n-title       → element.title

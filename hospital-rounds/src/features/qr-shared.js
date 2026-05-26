@@ -79,12 +79,12 @@ function makeApplyEntries({ fieldName, pasteCardId, pasteAreaId }) {
       }
       finishDataChange();
       ctrl.close();
-      const msgs = [`${applied} 件を反映しました。`];
-      if (noMatch.length) msgs.push(`未マッチ: ${noMatch.length} 件`);
-      if (multi.length) msgs.push(`複数マッチで保留: ${multi.length} 件`);
+      const msgs = [t("shared.qrImport.applied.count", { n: applied })];
+      if (noMatch.length) msgs.push(t("shared.qrImport.noMatch", { n: noMatch.length }));
+      if (multi.length) msgs.push(t("shared.qrImport.multiMatch", { n: multi.length }));
       if (noMatch.length || multi.length) {
         const leftover = [...noMatch, ...multi].map(formatEntry).join("\n\n");
-        dumpToPasteCard(pasteCardId, pasteAreaId, "【未反映分】\n" + leftover);
+        dumpToPasteCard(pasteCardId, pasteAreaId, t("shared.qrImport.leftoverHeader") + "\n" + leftover);
       }
       alert(msgs.join("\n"));
     } else {
@@ -102,8 +102,8 @@ function makeApplyEntries({ fieldName, pasteCardId, pasteAreaId }) {
 
 const sharedFlow = createQrFlow({
   kind: "SH",
-  kindLabel: "共有QR",
-  emptyMessage: "（対象の患者がいません）",
+  kindLabel: t("qr.kind.shared"),
+  emptyMessage: t("qr.empty.noTargets"),
   ids: {
     wrapId: "sharedQrWrap",
     canvasId: "sharedQrCanvas",
@@ -124,8 +124,8 @@ const sharedFlow = createQrFlow({
 
 const memoFlow = createQrFlow({
   kind: "MM",
-  kindLabel: "メモQR",
-  emptyMessage: "（対象の患者がいません）",
+  kindLabel: t("qr.kind.memo"),
+  emptyMessage: t("qr.empty.noTargets"),
   ids: {
     wrapId: "memoQrWrap",
     canvasId: "memoQrCanvas",
