@@ -598,11 +598,9 @@
         <button class="iconBtn" id="menuPrintBtn" type="button" title="印刷" aria-label="印刷">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         </button>
-        <button class="iconBtn" id="settingsImportBtn" type="button" title="取込" aria-label="取込">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </button>
-        <button class="iconBtn" id="settingsExportBtn" type="button" title="保存" aria-label="保存">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <button class="iconBtn" id="settingsDbBtn" type="button" data-i18n-title="io.db.title" data-i18n-aria="io.db.title" title="データ管理" aria-label="データ管理">
+          <!-- lucide: database (DB cylinder) -->
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6"/></svg>
         </button>
         <button class="iconBtn" id="clearAllBtn" type="button" title="全患者クリア" aria-label="全患者クリア">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
@@ -724,36 +722,28 @@
       </div>
     </div>
 
-    <!-- 入出力 chooser: 端末ファイル / ワークスペース をトグル選択 -->
+    <!-- 入出力 chooser: ワークスペース切替/作成 + 末尾に JSON 取込/保存 -->
     <div class="popupMenuOverlay" id="ioChooserOverlay">
       <div class="popupMenu ioChooserMenu">
-        <div class="popupTitle" id="ioChooserTitle" data-i18n="io.title">データ管理</div>
-
-        <div class="ioSourceToggleRow">
-          <button class="ioSourceToggleBtn" type="button" data-source="ws" data-i18n="io.tab.workspace">ワークスペース</button>
-          <button class="ioSourceToggleBtn selected" type="button" data-source="file" data-i18n="io.tab.file">端末ファイル</button>
-        </div>
-
-        <!-- 端末ファイル: 取込 -->
-        <div class="ioPanel" id="ioPanelFileImport" style="display:none;">
-          <div class="ioHint" data-i18n="io.file.import.hint">JSON ファイルから取り込みます (現在のワークスペースに追加)</div>
-          <button class="primary" id="ioFilePickBtn" type="button" data-i18n="io.file.import.action">ファイルを選択</button>
-        </div>
-
-        <!-- 端末ファイル: 保存 -->
-        <div class="ioPanel" id="ioPanelFileExport" style="display:none;">
-          <div class="ioHint" data-i18n="io.file.export.hint">現在のワークスペースを JSON ファイルとしてダウンロードします</div>
-          <button class="primary" id="ioFileSaveBtn" type="button" data-i18n="io.file.export.action">ダウンロード</button>
-        </div>
+        <div class="popupTitle" id="ioChooserTitle" data-i18n="io.db.title">データ管理</div>
 
         <!-- ワークスペース: 一覧 + 切替 + 新規作成 -->
-        <div class="ioPanel" id="ioPanelWorkspaces" style="display:none;">
+        <div class="ioPanel" id="ioPanelWorkspaces">
           <div class="ioHint" data-i18n="io.ws.list.hint">タップで切替。★ が現在のワークスペース。</div>
           <div class="ioDbList" id="ioWorkspaceList"></div>
 
           <div class="ioHint" style="margin-top:14px;" data-i18n="io.ws.create.hint">新規ワークスペース (空)</div>
           <input type="text" id="ioWsLabelInp" class="ioDbLabelInp" data-i18n-placeholder="io.ws.create.placeholder" placeholder="例: 病棟A" autocomplete="off" />
           <button class="primary" id="ioWsCreateBtn" type="button" data-i18n="io.ws.create.action">新規作成して切替え</button>
+        </div>
+
+        <!-- JSON 取込/保存: 普段は脇役なのでテキスト 2 ボタンだけを末尾に並べる -->
+        <div class="ioJsonSection">
+          <div class="ioJsonHeading" data-i18n="io.json.heading">JSON ファイル</div>
+          <div class="ioJsonActions">
+            <button class="secondary ioJsonBtn" id="ioFilePickBtn" type="button" data-i18n="io.json.import">JSON 取込</button>
+            <button class="secondary ioJsonBtn" id="ioFileSaveBtn" type="button" data-i18n="io.json.export">JSON 保存</button>
+          </div>
         </div>
 
         <div style="height:10px;"></div>

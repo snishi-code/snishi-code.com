@@ -575,10 +575,9 @@ titleToggle = createEditToggle({
   },
 });
 
-// ハンバーガーメニュー（設定・印刷・取込・保存）。ヘッダー右の ☰ で開閉し、
-// 各アイコンをタップしたらメニューを閉じてから実行する。取込/保存は
-// import-export.js が既存の settingsImportBtn / settingsExportBtn を見ている
-// ので、その隠しボタンへ click を委譲して再利用する。
+// ハンバーガーメニュー（設定・印刷・データ管理 (DB)）。ヘッダー右の ☰ で開閉し、
+// 各アイコンをタップしたらメニューを閉じてから実行する。データ管理は
+// import-export.js が settingsDbBtn を見ているので、ここではメニュー close だけ追加。
 const headerMenuBtn = document.getElementById("headerMenuBtn");
 const headerMenuOverlay = document.getElementById("headerMenuOverlay");
 function closeHeaderMenu() {
@@ -599,11 +598,9 @@ document.getElementById("menuPrintBtn")?.addEventListener("click", () => {
   closeHeaderMenu();
   overviewPrintFlow.print();
 });
-// 取込・保存ボタンは settingsImportBtn / settingsExportBtn の ID のまま
-// ハンバーガー内に置いてあり、import-export.js が click を拾って実処理する。
-// ここではメニューを閉じるだけ追加で行う。
-document.getElementById("settingsImportBtn")?.addEventListener("click", closeHeaderMenu);
-document.getElementById("settingsExportBtn")?.addEventListener("click", closeHeaderMenu);
+// DB アイコンは settingsDbBtn の ID のままハンバーガー内に置いてあり、
+// import-export.js が click を拾って chooser を開く。ここではメニュー close だけ追加。
+document.getElementById("settingsDbBtn")?.addEventListener("click", closeHeaderMenu);
 
 const storageKeyLabel = document.getElementById("storageKeyLabel");
 if (storageKeyLabel) storageKeyLabel.textContent = `${STORAGE_KEYS.db}.${STORAGE_KEYS.store}`;

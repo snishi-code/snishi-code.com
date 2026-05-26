@@ -150,8 +150,7 @@ export function initImportExport(callbacks) {
   const { renderHome, renderDetail, renderSettings, renderOverviewScreen, renderMemoScreen, renderSharedScreen } = callbacks;
 
   const settingsImportFile = document.getElementById("settingsImportFile");
-  const settingsImportBtn = document.getElementById("settingsImportBtn");
-  const settingsExportBtn = document.getElementById("settingsExportBtn");
+  const settingsDbBtn = document.getElementById("settingsDbBtn");
 
   let lastExportUrl = null;
 
@@ -250,23 +249,17 @@ export function initImportExport(callbacks) {
   }
 
   // ============================
-  // 入出力 chooser: ワークスペース ↔ 端末ファイル トグル
+  // 入出力 chooser: ワークスペース切替/作成 + 末尾に JSON 取込/保存
+  // (旧: ヘッダーの保存/取込アイコン 2 つ → mode 別のチューザ。
+  //  新: ヘッダーの DB アイコン 1 つ → 同じチューザに集約。JSON は脇役テキスト 2 ボタンに。)
   // ============================
   const ioOverlay = document.getElementById("ioChooserOverlay");
-  const ioTitle = document.getElementById("ioChooserTitle");
-  const ioToggleBtns = ioOverlay ? ioOverlay.querySelectorAll(".ioSourceToggleBtn") : [];
-  const ioPanelFileImport = document.getElementById("ioPanelFileImport");
-  const ioPanelFileExport = document.getElementById("ioPanelFileExport");
-  const ioPanelWorkspaces = document.getElementById("ioPanelWorkspaces");
   const ioFilePickBtn = document.getElementById("ioFilePickBtn");
   const ioFileSaveBtn = document.getElementById("ioFileSaveBtn");
   const ioWorkspaceList = document.getElementById("ioWorkspaceList");
   const ioWsLabelInp = document.getElementById("ioWsLabelInp");
   const ioWsCreateBtn = document.getElementById("ioWsCreateBtn");
   const ioCancelBtn = document.getElementById("ioChooserCancelBtn");
-
-  let _ioMode = "import"; // "import" (取込) | "export" (保存)
-  let _ioSource = "ws";   // "ws" (ワークスペース) | "file" (端末ファイル)
 
   function closeIoChooser() {
     if (ioOverlay) ioOverlay.classList.remove("active");
@@ -367,42 +360,25 @@ export function initImportExport(callbacks) {
     }
   }
 
-  function applyIoMode(mode) {
-    _ioMode = mode;
-    if (ioTitle) ioTitle.textContent = mode === "import" ? "データを取り込む" : "データを保存";
-    applyIoSource(_ioSource);
-  }
-
-  function applyIoSource(source) {
-    _ioSource = source;
-    for (const b of ioToggleBtns) {
-      b.classList.toggle("selected", b.dataset.source === source);
-    }
-    if (ioPanelFileImport) ioPanelFileImport.style.display = (_ioMode === "import" && source === "file") ? "" : "none";
-    if (ioPanelFileExport) ioPanelFileExport.style.display = (_ioMode === "export" && source === "file") ? "" : "none";
-    // ワークスペースタブは import/export 共通 (タップで切替、入力で新規作成)
-    if (ioPanelWorkspaces) ioPanelWorkspaces.style.display = (source === "ws") ? "" : "none";
-
-    if (source === "ws") renderWorkspaceList();
-  }
-
-  function openIoChooser(mode) {
+  function openIoChooser() {
     if (!ioOverlay) return;
-    applyIoMode(mode);
     if (ioWsLabelInp) ioWsLabelInp.value = "";
+    renderWorkspaceList();
     ioOverlay.classList.add("active");
   }
 
-  for (const b of ioToggleBtns) {
-    b.addEventListener("click", () => applyIoSource(b.dataset.source));
-  }
   if (ioCancelBtn) ioCancelBtn.addEventListener("click", closeIoChooser);
   if (ioOverlay) ioOverlay.addEventListener("click", (e) => {
     if (e.target === ioOverlay) closeIoChooser();
   });
 
+  // JSON 取込: ファイルピッカーを起こす (file change ハンドラで取込フローへ)。チューザは
+  // 開いたままにせず閉じる (ファイル選択ダイアログとモーダルが重なると視覚的に混乱するため)
   if (ioFilePickBtn && settingsImportFile) {
-    ioFilePickBtn.addEventListener("click", () => settingsImportFile.click());
+    ioFilePickBtn.addEventListener("click", () => {
+      closeIoChooser();
+      settingsImportFile.click();
+    });
   }
   if (ioFileSaveBtn) {
     ioFileSaveBtn.addEventListener("click", () => {
@@ -430,13 +406,10 @@ export function initImportExport(callbacks) {
   }
 
   // ============================
-  // ヘッダーメニューからのエントリポイント
+  // ヘッダーメニューからのエントリポイント (DB アイコン 1 つに集約)
   // ============================
-  if (settingsImportBtn) {
-    settingsImportBtn.addEventListener("click", () => openIoChooser("import"));
-  }
-  if (settingsExportBtn) {
-    settingsExportBtn.addEventListener("click", () => openIoChooser("export"));
+  if (settingsDbBtn) {
+    settingsDbBtn.addEventListener("click", openIoChooser);
   }
 
   // file picker (input[type=file]) の change イベントは chooser を経由する

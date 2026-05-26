@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 6.1.0
+現在のバージョン: 6.2.0
 
 ## バージョニング方針
 
@@ -14,6 +14,12 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **6.2.0**: ヘッダーの取込/保存アイコンを DB アイコン 1 つに集約 + JSON を脇役化
+  - **ヘッダー UI**: 旧 `settingsImportBtn` (↓ 取込) と `settingsExportBtn` (↑ 保存) アイコンを撤去し、`settingsDbBtn` (lucide `database` シリンダー) 1 つに統合
+  - **チューザ**: 旧 ワークスペース ↔ 端末ファイル のタブ切替 (`ioSourceToggle*`) を撤去。ワークスペース UI (一覧 + 切替 + 新規作成) が常時メイン領域に表示される構成に
+  - **JSON 取込/保存**: `新規作成して切替え` ボタンの下に区切り線 + 「JSON ファイル」見出し + `[JSON 取込] [JSON 保存]` の小ぶり secondary ボタン 2 つを配置。アイコンではなく文字 (i18n キー `io.json.{heading,import,export}`)
+  - **コード簡素化**: `import-export.js` の `_ioMode` / `_ioSource` ステート, `applyIoMode` / `applyIoSource` 関数, トグルボタン配線を撤去。`openIoChooser()` は引数なしで常に同じ UI を開く
+  - i18n: `io.db.title` / `io.json.{heading,import,export}` 追加。旧 `io.tab.*` / `io.file.*` キーを削除
 - **6.1.0**: フォーマット機能の拡張 (項目ごとの様式 + ラベル区切り + タグ連携 + fraction/date)
   - **項目ごとの kind 化**: 旧 `format.type === "numeric" | "text"` を撤廃し、`item.kind` (`"text" | "number" | "fraction" | "date"`) に。1 つのフォーマット内で混在可。`fraction` は BP のような `120/53` 形式 (数値2つ + 単位)、`date` は native `<input type="date">` で月/日のみ出力 (年は捨てる)。読み込み時に旧 `format.type` を全 item の kind に展開する 1 回マイグレーション
   - **ラベル区切り (`labelSep`)**: ラベルと値の間の区切り文字をフォーマット単位で指定可能に。既定は全 item が `text` なら `"："`、それ以外は半角スペース (`" "`)。`buildSoapParts` の fallback 出力にも反映

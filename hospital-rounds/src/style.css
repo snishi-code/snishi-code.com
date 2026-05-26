@@ -2260,38 +2260,38 @@
       box-sizing: border-box;
     }
 
-    .ioSourceToggleRow {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 12px;
-      background: #f1f5f9;
-      padding: 4px;
-      border-radius: 8px;
-    }
-
-    .ioSourceToggleBtn {
-      flex: 1 1 auto;
-      width: auto !important;
-      margin: 0 !important;
-      padding: 8px 6px;
-      border: 1px solid transparent;
-      background: transparent;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 700;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    .ioSourceToggleBtn.selected {
-      background: #ffffff;
-      color: var(--text);
-      border-color: var(--line);
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-    }
-
     .ioPanel {
       margin-bottom: 4px;
+    }
+
+    /* JSON 取込/保存セクション: ワークスペース UI の下に控えめに置く。
+       区切り線で視覚的にトーンを落とし、ボタンも secondary で小ぶり。 */
+    .ioJsonSection {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .ioJsonHeading {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+
+    .ioJsonActions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .popupMenu.ioChooserMenu .ioJsonActions .ioJsonBtn {
+      flex: 1 1 0;
+      width: auto !important;
+      margin: 0 !important;
+      padding: 6px 8px;
+      font-size: 12px;
+      font-weight: 700;
     }
 
     .ioHint {
