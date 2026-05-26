@@ -2294,23 +2294,6 @@
       font-weight: 700;
     }
 
-    .ioHint {
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 8px;
-      line-height: 1.5;
-    }
-
-    .ioDbLabelInp {
-      width: 100%;
-      padding: 8px 10px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      font-size: 14px;
-      margin-bottom: 8px;
-      box-sizing: border-box;
-    }
-
     .ioDbList {
       max-height: 280px;
       overflow-y: auto;
@@ -2327,17 +2310,10 @@
       text-align: center;
     }
 
-    /* active workspace 行: ★ 表示 + 太枠 + 背景色 */
+    /* active workspace 行: 太枠 + 青背景で「ここが現在」を示す (★ マーカーは廃止) */
     .ioDbRow.activeRow {
       border-color: var(--status-blue-bd);
       background: var(--status-blue-bg);
-    }
-    .ioDbRowActiveMark {
-      flex: 0 0 auto;
-      width: 18px;
-      color: var(--status-blue-bd);
-      font-weight: 900;
-      text-align: center;
     }
 
     .ioDbRow {
@@ -2362,6 +2338,10 @@
 
     .ioDbRowMain:hover { background: #f3f4f6; }
 
+    .ioDbRowLabelHost {
+      min-width: 0;
+    }
+
     .ioDbRowLabel {
       font-weight: 700;
       font-size: 14px;
@@ -2371,9 +2351,49 @@
       text-overflow: ellipsis;
     }
 
+    /* rename inline 編集中の input は label と同じ font-size/weight でブレないように */
+    .ioDbRowEditInput {
+      width: 100%;
+      padding: 4px 6px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      box-sizing: border-box;
+      cursor: text;
+    }
+
     .ioDbRowMeta {
       font-size: 11px;
       color: var(--muted);
+    }
+
+    /* 鉛筆 + ゴミ箱を縦に並べず、横並びで右端に固定 */
+    .ioDbRowActions {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ioDbRowEdit {
+      flex: 0 0 auto;
+      width: 32px !important;
+      height: 32px;
+      padding: 4px !important;
+      margin: 0 !important;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ioDbRowEdit:hover {
+      background: #f3f4f6;
+      color: var(--text);
     }
 
     .ioDbRowDel {
@@ -2393,6 +2413,37 @@
     }
     .ioDbRowDel:hover {
       background: #fee2e2;
+    }
+
+    /* + ワークスペース追加ウィジェット (read mode = + アイコン / edit mode = input) */
+    .ioWsAddRow {
+      margin-top: 8px;
+    }
+    .ioWsAddBtn {
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 8px 10px !important;
+      border: 1px dashed var(--line);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ioWsAddBtn:hover {
+      background: #f3f4f6;
+      color: var(--text);
+      border-color: var(--text);
+    }
+    .ioWsAddInput {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 14px;
+      box-sizing: border-box;
     }
 
     /* 患者操作メニュー: 2x2 アイコングリッド + 下に閉じるバツ。

@@ -12,7 +12,7 @@ import {
   projectBundle, parseBundle, getSection, SECTION,
 } from "../bundle.js";
 import {
-  listBundles, deleteBundle, getActiveWorkspaceId,
+  listBundles, deleteBundle, renameBundle, getActiveWorkspaceId,
 } from "../storage.js";
 import { recordOp } from "./roster.js";
 import { t } from "../i18n.js";
@@ -257,8 +257,7 @@ export function initImportExport(callbacks) {
   const ioFilePickBtn = document.getElementById("ioFilePickBtn");
   const ioFileSaveBtn = document.getElementById("ioFileSaveBtn");
   const ioWorkspaceList = document.getElementById("ioWorkspaceList");
-  const ioWsLabelInp = document.getElementById("ioWsLabelInp");
-  const ioWsCreateBtn = document.getElementById("ioWsCreateBtn");
+  const ioWsAddRow = document.getElementById("ioWsAddRow");
   const ioCancelBtn = document.getElementById("ioChooserCancelBtn");
 
   function closeIoChooser() {
@@ -295,75 +294,197 @@ export function initImportExport(callbacks) {
       return (b.updatedAt || 0) - (a.updatedAt || 0);
     });
     for (const r of sorted) {
-      const isActive = (r.id === activeId);
-      const row = document.createElement("div");
-      row.className = "ioDbRow" + (isActive ? " activeRow" : "");
+      ioWorkspaceList.appendChild(buildWorkspaceRow(r, r.id === activeId));
+    }
+  }
 
-      if (isActive) {
-        const mark = document.createElement("div");
-        mark.className = "ioDbRowActiveMark";
-        mark.textContent = "★";
-        mark.title = t("io.ws.active.tooltip");
-        row.appendChild(mark);
-      }
+  // 1 行ぶんの要素を組み立てる。read mode (label + 鉛筆) と edit mode (input) を
+  // 切り替えるためのヘルパ。read mode は label をタップ → switchWorkspace、
+  // 鉛筆 → enterEditMode で input に差し替え、Enter / blur で renameBundle、Escape で取消。
+  function buildWorkspaceRow(r, isActive) {
+    const row = document.createElement("div");
+    row.className = "ioDbRow" + (isActive ? " activeRow" : "");
 
-      const main = document.createElement("div");
-      main.className = "ioDbRowMain";
+    const main = document.createElement("div");
+    main.className = "ioDbRowMain";
+    row.appendChild(main);
+
+    const labelHost = document.createElement("div");
+    labelHost.className = "ioDbRowLabelHost";
+    main.appendChild(labelHost);
+
+    const meta = document.createElement("div");
+    meta.className = "ioDbRowMeta";
+    meta.textContent = `${fmtTimestamp(r.updatedAt)} ・ ${r.title || ""}`;
+    main.appendChild(meta);
+
+    // active 以外は label area をタップで switch。active は cursor=default
+    if (!isActive) {
+      main.addEventListener("click", async (e) => {
+        // 編集中 input のクリックは伝播しない (stopPropagation で先に防がれる想定)
+        if (e.target.closest(".ioDbRowEditInput")) return;
+        try {
+          await switchWorkspace(r.id);
+          vibrate();
+          closeIoChooser();
+        } catch (err) {
+          console.error("workspace switch failed:", err);
+          alert(t("io.ws.switch.failed"));
+        }
+      });
+    } else {
+      main.style.cursor = "default";
+    }
+
+    // アクション欄: 鉛筆 (rename) + 削除 (非 active のみ)
+    const actions = document.createElement("div");
+    actions.className = "ioDbRowActions";
+    row.appendChild(actions);
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "ioDbRowEdit";
+    editBtn.title = t("io.ws.rename.title");
+    editBtn.setAttribute("aria-label", t("io.ws.rename.title"));
+    editBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+    editBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      enterRenameMode();
+    });
+    actions.appendChild(editBtn);
+
+    if (!isActive) {
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "ioDbRowDel";
+      del.title = t("common.delete");
+      del.setAttribute("aria-label", t("common.delete"));
+      del.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+      del.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const name = r.label || r.title || t("io.ws.untitled");
+        if (!confirm(t("io.ws.delete.confirm", { name }))) return;
+        try {
+          await deleteBundle(r.id);
+          await renderWorkspaceList();
+        } catch (err) {
+          console.error("workspace delete failed:", err);
+          alert(t("io.ws.delete.failed"));
+        }
+      });
+      actions.appendChild(del);
+    }
+
+    // 初期表示は read mode
+    showReadMode();
+
+    function showReadMode() {
+      labelHost.textContent = "";
       const lbl = document.createElement("div");
       lbl.className = "ioDbRowLabel";
       lbl.textContent = r.label || r.title || t("io.ws.untitled");
-      const meta = document.createElement("div");
-      meta.className = "ioDbRowMeta";
-      meta.textContent = `${fmtTimestamp(r.updatedAt)} ・ ${r.title || ""}`;
-      main.appendChild(lbl);
-      main.appendChild(meta);
-      if (!isActive) {
-        main.addEventListener("click", async () => {
-          try {
-            await switchWorkspace(r.id);
-            vibrate();
-            closeIoChooser();
-          } catch (err) {
-            console.error("workspace switch failed:", err);
-            alert(t("io.ws.switch.failed"));
-          }
-        });
-      } else {
-        main.style.cursor = "default";
-      }
-      row.appendChild(main);
+      labelHost.appendChild(lbl);
+      editBtn.style.display = "";
+    }
 
-      // active は誤削除防止
-      if (!isActive) {
-        const del = document.createElement("button");
-        del.type = "button";
-        del.className = "ioDbRowDel";
-        del.title = t("common.delete");
-        del.setAttribute("aria-label", t("common.delete"));
-        del.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
-        del.addEventListener("click", async (e) => {
-          e.stopPropagation();
-          const name = r.label || r.title || t("io.ws.untitled");
-          if (!confirm(t("io.ws.delete.confirm", { name }))) return;
-          try {
-            await deleteBundle(r.id);
-            await renderWorkspaceList();
-          } catch (err) {
-            console.error("workspace delete failed:", err);
-            alert(t("io.ws.delete.failed"));
-          }
-        });
-        row.appendChild(del);
-      }
+    function enterRenameMode() {
+      labelHost.textContent = "";
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.className = "ioDbRowEditInput";
+      inp.value = r.label || r.title || "";
+      labelHost.appendChild(inp);
+      // 編集ボタンは隠す (Enter / blur / Escape のみで操作)
+      editBtn.style.display = "none";
 
-      ioWorkspaceList.appendChild(row);
+      let done = false;
+      async function finalize(commit) {
+        if (done) return;
+        done = true;
+        if (!commit) { showReadMode(); return; }
+        const next = String(inp.value || "").trim();
+        if (!next || next === (r.label || "")) { showReadMode(); return; }
+        try {
+          await renameBundle(r.id, next);
+          r.label = next;
+        } catch (err) {
+          console.error("workspace rename failed:", err);
+          alert(t("io.ws.rename.failed"));
+        }
+        showReadMode();
+      }
+      inp.addEventListener("click", (e) => e.stopPropagation());
+      inp.addEventListener("mousedown", (e) => e.stopPropagation());
+      inp.addEventListener("blur", () => finalize(true));
+      inp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); finalize(true); }
+        else if (e.key === "Escape") { e.preventDefault(); finalize(false); }
+      });
+      setTimeout(() => { inp.focus(); inp.select(); }, 0);
+    }
+
+    return row;
+  }
+
+  // ============================
+  // + 新規作成ウィジェット: 初期は + アイコン 1 つ。クリックで input に展開、
+  //   Enter/blur で createWorkspace、Escape または空 commit で + アイコンに戻る
+  // ============================
+  function renderAddWidget() {
+    if (!ioWsAddRow) return;
+    ioWsAddRow.textContent = "";
+    showAddButton();
+
+    function showAddButton() {
+      ioWsAddRow.textContent = "";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ioWsAddBtn";
+      btn.title = t("io.ws.create.action");
+      btn.setAttribute("aria-label", t("io.ws.create.action"));
+      btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+      btn.addEventListener("click", showAddInput);
+      ioWsAddRow.appendChild(btn);
+    }
+
+    function showAddInput() {
+      ioWsAddRow.textContent = "";
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.className = "ioWsAddInput";
+      inp.placeholder = t("io.ws.create.placeholder");
+      ioWsAddRow.appendChild(inp);
+
+      let done = false;
+      async function finalize(commit) {
+        if (done) return;
+        done = true;
+        if (!commit) { showAddButton(); return; }
+        const label = String(inp.value || "").trim();
+        if (!label) { showAddButton(); return; }
+        try {
+          await createWorkspace(label);
+          vibrate();
+          closeIoChooser();
+        } catch (err) {
+          console.error("workspace create failed:", err);
+          alert(t("io.ws.create.failed"));
+          showAddButton();
+        }
+      }
+      inp.addEventListener("blur", () => finalize(true));
+      inp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); finalize(true); }
+        else if (e.key === "Escape") { e.preventDefault(); finalize(false); }
+      });
+      setTimeout(() => inp.focus(), 0);
     }
   }
 
   function openIoChooser() {
     if (!ioOverlay) return;
-    if (ioWsLabelInp) ioWsLabelInp.value = "";
     renderWorkspaceList();
+    renderAddWidget();
     ioOverlay.classList.add("active");
   }
 
@@ -386,24 +507,7 @@ export function initImportExport(callbacks) {
       downloadCurrentAsJson();
     });
   }
-  if (ioWsCreateBtn) {
-    ioWsCreateBtn.addEventListener("click", async () => {
-      const label = String(ioWsLabelInp?.value || "").trim();
-      if (!label) {
-        alert(t("io.ws.name.required"));
-        if (ioWsLabelInp) ioWsLabelInp.focus();
-        return;
-      }
-      try {
-        await createWorkspace(label);
-        vibrate();
-        closeIoChooser();
-      } catch (err) {
-        console.error("workspace create failed:", err);
-        alert(t("io.ws.create.failed"));
-      }
-    });
-  }
+  // 新規作成は renderAddWidget() の中で完結 (+ アイコン → input → Enter で commit)
 
   // ============================
   // ヘッダーメニューからのエントリポイント (DB アイコン 1 つに集約)

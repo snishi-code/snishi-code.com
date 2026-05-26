@@ -727,14 +727,12 @@
       <div class="popupMenu ioChooserMenu">
         <div class="popupTitle" id="ioChooserTitle" data-i18n="io.db.title">データ管理</div>
 
-        <!-- ワークスペース: 一覧 + 切替 + 新規作成 -->
+        <!-- ワークスペース: 一覧 + 切替 + (各行 鉛筆で rename) + 末尾 + で新規作成 -->
         <div class="ioPanel" id="ioPanelWorkspaces">
-          <div class="ioHint" data-i18n="io.ws.list.hint">タップで切替。★ が現在のワークスペース。</div>
           <div class="ioDbList" id="ioWorkspaceList"></div>
-
-          <div class="ioHint" style="margin-top:14px;" data-i18n="io.ws.create.hint">新規ワークスペース (空)</div>
-          <input type="text" id="ioWsLabelInp" class="ioDbLabelInp" data-i18n-placeholder="io.ws.create.placeholder" placeholder="例: 病棟A" autocomplete="off" />
-          <button class="primary" id="ioWsCreateBtn" type="button" data-i18n="io.ws.create.action">新規作成して切替え</button>
+          <!-- 「+」で新規作成。クリックで入力欄に展開、Enter/blur で確定 (Escape でキャンセル)。
+               JS から動的に input に切り替えるので、初期状態は + アイコンのボタン。 -->
+          <div class="ioWsAddRow" id="ioWsAddRow"></div>
         </div>
 
         <!-- JSON 取込/保存: 普段は脇役なのでテキスト 2 ボタンだけを末尾に並べる -->

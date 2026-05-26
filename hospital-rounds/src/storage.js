@@ -13,6 +13,7 @@
 //   loadBundle(id?)            -> parsed bundle | null    (id 省略時は active)
 //   saveBundle(b, id?, label?) -> void                    (id 省略時は active)
 //   listBundles()              -> [{id, label, title, updatedAt}]
+//   renameBundle(id, label)    -> void                    (label のみ書き換え)
 //   deleteBundle(id)           -> void                    (active は拒否)
 //   createWorkspaceRecord(label, bundle) -> id            (新規ワークスペースを作成)
 //
@@ -230,6 +231,26 @@ export async function listBundles() {
   } catch (e) {
     console.warn("idb list failed:", e);
     return [];
+  }
+}
+
+// 既存ワークスペースの label のみを書き換える (bundle / updatedAt / title は触らない)。
+// active / 非 active を問わず使える。
+export async function renameBundle(id, newLabel) {
+  if (!id) throw new Error("renameBundle: id required");
+  const db = await openDb();
+  if (!db) return;
+  try {
+    const txR = db.transaction(STORE_NAME, "readonly");
+    const existing = await idbReq(txR.objectStore(STORE_NAME).get(id));
+    if (!existing) return;
+    existing.label = String(newLabel || "");
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).put(existing);
+    await idbTxDone(tx);
+  } catch (e) {
+    console.error("idb rename failed:", e);
+    throw e;
   }
 }
 

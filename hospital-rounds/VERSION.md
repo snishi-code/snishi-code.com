@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 6.2.0
+現在のバージョン: 6.3.0
 
 ## バージョニング方針
 
@@ -14,6 +14,13 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **6.3.0**: データ管理 UI をシンプル化 (★ 撤去 + 行内 rename + 「+」アイコン追加)
+  - **★ マーカー撤去**: active workspace は青背景 + 太枠だけで識別。`ioDbRowActiveMark` クラスと SVG を削除
+  - **行内 rename**: 各行に鉛筆アイコン (`ioDbRowEdit`) を追加。タップで label が input に差し替わり、Enter / blur で `renameBundle()` 実行、Escape で取消。挙動はタイトル編集パターンと同様
+  - **「+」アイコン追加**: 旧「新規ワークスペース (空)」のヒント文 + 名前入力欄 + `新規作成して切替え` ボタンを撤去し、`+` アイコンのみの薄ボーダーボタン (`ioWsAddBtn`) に集約。タップで input に展開、Enter / blur で `createWorkspace()` 実行、Escape で取消 (タグ追加ウィジェットと同じパターン)
+  - **ヒント文撤去**: 「タップで切替。★ が現在のワークスペース。」(`io.ws.list.hint`) を削除。視覚で十分わかるため
+  - **storage.js**: `renameBundle(id, newLabel)` を新規 export。label のみを書き換え、bundle / updatedAt / title は触らない
+  - **i18n**: `io.ws.rename.{title,failed}` 追加。旧 `io.ws.{list.hint,active.tooltip,create.hint,name.required}` を削除。`io.ws.create.action` の文言を「ワークスペースを追加」に変更
 - **6.2.0**: ヘッダーの取込/保存アイコンを DB アイコン 1 つに集約 + JSON を脇役化
   - **ヘッダー UI**: 旧 `settingsImportBtn` (↓ 取込) と `settingsExportBtn` (↑ 保存) アイコンを撤去し、`settingsDbBtn` (lucide `database` シリンダー) 1 つに統合
   - **チューザ**: 旧 ワークスペース ↔ 端末ファイル のタブ切替 (`ioSourceToggle*`) を撤去。ワークスペース UI (一覧 + 切替 + 新規作成) が常時メイン領域に表示される構成に
