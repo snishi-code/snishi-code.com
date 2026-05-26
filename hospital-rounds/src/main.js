@@ -35,7 +35,7 @@ import { initAdminUI, refreshAdminAvailability, setAdminAppliedHandler } from ".
 import { scanQR, isScannerSupported } from "./features/qr-scan.js";
 import { isAdminTerminal, isNonAdminTerminal, isAdminEnabled, findIncompleteAdminPatients, clearIncompleteAdminPatients } from "./features/admin.js";
 import { flushCommit } from "./features/roster.js";
-import { initDocsDemo, renderDocsDemo, resetDocsDemo } from "./features/docs-demo.js";
+import { initDocsDemo, renderDocsDemo, resetDocsDemo } from "./docs/docs-demo.js";
 import { initNoAutofill } from "./features/no-autofill.js";
 
 // ============================

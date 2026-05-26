@@ -13,9 +13,9 @@
 import { STATUS } from "../constants.js";
 import { nextStatusInCycle } from "../views/detail.js";
 import { statusClass } from "../views/home.js";
-import { formatPatientLabel } from "./room.js";
-import { createEditToggle } from "./edit-toggle.js";
-import { bindLongPressAndDrag } from "./drag.js";
+import { formatPatientLabel } from "../features/room.js";
+import { createEditToggle } from "../features/edit-toggle.js";
+import { bindLongPressAndDrag } from "../features/drag.js";
 
 const DEMO_PATIENT_COUNT = 3;
 const STATUS_PREFIX = "__status:";

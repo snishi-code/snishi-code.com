@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 2.9.0
+現在のバージョン: 3.3.0
 
 ## バージョニング方針
 
@@ -14,6 +14,41 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **3.3.0**: 既定値の JSON 分離 + i18n 基盤導入 + 取りこぼし回収
+  - `src/defaults.json` を新設。`DEFAULT_FORMATS` / `DEFAULT_CLEAR_TARGETS` / アプリ内定数等の初期値を 1 ファイルに集約。`constants.js` は JSON を import して名前付き re-export するだけになり、「何を変更すれば既定が変わるか」が明示
+  - `src/strings.ja.json` + `src/i18n.js` で多言語化基盤を導入。`t(key, params)` ヘルパでプレースホルダ展開、`applyI18n()` で HTML 内 `data-i18n-{title,aria,placeholder}` 属性を起動時に展開。未知 key は console.warn + key 自身を返すフェイルセーフ
+  - JS 側のユーザー向け文字列を全て `t()` 化: 全 alert/confirm/prompt、フォーマット関連 UI (placeholder/tooltip/モーダルタイトル/同名 reject)、QR フロー (status/scanner overlay/import 結果)、管理パネル 12 箇所、admin.js の 7 種 error、tags.js の AND/OR/未分類/単選択/白黄緑灰青、設定タグ CRUD と管理機能 toggle
+  - `STATUS_TAG_DEFS` と `STATUS_GROUP.name` を getter にして lazy 評価し、将来 locale 切替で再評価される構造に
+  - app タイトル fallback "回診管理" → "回診" で統一 (`app.title` キー / index.html の value と整合)
+  - `docs-demo.js` を `src/features/` → `src/docs/` に移動 (本体機能とドキュメント専用を分離)
+  - HTML 静的 `title=` / `aria-label=` (88 箇所) の i18n 化はインフラのみ実装、属性付与は次フェーズに繰越
+- **3.2.0**: 患者画面 strip をタグピッカー流に統一、設定一覧を行色化
+  - 患者画面の format strip を `[format-icon] [pinned chips] [≡]` 構成に変更。format-icon は `makeTagPicker` を共通利用し、popup の checkbox = お気に入り (pinned) のトグル、末尾 `+` で新規作成モーダル
+  - `makeTagPicker` をジェネリック化: `iconHtml` で iconOnly トリガーのアイコン差替、`addWidget` で popup 末尾の追加ウィジェット差替 (タグはインライン入力、フォーマットはモーダル起動)
+  - 設定一覧の状態表示を ★/規定 チップ → 行背景色 + 左ストライプに変更 (お気に入り=緑、規定文=青、両方=上半分青/下半分緑のストライプ + 混色グラデ)
+  - フォーマット編集モーダルの横スクロール解消: `width: min(92vw, NNNpx)` + `box-sizing: border-box` + 全要素 `min-width: 0` で完全レスポンシブに
+  - バグ修正: 設定からの新規作成で入力モーダルが暴発するバグを撤去 (`_justCreated` 自動遷移フラグを削除)
+  - バグ修正: ラベルなし規定文 (例: A 欄「著変なし」) を保存できなかった問題を修正 (text 型は label/normal どちらか有れば保持)
+- **3.1.0**: フォーマットを SOAP の下に構造変更、デフォルト文を isDefault フラグに統合
+  - 設定画面を S/O/A/P の 4 セクションに分割。各セクション配下にフォーマットが並ぶ構造に変更 (panel フィールドは内部に残置するが UI からは撤去)
+  - 患者画面の S 欄にも format strip を追加
+  - `settings.defaults.{s,a,p}` を撤去し、isDefault フラグ付きフォーマットに統合。編集モーダルに「規定文にする」チェック追加 (text 型のみ)、同一パネルで isDefault は 1 つだけ
+  - 1 回マイグレーション: 旧 `settings.defaults.a/p` を panel="A"/"P" の isDefault text format に自動変換
+  - 出力時、パネルが空欄なら isDefault フォーマットの `${label}：${normal}` 連結を fallback として使用
+- **3.0.0** (**breaking**): O 欄をフォーマット概念に置換、構造化バイタル/所見を撤去
+  - 患者画面の O 欄を「自由記述 textarea + フォーマットボタン」の構造に刷新。バイタル入力グリッド (SpO2/RR/BP/P/BT) と所見セクション (頭頸/肺音/腸音/腹部/食事/排泄) を撤去
+  - 新しい `settings.formats[]` データモデルを導入: `{ id, name, panel, type:"numeric"|"text", joiner, pinned, items }`。numeric items は `{label,unit}`、text items は `{label,normal}`
+  - 既定 2 件配布: バイタル (numeric/O/pinned) + 身体所見 (text/O/pinned)
+  - 旧 `patient.vitals` と `patient.o[key].{normal,note}` を撤去。バンドル読込時に 1 回だけマイグレーション (旧構造化値を `${label}：${value}` テキスト化して `oFree` 末尾に流し込む)
+  - 設定画面の oRules セクションを撤去、フォーマット一覧 + 編集モーダル + 同名 reject (タグと同挙動) に置換
+  - フォーマット入力モーダル: numeric は label/数値/単位/備考、text は label/正常ボタン/textarea。反映で対象パネル textarea 末尾に追記
+  - QR 設定共有 (qr-settings.js) のペイロードを oRules → formats に置換
+- **2.10.0**: ホーム長押しメニュー再設計 (±1/±5 + 規定文ボタン化) + テスト書出ファイル名に test_ プレフィックス
+  - 患者ボタン長押しのアクションメニューを「+1 / +5 / −1 / −5 + バツ」の 2×2 アイコングリッド構成に刷新。「空ボタンをまとめて削除」「キャンセル」ボタンは廃止
+  - +1 / +5: 確認なしで挿入。−1: 対象患者が空ならポップアップなしで削除、データありなら confirm。−5: 長押し位置から後ろ 5 件 (末尾なら最大 5) を判定、全部空ならポップアップなし、1 つでもデータありなら confirm
+  - レイアウト: 左列 = 追加 (+) 青、右列 = 削除 (−) 赤、下に閉じる X アイコン。形 + 色の二重識別 (D/P 型色覚配慮)、ポップアップの幅は `width: min(92vw, NNNpx)` でレスポンシブ
+  - 患者操作モーダルのタイトル: `${name} の操作` → `formatPatientLabel(p, idx)` でホーム患者ボタンと同じ表記に統一
+  - エクスポート JSON ファイル名: 本番以外 (test サブドメイン / localhost dev) の書き出しは `test_` プレフィックスを付与し、本番書出と区別可能に
 - **2.9.0**: 未使用ボタンまとめ削除、灰ステータスを濃色化
   - ホーム画面の長押しメニューに「空ボタンをまとめて削除」を追加。`isPatientEmpty` (status = NONE (白) かつ 名前・部屋・タグ・SOAP・vitals・o 所見すべて初期値) を満たす「アプリを開いた直後から何も触っていない未使用スロット」を抽出し、件数を確認した上で一括削除して順序を詰める。YELLOW/GREEN/BLUE/GRAY はユーザーが明示的に状態を付けたボタンと見なし対象外（特に GRAY は「診察・カルテ記載終了」マークなので消さない）。`recordOp({type:"delete"})` を全削除分発火するため roster diff 同期も整合
   - 灰ステータスの bg を `#e5e7eb` (gray-200) → `#9ca3af` (gray-400) に一段濃く、文字を `#1f2937` → `#111827` に。「診察・カルテ記載が終わった患者」が一覧上で目立たないように沈ませる用途。色覚配慮の3層構造 (淡背景+濃枠+濃文字) は維持
