@@ -878,26 +878,39 @@
       padding: 4px 0;
     }
 
-    /* 数値型: 4 列 grid で行間を縦揃え (label / value / unit / memo)。
-       value は実数値より極端に広くならないよう minmax で上限を抑える。
-       memo は残り全幅。 */
-    .formatInputBody.numeric {
-      display: grid;
-      grid-template-columns: max-content minmax(72px, 96px) max-content minmax(80px, 1fr);
-      column-gap: 8px;
-      row-gap: 8px;
+    /* mixed (= 異なる kind が混在 / または全 number/fraction/date): 各行を flex で並べる。
+       label を一定幅 (64px) に揃えて縦に整える。値・memo は残り幅を分け合う。 */
+    .formatInputBody.mixed .formatInputRow {
+      display: flex;
       align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      min-width: 0;
     }
-    .formatInputBody.numeric .formatInputRow.numeric {
-      display: contents;
+    .formatInputBody.mixed .formatInputLabel {
+      flex: 0 0 64px;
     }
-
-    /* 狭幅 (~480px 未満) では値欄をやや広げて触りやすく */
-    @media (max-width: 480px) {
-      .formatInputBody.numeric {
-        grid-template-columns: max-content minmax(64px, 1fr) max-content minmax(80px, 1.4fr);
-        column-gap: 6px;
-      }
+    .formatInputBody.mixed .formatInputRow .formatInputValue {
+      flex: 0 1 96px;
+      width: auto;
+    }
+    .formatInputBody.mixed .formatInputRow .formatInputMemo {
+      flex: 1 1 80px;
+      width: auto;
+    }
+    /* fraction: 数値2つを "/" で結合。numer / denom は等幅で同サイズ */
+    .formatInputBody.mixed .formatInputRow.fraction .formatInputFracNumer,
+    .formatInputBody.mixed .formatInputRow.fraction .formatInputFracDenom {
+      flex: 0 1 56px;
+    }
+    .formatInputFracSlash {
+      flex: 0 0 auto;
+      font-weight: 700;
+      color: var(--muted, #6b7280);
+    }
+    /* date: native picker は幅が広くなりがちなので 1 行で */
+    .formatInputBody.mixed .formatInputRow.date .formatInputDate {
+      flex: 0 1 140px;
     }
 
     /* text 型: 従来の flex (1 行 = label + textarea + 規定文ボタン) */
@@ -1044,6 +1057,36 @@
       min-width: 0;
     }
 
+    /* 名前欄の右側にタグピッカーを置く 1 行レイアウト
+       名前: 残り幅を占有 / タグピッカー: アイコン分だけ */
+    .formatEditNameRow {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .formatEditNameRow .formatEditNameField {
+      flex: 1 1 auto;
+      min-width: 0;
+      margin-bottom: 0;
+    }
+
+    .formatEditNameRow .formatEditTagsField {
+      flex: 0 0 auto;
+      margin-bottom: 0;
+    }
+
+    .formatEditTagsField > #formatEditTagsHost {
+      padding-top: 2px; /* 名前 input と縦位置を揃える微調整 */
+    }
+
+    /* タグピッカーの popup が右に飛び出さないように左寄せ */
+    .formatEditTagsField .tagPickerPopup {
+      left: auto;
+      right: 0;
+    }
+
     .formatEditCheckRow {
       display: flex;
       align-items: center;
@@ -1095,6 +1138,18 @@
 
     .formatEditItemNormal {
       flex: 2 1 100px;
+    }
+
+    /* 様式 (kind) セレクタ。ラベルと補助欄の間に挟む */
+    .formatEditItemKind {
+      flex: 0 0 auto;
+      padding: 6px 4px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font-size: 12px;
+      background: #fff;
+      min-width: 0;
+      box-sizing: border-box;
     }
 
     .formatEditItemDel {

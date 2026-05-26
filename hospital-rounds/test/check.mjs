@@ -422,19 +422,76 @@ await test("existing oFree is preserved when vitals/o also present", async () =>
 // ============================
 section("formats");
 
-await test("default formats include バイタル (numeric) and 身体所見 (text)", async () => {
+await test("default formats include バイタル (number/fraction items) and 身体所見 (all text items)", async () => {
   const store = await freshStore();
   const fmts = store.settings.formats;
   assert.ok(Array.isArray(fmts) && fmts.length >= 2, "at least 2 default formats");
   const vital = fmts.find(f => f.name === "バイタル");
   const phys = fmts.find(f => f.name === "身体所見");
   assert.ok(vital, "バイタル exists");
-  assert.equal(vital.type, "numeric");
   assert.equal(vital.panel, "O");
   assert.equal(vital.pinned, true);
+  // バイタル は kind=number / fraction (BP) で構成され、text はゼロのはず
+  assert.ok(vital.items.length >= 5, "vital has >=5 items");
+  assert.ok(vital.items.some(it => it.kind === "fraction"), "vital has a fraction item (BP)");
+  assert.ok(vital.items.every(it => it.kind === "number" || it.kind === "fraction"), "vital items are numeric kinds");
+  assert.equal(vital.labelSep, " ");
+  assert.ok(Array.isArray(vital.tags) && vital.tags.length === 0);
+
   assert.ok(phys, "身体所見 exists");
-  assert.equal(phys.type, "text");
   assert.equal(phys.panel, "O");
+  assert.ok(phys.items.every(it => it.kind === "text"), "phys items are all text");
+  assert.equal(phys.labelSep, "：");
+});
+
+await test("legacy format.type migrates to per-item kind", async () => {
+  // 旧 type:"numeric" / type:"text" な format を読み込み → 全 item が適切な kind を持つこと
+  const legacyBundle = {
+    format: BUNDLE_FORMAT,
+    schema: 1,
+    sections: {
+      meta: { title: "回診" },
+      settings: {
+        formats: [
+          {
+            id: "old-num",
+            name: "旧バイタル",
+            panel: "O",
+            type: "numeric",
+            joiner: ", ",
+            pinned: false,
+            items: [
+              { label: "BP", unit: "mmHg" },
+              { label: "P",  unit: "bpm" },
+            ],
+          },
+          {
+            id: "old-txt",
+            name: "旧所見",
+            panel: "O",
+            type: "text",
+            joiner: "\n",
+            pinned: false,
+            items: [
+              { label: "肺", normal: "ラ音なし" },
+            ],
+          },
+        ],
+      },
+      patients: [],
+    },
+  };
+  const store = await freshStore({ bundle: legacyBundle });
+  const oldNum = store.settings.formats.find(f => f.name === "旧バイタル");
+  const oldTxt = store.settings.formats.find(f => f.name === "旧所見");
+  assert.ok(oldNum, "old numeric format migrated");
+  assert.ok(oldNum.items.every(it => it.kind === "number"), "old numeric items got kind=number");
+  assert.equal(oldNum.labelSep, " ", "old numeric got space labelSep by inference");
+  assert.ok(Array.isArray(oldNum.tags) && oldNum.tags.length === 0, "tags initialized");
+
+  assert.ok(oldTxt, "old text format migrated");
+  assert.ok(oldTxt.items.every(it => it.kind === "text"), "old text items got kind=text");
+  assert.equal(oldTxt.labelSep, "：", "old text got colon labelSep by inference");
 });
 
 await test("settings.defaults is removed from defaultSettings", async () => {
@@ -460,9 +517,10 @@ await test("legacy settings.defaults.{a,p} migrate to isDefault text formats", a
   const pDef = fmts.find(f => f.panel === "P" && f.isDefault);
   const sDef = fmts.find(f => f.panel === "S" && f.isDefault);
   assert.ok(aDef, "A panel got an isDefault format");
-  assert.equal(aDef.type, "text");
+  assert.equal(aDef.items[0].kind, "text");
   assert.equal(aDef.items[0].normal, "著変なし");
   assert.ok(pDef, "P panel got an isDefault format");
+  assert.equal(pDef.items[0].kind, "text");
   assert.equal(pDef.items[0].normal, "現行加療継続");
   assert.equal(sDef, undefined, "empty S default did NOT create a format");
 });

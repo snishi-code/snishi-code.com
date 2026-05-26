@@ -3,24 +3,35 @@
 // ============================
 // フォーマット (Formats) - 患者画面側のロジック
 //
-// データモデル (settings.formats[]):
-//   { id, name, panel:"O"|"A"|"P", type:"numeric"|"text", joiner, pinned, items }
-//
-// items:
-//   numeric: { label, unit }
-//   text:    { label, normal }
+// 新データモデル (settings.formats[]):
+//   {
+//     id, name, panel:"S"|"O"|"A"|"P",
+//     joiner,       // 項目間の区切り (例 ", " / "\n")
+//     labelSep,     // ラベルと値の間の区切り (例 "：" / " ")
+//     tags: [],     // 反映時に患者へ merge されるタグ名一覧 (重複追加はしない、外す処理は無し)
+//     pinned, isDefault,
+//     items: [
+//       { label, kind:"text",     normal },        // ラベル + 規定文 (textarea)
+//       { label, kind:"number",   unit   },        // ラベル + 数値 + 単位 + memo
+//       { label, kind:"fraction", unit   },        // ラベル + 数値2つ "/" 結合 + 単位 + memo
+//       { label, kind:"date",     normal },        // ラベル + 月日 + memo(normal=prefill)
+//     ]
+//   }
 //
 // このモジュールは:
 //   1) 患者画面の各パネル (O/A/P) ヘッダに [+] [pin1...] [≡] ボタン群を組み立てる
 //   2) フォーマット選択ピッカー (≡) を開く
-//   3) フォーマット入力モーダル (numeric/text) を開く
-//   4) 反映時に対象 textarea の末尾に追記
+//   3) フォーマット入力モーダル (kind 別の行) を開く
+//   4) 反映時に対象 textarea の末尾に追記 + format.tags を患者タグへ merge
 // ============================
 
 import { appState, settings, selectedNo, saveSettings, scheduleSave, markUpdated } from "../store.js";
-import { FORMAT_PANELS, FORMAT_TYPES } from "../constants.js";
-import { makeTagPicker } from "./tags.js";
-import { t } from "../i18n.js";
+import {
+  FORMAT_PANELS, FORMAT_ITEM_KINDS, DEFAULT_ITEM_KIND,
+  DEFAULT_LABEL_SEP_TEXT, DEFAULT_LABEL_SEP_OTHER,
+} from "../constants.js";
+import { makeTagPicker, getAllTags, getPatientTags, setPatientTags } from "./tags.js";
+import { t, applyI18n } from "../i18n.js";
 
 // strip 右端のハンバーガー (パネルごとの「全フォーマット一覧 = お気に入りトグル popup」を開く)
 const FORMAT_PICKER_HAMBURGER_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`;
@@ -31,6 +42,23 @@ const PANEL_FIELD_KEY   = { S: "s",     O: "oFree",    A: "a",     P: "p"    };
 function newFmtId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return "fmt_" + crypto.randomUUID();
   return "fmt_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+
+// 新しい item オブジェクトを kind に応じたフィールドで生成
+function makeNewItem(kind) {
+  const k = FORMAT_ITEM_KINDS.includes(kind) ? kind : DEFAULT_ITEM_KIND;
+  if (k === "number" || k === "fraction") return { label: "", kind: k, unit: "" };
+  return { label: "", kind: k, normal: "" }; // text / date
+}
+
+// item の kind を変更した時に、必要なフィールドだけ残して埋め直す
+function morphItemKind(item, newKind) {
+  const k = FORMAT_ITEM_KINDS.includes(newKind) ? newKind : DEFAULT_ITEM_KIND;
+  const label = String(item?.label ?? "");
+  if (k === "number" || k === "fraction") {
+    return { label, kind: k, unit: String(item?.unit ?? "") };
+  }
+  return { label, kind: k, normal: String(item?.normal ?? "") };
 }
 
 export function formatsForPanel(panel) {
@@ -49,7 +77,6 @@ let _onTextChanged = null;
 export function setOnTextChanged(fn) { _onTextChanged = fn; }
 
 // 新規フォーマット作成ウィジェット (タグの makeAddTagWidget と同じ「+」ボタンスタイル)。
-// タグ側はインライン入力でラベル確定だが、フォーマットは項目構造があるのでモーダルを開く。
 function makeAddFormatWidget(panel, onAdded) {
   const wrap = document.createElement("span");
   wrap.className = "tagAddWidget";
@@ -70,8 +97,6 @@ function makeAddFormatWidget(panel, onAdded) {
 }
 
 // パネルごとに 1 つ作る format picker (タグピッカーと同じ UI = makeTagPicker を再利用)。
-// 「checkbox=お気に入り (pinned 全患者共通) / 名前タップ=入力モーダル直開」と役割分離。
-// アイコンはハンバーガー (一覧を開く意味)。strip 右端の単一エントリポイントを兼ねる。
 function makeFormatPicker(panel, onChange) {
   return makeTagPicker({
     getSelected: () => formatsForPanel(panel).filter(f => f.pinned).map(f => f.id),
@@ -112,7 +137,6 @@ export function renderFormatStrip(panel, hostEl) {
   hostEl.appendChild(chips);
 
   // 2) ハンバーガーピッカー (右端固定)。
-  //    popup でチェック = お気に入りトグル / + で新規作成 (タグ picker と同 UI)
   const picker = makeFormatPicker(panel, () => {
     renderFormatStrip(panel, hostEl);
   });
@@ -132,17 +156,18 @@ function openFormatInputModal(format, panel) {
 
   title.textContent = format.name;
   body.textContent = "";
-  // 数値型は CSS grid で縦揃え (label / value / unit / memo の 4 列)。
-  // text 型は従来の flex のまま (1 行 = label + textarea + 規定文ボタン)。
-  body.className = "formatInputBody " + (format.type === "numeric" ? "numeric" : "text");
+  // 全 item が text の format なら従来通り flex の 1 行レイアウト
+  // それ以外は kind ごとに行 div を縦に積む (CSS grid は使わず行内 flex)
+  const allText = (format.items || []).every(it => it && it.kind === "text");
+  body.className = "formatInputBody " + (allText ? "text" : "mixed");
   _currentInput = { format, panel, rowEls: [] };
 
   for (const item of format.items) {
-    if (format.type === "numeric") {
-      _currentInput.rowEls.push(buildNumericRow(body, item));
-    } else {
-      _currentInput.rowEls.push(buildTextRow(body, item));
-    }
+    const kind = item.kind || DEFAULT_ITEM_KIND;
+    if (kind === "number") _currentInput.rowEls.push(buildNumberRow(body, item));
+    else if (kind === "fraction") _currentInput.rowEls.push(buildFractionRow(body, item));
+    else if (kind === "date") _currentInput.rowEls.push(buildDateRow(body, item));
+    else _currentInput.rowEls.push(buildTextRow(body, item));
   }
 
   overlay.classList.add("active");
@@ -153,10 +178,9 @@ function openFormatInputModal(format, panel) {
   }, 50);
 }
 
-function buildNumericRow(host, item) {
-  // display: contents で 4 子要素を body の grid に直接展開し、行間で縦揃え
+function buildNumberRow(host, item) {
   const row = document.createElement("div");
-  row.className = "formatInputRow numeric";
+  row.className = "formatInputRow number";
 
   const label = document.createElement("div");
   label.className = "formatInputLabel";
@@ -169,7 +193,6 @@ function buildNumericRow(host, item) {
   val.className = "formatInputValue";
   row.appendChild(val);
 
-  // unit セルは常に出す (item.unit が無くても grid 列を揃える)
   const unit = document.createElement("span");
   unit.className = "formatInputUnit";
   unit.textContent = item.unit || "";
@@ -177,15 +200,84 @@ function buildNumericRow(host, item) {
 
   const memo = document.createElement("input");
   memo.type = "text";
-  // iOS Safari は直前の input の inputMode を引きずってテンキーのままになる
-  // 既知バグがあるため、テキスト入力欄では明示的に "text" を指定する
+  // iOS Safari の inputMode 引きずり対策 (decimal の直後は text を明示)
   memo.inputMode = "text";
   memo.className = "formatInputMemo";
   memo.placeholder = t("format.placeholder.memo");
   row.appendChild(memo);
 
   host.appendChild(row);
-  return { item, val, memo };
+  return { item, kind: "number", val, memo };
+}
+
+function buildFractionRow(host, item) {
+  const row = document.createElement("div");
+  row.className = "formatInputRow fraction";
+
+  const label = document.createElement("div");
+  label.className = "formatInputLabel";
+  label.textContent = item.label;
+  row.appendChild(label);
+
+  const numer = document.createElement("input");
+  numer.type = "text";
+  numer.inputMode = "decimal";
+  numer.className = "formatInputValue formatInputFracNumer";
+  row.appendChild(numer);
+
+  const slash = document.createElement("span");
+  slash.className = "formatInputFracSlash";
+  slash.textContent = "/";
+  row.appendChild(slash);
+
+  const denom = document.createElement("input");
+  denom.type = "text";
+  denom.inputMode = "decimal";
+  denom.className = "formatInputValue formatInputFracDenom";
+  row.appendChild(denom);
+
+  const unit = document.createElement("span");
+  unit.className = "formatInputUnit";
+  unit.textContent = item.unit || "";
+  row.appendChild(unit);
+
+  const memo = document.createElement("input");
+  memo.type = "text";
+  memo.inputMode = "text";
+  memo.className = "formatInputMemo";
+  memo.placeholder = t("format.placeholder.memo");
+  row.appendChild(memo);
+
+  host.appendChild(row);
+  return { item, kind: "fraction", numer, denom, memo };
+}
+
+function buildDateRow(host, item) {
+  const row = document.createElement("div");
+  row.className = "formatInputRow date";
+
+  const label = document.createElement("div");
+  label.className = "formatInputLabel";
+  label.textContent = item.label;
+  row.appendChild(label);
+
+  // Q4: native <input type="date"> を使い、出力時に年を捨てて MM/DD だけ書く
+  const val = document.createElement("input");
+  val.type = "date";
+  val.className = "formatInputValue formatInputDate";
+  row.appendChild(val);
+
+  const memo = document.createElement("input");
+  memo.type = "text";
+  memo.inputMode = "text";
+  memo.className = "formatInputMemo";
+  memo.placeholder = t("format.placeholder.dateMemo");
+  // normal は date item では「memo の prefill」として扱う (Labo / CT など)
+  if (item.normal) memo.value = String(item.normal);
+  row.appendChild(memo);
+
+  host.appendChild(row);
+  return { item, kind: "date", val, memo };
 }
 
 function buildTextRow(host, item) {
@@ -199,7 +291,6 @@ function buildTextRow(host, item) {
 
   const val = document.createElement("textarea");
   val.className = "formatInputValue formatInputText";
-  // 同じく iOS の inputMode 引きずり対策。明示的にテキスト入力を宣言する
   val.inputMode = "text";
   val.rows = 1;
   row.appendChild(val);
@@ -217,7 +308,7 @@ function buildTextRow(host, item) {
   row.appendChild(normalBtn);
 
   host.appendChild(row);
-  return { item, val };
+  return { item, kind: "text", val };
 }
 
 export function closeFormatInputModal() {
@@ -226,32 +317,99 @@ export function closeFormatInputModal() {
   _currentInput = null;
 }
 
+// 値 + memo を組み合わせて「ラベル <labelSep> 値」を作る
+// memo 付きの場合は末尾に半角スペース + memo を付ける (Labo / CT のような自然な並び)
+function combineLabelValueMemo(label, labelSep, value, memo) {
+  const lab = String(label || "").trim();
+  const val = String(value || "").trim();
+  const m = String(memo || "").trim();
+  // label が空なら値だけ出す (規定文「著変なし」など)
+  let body;
+  if (lab) body = `${lab}${labelSep}${val}`;
+  else body = val;
+  if (m) body += ` ${m}`;
+  return body;
+}
+
+// HTML <input type="date"> の value は "YYYY-MM-DD"。年を捨てて "MM/DD" だけ返す。
+// 空 / 不正値なら "" 。
+function formatDateMonthDay(rawValue) {
+  const s = String(rawValue || "").trim();
+  // YYYY-MM-DD
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return "";
+  // 先頭 0 を保つかは UX 次第。ここでは M/D 風に先頭 0 を取る (例 "11/2")。
+  // ただし「11/02」が見たい人もいるので保守的に 0 つきのままにする。
+  return `${m[2]}/${m[3]}`;
+}
+
 function applyFormatInput() {
   if (!_currentInput) { closeFormatInputModal(); return; }
   const { format, panel, rowEls } = _currentInput;
+  const labelSep = typeof format.labelSep === "string" ? format.labelSep : DEFAULT_LABEL_SEP_OTHER;
   const parts = [];
   for (const row of rowEls) {
-    if (format.type === "numeric") {
+    if (row.kind === "number") {
       const value = String(row.val.value || "").trim();
       const memo  = String(row.memo.value || "").trim();
       if (!value && !memo) continue;
       const unit = row.item.unit || "";
-      let s = `${row.item.label}`;
-      if (value) s += ` ${value}${unit}`;
-      else if (unit) s += ` (${unit})`;
-      if (memo) s += ` (${memo})`;
-      parts.push(s);
+      // 値 + 単位 をひとまとめにしてから labelSep で繋ぐ
+      const valueWithUnit = value
+        ? `${value}${unit}`
+        : (unit ? `(${unit})` : "");
+      parts.push(combineLabelValueMemo(row.item.label, labelSep, valueWithUnit, memo));
+    } else if (row.kind === "fraction") {
+      const a = String(row.numer.value || "").trim();
+      const b = String(row.denom.value || "").trim();
+      const memo = String(row.memo.value || "").trim();
+      // どちらも空、かつ memo も無いならスキップ
+      if (!a && !b && !memo) continue;
+      const unit = row.item.unit || "";
+      // "120/53" / "/53" / "120/" を許容 (片側だけ入力されたら片側だけ出す)
+      let frac = "";
+      if (a || b) frac = `${a}/${b}`;
+      const valueWithUnit = frac ? `${frac}${unit}` : (unit ? `(${unit})` : "");
+      parts.push(combineLabelValueMemo(row.item.label, labelSep, valueWithUnit, memo));
+    } else if (row.kind === "date") {
+      const md = formatDateMonthDay(row.val.value);
+      const memo = String(row.memo.value || "").trim();
+      if (!md && !memo) continue;
+      parts.push(combineLabelValueMemo(row.item.label, labelSep, md, memo));
     } else {
+      // text
       const value = String(row.val.value || "").trim();
       if (!value) continue;
       // label が空ならコロンを付けず値だけ出す (規定文「著変なし」など)
-      const label = String(row.item.label || "").trim();
-      parts.push(label ? `${label}：${value}` : value);
+      const lab = String(row.item.label || "").trim();
+      parts.push(lab ? `${lab}${labelSep}${value}` : value);
     }
   }
   const out = parts.join(format.joiner || ", ");
   appendToPanel(panel, out);
+  // タグ merge (format.tags を患者タグに追加。重複は無視、外す処理は無し)
+  applyFormatTags(format);
   closeFormatInputModal();
+}
+
+function applyFormatTags(format) {
+  const fmtTags = Array.isArray(format?.tags) ? format.tags : [];
+  if (!fmtTags.length) return;
+  const idx = (selectedNo | 0) - 1;
+  if (idx < 0) return;
+  const existing = getPatientTags(idx);
+  const set = new Set(existing);
+  // 設定上に存在するタグのみ追加 (タグが削除されていたら無視。新規生成はしない)
+  const known = new Set(getAllTags());
+  let changed = false;
+  for (const t of fmtTags) {
+    if (!known.has(t)) continue;
+    if (!set.has(t)) {
+      set.add(t);
+      changed = true;
+    }
+  }
+  if (changed) setPatientTags(idx, Array.from(set));
 }
 
 function appendToPanel(panel, text) {
@@ -279,25 +437,37 @@ function appendToPanel(panel, text) {
 // ============================
 // フォーマット編集モーダル (新規/編集)
 // ============================
-let _currentEdit = null; // { isNew, target, panel, onSaved }
+let _currentEdit = null; // { isNew, target, panel, onSaved, lastKind }
 
 function openFormatEditModal(target, panel, onSaved) {
   const overlay = document.getElementById("formatEditOverlay");
   if (!overlay) return;
   _currentEdit = {
     isNew: !target,
-    target: target ? { ...target, items: target.items.map(it => ({ ...it })) } : {
+    // 編集中は target の deep copy を弄り、保存時に確定。キャンセル時の rollback はオブジェクト破棄で済む。
+    target: target ? {
+      ...target,
+      tags: Array.isArray(target.tags) ? target.tags.slice() : [],
+      items: (target.items || []).map(it => ({ ...it })),
+    } : {
       id: newFmtId(),
       name: "",
       panel: panel || "O",
-      type: "text",
       joiner: "\n",
+      labelSep: DEFAULT_LABEL_SEP_OTHER,
+      tags: [],
       pinned: true,
       isDefault: false,
       items: [],
     },
     onSaved,
+    // 「項目追加」時に直前の item の kind を引き継ぐためのヒント
+    lastKind: DEFAULT_ITEM_KIND,
   };
+  if (_currentEdit.target.items.length) {
+    const last = _currentEdit.target.items[_currentEdit.target.items.length - 1];
+    if (last && FORMAT_ITEM_KINDS.includes(last.kind)) _currentEdit.lastKind = last.kind;
+  }
   // パネル表記をモーダルタイトル横に表示 (固定: ユーザーは変更不可)
   const titleEl = document.querySelector("#formatEditOverlay .popupTitle");
   if (titleEl) {
@@ -309,25 +479,43 @@ function openFormatEditModal(target, panel, onSaved) {
   if (nameInp) setTimeout(() => nameInp.focus(), 50);
 }
 
+function renderTagsHost() {
+  const host = document.getElementById("formatEditTagsHost");
+  if (!host || !_currentEdit) return;
+  host.textContent = "";
+  // forPatient = true: status タグは出さず、ユーザータグだけを選ばせる
+  const picker = makeTagPicker({
+    getSelected: () => _currentEdit.target.tags.slice(),
+    setSelected: (tags) => { _currentEdit.target.tags = tags.slice(); },
+    entries: () => getAllTags().map(name => ({ value: name, label: name })),
+    iconOnly: true,
+    grouped: true,
+    forPatient: true,
+  });
+  // tagPicker 自体に title/aria を載せる
+  const trigger = picker.querySelector(".tagPickerTrigger");
+  if (trigger) {
+    trigger.title = t("format.tags.title");
+    trigger.setAttribute("aria-label", t("format.tags.aria"));
+  }
+  host.appendChild(picker);
+}
+
 function renderFormatEditForm() {
   const nameInp = document.getElementById("formatEditName");
-  const typeSel = document.getElementById("formatEditType");
   const joinerInp = document.getElementById("formatEditJoiner");
+  const labelSepInp = document.getElementById("formatEditLabelSep");
   const pinnedChk = document.getElementById("formatEditPinned");
   const defaultChk = document.getElementById("formatEditIsDefault");
   const itemsHost = document.getElementById("formatEditItems");
   if (!_currentEdit || !nameInp) return;
   const target = _currentEdit.target;
   nameInp.value = target.name;
-  if (typeSel) typeSel.value = target.type;
   if (joinerInp) joinerInp.value = target.joiner;
+  if (labelSepInp) labelSepInp.value = typeof target.labelSep === "string" ? target.labelSep : "";
   if (pinnedChk) pinnedChk.checked = !!target.pinned;
-  if (defaultChk) {
-    defaultChk.checked = !!target.isDefault;
-    // numeric では isDefault を無効化 (normal 値を持たないため fallback として描画不可)
-    defaultChk.disabled = (target.type !== "text");
-    defaultChk.parentElement.style.opacity = (target.type === "text") ? "1" : "0.5";
-  }
+  if (defaultChk) defaultChk.checked = !!target.isDefault;
+  renderTagsHost();
   if (itemsHost) renderFormatEditItems(itemsHost);
 }
 
@@ -339,6 +527,7 @@ function renderFormatEditItems(host) {
     const row = document.createElement("div");
     row.className = "formatEditItemRow";
 
+    // 1) ラベル入力 (常に左)
     const label = document.createElement("input");
     label.type = "text";
     label.className = "formatEditItemLabel";
@@ -347,7 +536,28 @@ function renderFormatEditItems(host) {
     label.addEventListener("input", () => { item.label = String(label.value || ""); });
     row.appendChild(label);
 
-    if (target.type === "numeric") {
+    // 2) kind セレクタ
+    const kindSel = document.createElement("select");
+    kindSel.className = "formatEditItemKind";
+    kindSel.title = t("format.itemKind.title");
+    kindSel.setAttribute("aria-label", t("format.itemKind.aria"));
+    for (const k of FORMAT_ITEM_KINDS) {
+      const opt = document.createElement("option");
+      opt.value = k;
+      opt.textContent = t("format.itemKind." + k);
+      kindSel.appendChild(opt);
+    }
+    kindSel.value = item.kind || DEFAULT_ITEM_KIND;
+    kindSel.addEventListener("change", () => {
+      const next = morphItemKind(item, kindSel.value);
+      target.items[i] = next;
+      _currentEdit.lastKind = next.kind;
+      renderFormatEditItems(host);
+    });
+    row.appendChild(kindSel);
+
+    // 3) kind ごとの補助入力 (unit / normal)。date / text は normal、number / fraction は unit
+    if (item.kind === "number" || item.kind === "fraction") {
       const unit = document.createElement("input");
       unit.type = "text";
       unit.className = "formatEditItemUnit";
@@ -355,7 +565,16 @@ function renderFormatEditItems(host) {
       unit.value = item.unit || "";
       unit.addEventListener("input", () => { item.unit = String(unit.value || ""); });
       row.appendChild(unit);
+    } else if (item.kind === "date") {
+      const normal = document.createElement("input");
+      normal.type = "text";
+      normal.className = "formatEditItemNormal";
+      normal.placeholder = t("format.placeholder.dateMemo");
+      normal.value = item.normal || "";
+      normal.addEventListener("input", () => { item.normal = String(normal.value || ""); });
+      row.appendChild(normal);
     } else {
+      // text
       const normal = document.createElement("input");
       normal.type = "text";
       normal.className = "formatEditItemNormal";
@@ -365,6 +584,7 @@ function renderFormatEditItems(host) {
       row.appendChild(normal);
     }
 
+    // 4) 削除ボタン
     const del = document.createElement("button");
     del.type = "button";
     del.className = "formatEditItemDel";
@@ -384,8 +604,8 @@ function renderFormatEditItems(host) {
 function saveFormatEdit() {
   if (!_currentEdit) { closeFormatEditModal(); return; }
   const nameInp = document.getElementById("formatEditName");
-  const typeSel = document.getElementById("formatEditType");
   const joinerInp = document.getElementById("formatEditJoiner");
+  const labelSepInp = document.getElementById("formatEditLabelSep");
   const pinnedChk = document.getElementById("formatEditPinned");
   const defaultChk = document.getElementById("formatEditIsDefault");
 
@@ -395,7 +615,7 @@ function saveFormatEdit() {
     alert(t("format.name.required"));
     return;
   }
-  // 同名チェック (タグの挙動と同じ: 既存と同名なら reject)
+  // 同名チェック
   const all = Array.isArray(settings.formats) ? settings.formats : [];
   const dup = all.find(f => f.id !== target.id && f.name === name);
   if (dup) {
@@ -404,21 +624,39 @@ function saveFormatEdit() {
   }
 
   target.name = name;
-  // panel はモーダル外で固定。typeSel と pinned/isDefault のみ反映
-  target.type = FORMAT_TYPES.includes(typeSel?.value) ? typeSel.value : target.type;
-  target.joiner = String(joinerInp?.value ?? (target.type === "text" ? "\n" : ", "));
+  // panel はモーダル外で固定
+  target.joiner = String(joinerInp?.value ?? ", ");
+  // labelSep: 空入力は許容するが、未指定 (UI 上はあり得ないが防御的に) なら item から推定
+  if (labelSepInp) {
+    target.labelSep = String(labelSepInp.value ?? "");
+  } else if (typeof target.labelSep !== "string") {
+    const allText = target.items.every(it => it && it.kind === "text");
+    target.labelSep = allText ? DEFAULT_LABEL_SEP_TEXT : DEFAULT_LABEL_SEP_OTHER;
+  }
   target.pinned = !!pinnedChk?.checked;
-  target.isDefault = (target.type === "text") ? !!defaultChk?.checked : false;
+  target.isDefault = !!defaultChk?.checked;
+  // tags: 削除済みタグを掃除 (UI で picker を介して付けたが、その後にタグ自体が消された場合に備えて)
+  const knownTags = new Set(getAllTags());
+  target.tags = (target.tags || []).filter(t => knownTags.has(t));
+
   // 項目の除外ルール:
-  //   text 型:    label / normal どちらか入力があれば保持 (規定文「著変なし」など
-  //               ラベルなし正常文のみのケースを許容)
-  //   numeric 型: label がなければ意味を成さないので除外
-  target.items = target.items.filter(it => {
-    const label = String(it.label || "").trim();
-    if (target.type === "numeric") return !!label;
-    const normal = String(it.normal || "").trim();
-    return !!label || !!normal;
-  });
+  //   text:               label / normal どちらか入力があれば保持
+  //   number / fraction:  label が空なら除外 (意味を成さない)
+  //   date:               label が空なら除外
+  target.items = target.items
+    .map(it => {
+      // kind が壊れていたら text にフォールバック
+      if (!FORMAT_ITEM_KINDS.includes(it.kind)) return morphItemKind(it, DEFAULT_ITEM_KIND);
+      return it;
+    })
+    .filter(it => {
+      const label = String(it.label || "").trim();
+      if (it.kind === "text") {
+        const normal = String(it.normal || "").trim();
+        return !!label || !!normal;
+      }
+      return !!label;
+    });
 
   // 同一パネル内に isDefault は 1 つだけ。他はクリア
   if (target.isDefault) {
@@ -440,9 +678,6 @@ function saveFormatEdit() {
   const savedTarget = target;
   closeFormatEditModal();
   if (cb) cb(savedTarget);
-  // 保存後は単に閉じるのみ。入力モーダルへの自動遷移は廃止
-  // (タップ=お気に入りトグルの設計と整合させ、設定画面からの作成時に
-  //  「さっきまで開いていた患者」へ誤反映されるバグを防ぐ)
 }
 
 export function closeFormatEditModal() {
@@ -454,8 +689,7 @@ export function closeFormatEditModal() {
 function addFormatItem() {
   if (!_currentEdit) return;
   const target = _currentEdit.target;
-  if (target.type === "numeric") target.items.push({ label: "", unit: "" });
-  else target.items.push({ label: "", normal: "" });
+  target.items.push(makeNewItem(_currentEdit.lastKind || DEFAULT_ITEM_KIND));
   const itemsHost = document.getElementById("formatEditItems");
   if (itemsHost) renderFormatEditItems(itemsHost);
 }
@@ -463,7 +697,6 @@ function addFormatItem() {
 // ============================
 // 設定画面側の CRUD ヘルパ (settings-view.js から呼ばれる)
 // ============================
-// panel が省略された場合は O。設定画面から呼ぶ場合は必ず panel を指定する
 export function startNewFormat(onSaved, panel) {
   openFormatEditModal(null, panel || "O", onSaved);
 }
@@ -497,24 +730,10 @@ export function initFormats() {
   const editCancel = document.getElementById("formatEditCancelBtn");
   const editAddItem = document.getElementById("formatEditAddItemBtn");
   const editOverlay = document.getElementById("formatEditOverlay");
-  const typeSel = document.getElementById("formatEditType");
   if (editSave) editSave.addEventListener("click", saveFormatEdit);
   if (editCancel) editCancel.addEventListener("click", closeFormatEditModal);
   if (editAddItem) editAddItem.addEventListener("click", addFormatItem);
   if (editOverlay) editOverlay.addEventListener("click", (e) => {
     if (e.target === editOverlay) closeFormatEditModal();
-  });
-  if (typeSel) typeSel.addEventListener("change", () => {
-    if (!_currentEdit) return;
-    _currentEdit.target.type = typeSel.value;
-    // 既存 item を型に合わせて寄せる
-    _currentEdit.target.items = _currentEdit.target.items.map(it => (
-      _currentEdit.target.type === "numeric"
-        ? { label: it.label || "", unit: it.unit || "" }
-        : { label: it.label || "", normal: it.normal || "" }
-    ));
-    // 規定文チェックは numeric では使えない
-    if (_currentEdit.target.type !== "text") _currentEdit.target.isDefault = false;
-    renderFormatEditForm();
   });
 }

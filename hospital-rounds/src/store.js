@@ -3,6 +3,8 @@
 import {
   DEFAULT_PATIENT_COUNT, STATUS,
   DEFAULT_FORMATS, LEGACY_O_RULES, FORMAT_PANELS, FORMAT_TYPES,
+  FORMAT_ITEM_KINDS, DEFAULT_ITEM_KIND,
+  DEFAULT_LABEL_SEP_TEXT, DEFAULT_LABEL_SEP_OTHER,
   DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS,
   DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL,
   DEFAULT_ROSTER_PASSPHRASE, DEFAULT_TAG_GROUPING_ENABLED,
@@ -30,9 +32,11 @@ function makeDefaultFormats() {
     id: newFormatId(),
     name: f.name,
     panel: f.panel,
-    type: f.type,
     joiner: f.joiner,
+    labelSep: typeof f.labelSep === "string" ? f.labelSep : DEFAULT_LABEL_SEP_OTHER,
+    tags: Array.isArray(f.tags) ? f.tags.slice() : [],
     pinned: !!f.pinned,
+    isDefault: !!f.isDefault,
     items: f.items.map(it => ({ ...it })),
   }));
 }
@@ -53,12 +57,35 @@ export function defaultSettings() {
   };
 }
 
-function normalizeFormatItem(item, type) {
+// 新モデル: item は kind ごとに必要なフィールドだけ持つ。
+//   text     : { label, kind:"text",     normal }
+//   number   : { label, kind:"number",   unit   }
+//   fraction : { label, kind:"fraction", unit   }
+//   date     : { label, kind:"date",     normal }   // normal = memo prefill
+// 旧モデルでは format 全体が type:"text"|"numeric" を持ち、item には kind が無かった。
+// fallbackKind は旧 format.type からの移行用ヒント。
+function normalizeFormatItem(item, fallbackKind) {
   if (!item || typeof item !== "object") return null;
   const label = String(item.label ?? "").trim();
-  if (!label) return null;
-  if (type === "numeric") return { label, unit: String(item.unit ?? "") };
-  return { label, normal: String(item.normal ?? "") };
+  // text item は label が空でも正常文だけのケース (規定文「著変なし」など) を許容
+  const kindRaw = (typeof item.kind === "string" && FORMAT_ITEM_KINDS.includes(item.kind))
+    ? item.kind
+    : (fallbackKind || DEFAULT_ITEM_KIND);
+  if (!label && kindRaw !== "text") return null;
+  const out = { label, kind: kindRaw };
+  if (kindRaw === "number" || kindRaw === "fraction") {
+    out.unit = String(item.unit ?? "");
+  } else {
+    // text / date は normal を持つ
+    out.normal = String(item.normal ?? "");
+  }
+  return out;
+}
+
+function inferLabelSepFromItems(items) {
+  if (!items || !items.length) return DEFAULT_LABEL_SEP_OTHER;
+  const allText = items.every(it => it && it.kind === "text");
+  return allText ? DEFAULT_LABEL_SEP_TEXT : DEFAULT_LABEL_SEP_OTHER;
 }
 
 function normalizeFormat(raw) {
@@ -66,15 +93,25 @@ function normalizeFormat(raw) {
   const name = String(raw.name ?? "").trim();
   if (!name) return null;
   const panel = FORMAT_PANELS.includes(raw.panel) ? raw.panel : "O";
-  const type = FORMAT_TYPES.includes(raw.type) ? raw.type : "numeric";
-  const joiner = typeof raw.joiner === "string" ? raw.joiner : (type === "text" ? "\n" : ", ");
-  const pinned = !!raw.pinned;
-  const isDefault = !!raw.isDefault;
+  // 旧 format.type → 全 item の fallback kind に変換
+  const legacyType = FORMAT_TYPES.includes(raw.type) ? raw.type : null;
+  const fallbackKind = legacyType === "numeric" ? "number"
+                     : legacyType === "text"    ? "text"
+                     : DEFAULT_ITEM_KIND;
   const id = (typeof raw.id === "string" && raw.id) ? raw.id : newFormatId();
   const items = Array.isArray(raw.items)
-    ? raw.items.map(it => normalizeFormatItem(it, type)).filter(Boolean)
+    ? raw.items.map(it => normalizeFormatItem(it, fallbackKind)).filter(Boolean)
     : [];
-  return { id, name, panel, type, joiner, pinned, isDefault, items };
+  // joiner 既定値: 旧 type==="text" は "\n"、それ以外は ", "
+  const joiner = typeof raw.joiner === "string" ? raw.joiner : (legacyType === "text" ? "\n" : ", ");
+  // labelSep: 明示指定優先、なければ items から推定
+  const labelSep = typeof raw.labelSep === "string" ? raw.labelSep : inferLabelSepFromItems(items);
+  const tags = Array.isArray(raw.tags)
+    ? raw.tags.filter(t => typeof t === "string" && t.trim()).map(t => String(t))
+    : [];
+  const pinned = !!raw.pinned;
+  const isDefault = !!raw.isDefault;
+  return { id, name, panel, joiner, labelSep, tags, pinned, isDefault, items };
 }
 
 function normalizeSettings(raw) {
@@ -102,11 +139,12 @@ function normalizeSettings(raw) {
         id: newFormatId(),
         name: "規定文",
         panel,
-        type: "text",
         joiner: "\n",
+        labelSep: DEFAULT_LABEL_SEP_TEXT,
+        tags: [],
         pinned: false,
         isDefault: true,
-        items: [{ label: "", normal: txt }],
+        items: [{ label: "", kind: "text", normal: txt }],
       });
     }
   }

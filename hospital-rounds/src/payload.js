@@ -29,17 +29,21 @@ export function utf8ByteLength(text) {
 
 // 各パネルの isDefault フォーマット (1 個) の中身を text として描画する。
 // 旧 settings.defaults.{s,a,p} の役割を引き継ぐ fallback テキスト生成。
-// 対象は text 型のみ (numeric は normal 値を持たないため)。
+// 描画対象は normal を持つ kind (text / date)。number / fraction は値が無い状態では
+// 意味のある fallback テキストにならないのでスキップする。
 function renderDefaultForPanel(panel) {
   const fmts = (settings && Array.isArray(settings.formats)) ? settings.formats : [];
-  const def = fmts.find(f => f.panel === panel && f.isDefault && f.type === "text");
+  const def = fmts.find(f => f.panel === panel && f.isDefault);
   if (!def) return "";
+  const labelSep = typeof def.labelSep === "string" ? def.labelSep : "：";
   const parts = [];
   for (const item of (def.items || [])) {
+    const kind = item.kind || "text";
+    if (kind !== "text" && kind !== "date") continue;
     const label = String(item.label ?? "").trim();
     const normal = String(item.normal ?? "").trim();
     if (!normal) continue;
-    parts.push(label ? `${label}：${normal}` : normal);
+    parts.push(label ? `${label}${labelSep}${normal}` : normal);
   }
   return parts.join(def.joiner || ", ");
 }

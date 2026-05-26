@@ -29,7 +29,19 @@ export const LEGACY_O_RULES = APP_DEFAULTS._migration_legacy_o_rules;
 export const DEFAULT_FORMATS = APP_DEFAULTS.formats;
 
 export const FORMAT_PANELS = Object.freeze(["S", "O", "A", "P"]);
+// 旧データ移行時のみ参照 (format.type === "numeric"/"text")。新規データには書き出さない。
 export const FORMAT_TYPES = Object.freeze(["numeric", "text"]);
+// 新モデル: item ごとに kind を持つ
+//   text     : label + 規定文 (normal) + textarea 入力。labelSep は既定で「：」
+//   number   : label + 単位 (unit) + 数値入力 + memo。labelSep は既定で " "
+//   fraction : label + 単位 (unit) + 数値2つを "/" で結合 (例 BP 120/53)
+//   date     : label + 月日のみのカレンダー入力 + memo (規定文 normal が prefill される)
+export const FORMAT_ITEM_KINDS = Object.freeze(["text", "number", "fraction", "date"]);
+export const DEFAULT_ITEM_KIND = "text";
+// labelSep を未指定でフォーマットを新規作成する時のフォールバック。
+// (全 item が kind=text なら "："、それ以外は " " を migration / 新規作成 UI で割り当てる)
+export const DEFAULT_LABEL_SEP_TEXT = "：";
+export const DEFAULT_LABEL_SEP_OTHER = " ";
 
 export const DEFAULT_TAGS = APP_DEFAULTS.tags;
 export const DEFAULT_ADMIN_ENABLED = APP_DEFAULTS.adminEnabled;

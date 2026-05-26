@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 6.0.0
+現在のバージョン: 6.1.0
 
 ## バージョニング方針
 
@@ -14,6 +14,14 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **6.1.0**: フォーマット機能の拡張 (項目ごとの様式 + ラベル区切り + タグ連携 + fraction/date)
+  - **項目ごとの kind 化**: 旧 `format.type === "numeric" | "text"` を撤廃し、`item.kind` (`"text" | "number" | "fraction" | "date"`) に。1 つのフォーマット内で混在可。`fraction` は BP のような `120/53` 形式 (数値2つ + 単位)、`date` は native `<input type="date">` で月/日のみ出力 (年は捨てる)。読み込み時に旧 `format.type` を全 item の kind に展開する 1 回マイグレーション
+  - **ラベル区切り (`labelSep`)**: ラベルと値の間の区切り文字をフォーマット単位で指定可能に。既定は全 item が `text` なら `"："`、それ以外は半角スペース (`" "`)。`buildSoapParts` の fallback 出力にも反映
+  - **タグ連携**: `format.tags[]` を追加。フォーマット編集モーダルの名前欄の右にタグピッカーを置き、反映時に対象患者のタグへ merge (重複追加なし、外す処理は無し)。設定上に存在しないタグは追加しない
+  - **編集モーダル**: 「種類」select を削除し、各項目行に kind セレクタを設置。「項目追加」時は直前の item の kind を引き継ぐ。`labelSep` 入力欄を「区切り」の隣に追加
+  - **入力モーダル**: kind 別に行レイアウトを切替。`fraction` は `[__]/[__] 単位 memo`、`date` は `<input type="date"> memo (normal が prefill)`
+  - **i18n**: `format.field.{name,tags,joiner,labelSep,items}` / `format.itemKind.{text,number,fraction,date}` / `format.placeholder.{labelSep,dateMemo}` 等を追加
+  - **テスト**: 既定 format の kind 構成 / 旧 `type` からの kind マイグレーションを検査 (52 件全通過)
 - **6.0.0** (**breaking**): 院内パイロット向けセキュリティ強化 (PBKDF2 600k / CSP / SW 自動更新無効化 / 合言葉 12 文字制限 / 月次注意スプラッシュ)
   - **PBKDF2 iteration 100,000 → 600,000** (OWASP 2023 推奨値)。`src/features/crypto.js` の `PBKDF2_ITER` 定数のみ変更。E1 wire 形式は据え置きだが、旧 100k で作られた payload は復号できないため **breaking** (旧バージョンの端末と QR で相互運用しない前提)
   - **CSP メタタグ**: `index.html` の `<head>` に `Content-Security-Policy` meta タグを追加。`default-src 'self'` で外部送信を遮断、`connect-src 'self'` で fetch/XHR/WebSocket も同一オリジンに限定。inline script/style は単一HTML構成の都合上 `'unsafe-inline'` を許容、QR canvas のため `img-src` に `data:` / `blob:` を追加。`frame-ancestors` 等の HTTP-header-only ディレクティブは含めない
