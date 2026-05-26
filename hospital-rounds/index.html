@@ -735,12 +735,17 @@
           <div class="ioWsAddRow" id="ioWsAddRow"></div>
         </div>
 
-        <!-- JSON 取込/保存: 普段は脇役なのでテキスト 2 ボタンだけを末尾に並べる -->
+        <!-- JSON 取込/保存: 旧ヘッダーで使っていた下/上矢印アイコンに戻す。
+             小さめのアイコン 2 つを「JSON」見出しの下に並べる脇役配置。 -->
         <div class="ioJsonSection">
-          <div class="ioJsonHeading" data-i18n="io.json.heading">JSON ファイル</div>
+          <div class="ioJsonHeading" data-i18n="io.json.heading">JSON</div>
           <div class="ioJsonActions">
-            <button class="secondary ioJsonBtn" id="ioFilePickBtn" type="button" data-i18n="io.json.import">JSON 取込</button>
-            <button class="secondary ioJsonBtn" id="ioFileSaveBtn" type="button" data-i18n="io.json.export">JSON 保存</button>
+            <button class="ioJsonIconBtn" id="ioFilePickBtn" type="button" data-i18n-title="io.json.import" data-i18n-aria="io.json.import.aria" title="JSON 取込" aria-label="JSON ファイルから取込">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            <button class="ioJsonIconBtn" id="ioFileSaveBtn" type="button" data-i18n-title="io.json.export" data-i18n-aria="io.json.export.aria" title="JSON 保存" aria-label="JSON ファイルに保存">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </button>
           </div>
         </div>
 

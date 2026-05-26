@@ -248,9 +248,11 @@
 
   "io.title": "データ管理",
   "io.db.title": "データ管理",
-  "io.json.heading": "JSON ファイル",
+  "io.json.heading": "JSON",
   "io.json.import": "JSON 取込",
   "io.json.export": "JSON 保存",
+  "io.json.import.aria": "JSON ファイルから取込",
+  "io.json.export.aria": "JSON ファイルに保存",
   "io.ws.list.empty": "登録されたワークスペースはありません",
   "io.ws.untitled": "(無題)",
   "io.ws.create.placeholder": "例: 病棟A",

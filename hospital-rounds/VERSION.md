@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 6.3.0
+現在のバージョン: 6.3.1
 
 ## バージョニング方針
 
@@ -14,6 +14,10 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **6.3.1**: データ管理ポップアップの微調整
+  - **横幅**: `.popupMenu.ioChooserMenu` を `min(92vw, 420px)` → `min(92vw, 360px)` に。レスポンシブのまま視覚的に締まる
+  - **JSON 見出し**: 「JSON ファイル」→「JSON」 (`io.json.heading`)
+  - **JSON ボタン**: テキスト 2 ボタン → 旧ヘッダーで使っていた下/上矢印アイコン (`.ioJsonIconBtn`) に戻す。aria-label / title は i18n キーで日本語を維持
 - **6.3.0**: データ管理 UI をシンプル化 (★ 撤去 + 行内 rename + 「+」アイコン追加)
   - **★ マーカー撤去**: active workspace は青背景 + 太枠だけで識別。`ioDbRowActiveMark` クラスと SVG を削除
   - **行内 rename**: 各行に鉛筆アイコン (`ioDbRowEdit`) を追加。タップで label が input に差し替わり、Enter / blur で `renameBundle()` 実行、Escape で取消。挙動はタイトル編集パターンと同様
