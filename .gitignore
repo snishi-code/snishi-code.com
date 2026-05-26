@@ -17,6 +17,7 @@ node_modules/
 # エディタ
 .vscode/
 .idea/
+.obsidian/
 
 # ログ
 *.log

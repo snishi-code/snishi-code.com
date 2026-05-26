@@ -41,9 +41,9 @@ PAGES = [
 # ── Inline transformations ─────────────────────────────────────────────────
 
 def inline(text):
-    # Obsidian image: ![[name.webp|WxH]] → absolute path (works in iframe srcdoc too)
+    # Obsidian image: ![[name.webp|W]] or ![[name.webp|WxH]] → absolute path (works in iframe srcdoc too)
     text = re.sub(
-        r'!\[\[([^\]|]+\.webp)(?:\|(\d+)x\d+)?\]\]',
+        r'!\[\[([^\]|]+\.webp)(?:\|(\d+)(?:x\d+)?)?\]\]',
         lambda m: (
             f'<img src="{IMG_BASE}/{m.group(1)}" class="doc-img"'
             + (f' style="max-width:{m.group(2)}px"' if m.group(2) else '')
