@@ -2,6 +2,7 @@
 
 import { appState, settings, markUpdated, scheduleSave, saveNow } from "../store.js";
 import { recordOp } from "./roster.js";
+import { t } from "../i18n.js";
 
 export function getPatientRoom(patientIndex) {
   const p = appState.patients[patientIndex];
@@ -39,10 +40,18 @@ export function makeRoomInput(patientIndex, onChange) {
 export function formatPatientLabel(p, fallback) {
   const name = (p && p.name) ? p.name : (fallback || "");
   const room = String(p?.room ?? "").trim();
-  return room ? `${room} ${name}` : name;
+  const base = room ? `${room} ${name}` : name;
+  // 移動済マーカーが立っていれば prefix で視覚的に区別。元 name は触らない (表示のみ)
+  if (p && p.transferredAt) return `${t("move.namePrefix")} ${base}`;
+  return base;
 }
 
 function patientRoomCompare(a, b) {
+  // 移動済 (transferredAt > 0) は常に末尾グループに押し出す。
+  // 同じ「移動済」同士は通常の比較に落とす (移動が古い順 / room 順)。
+  const at = !!(a && a.transferredAt);
+  const bt = !!(b && b.transferredAt);
+  if (at !== bt) return at ? 1 : -1;
   const ar = String(a.room ?? "").trim();
   const br = String(b.room ?? "").trim();
   if (ar && br) {

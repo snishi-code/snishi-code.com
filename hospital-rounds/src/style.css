@@ -2272,6 +2272,31 @@
       box-sizing: border-box;
     }
 
+    /* 患者移動モーダル: io chooser とほぼ同サイズ、reuse ioDbList でリスト表示 */
+    .popupMenu.movePatientMenu {
+      width: min(92vw, 360px);
+      max-width: 360px;
+      box-sizing: border-box;
+    }
+    .movePatientHint {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    /* 患者画面の「(移)転棟済」表示バナー (患者ヘッダ直下) */
+    .detailTransferredBanner {
+      margin: 6px 0 10px;
+      padding: 6px 10px;
+      background: #f3f4f6;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--muted, #6b7280);
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--text);
+    }
+
     .ioPanel {
       margin-bottom: 4px;
     }

@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 6.3.2
+現在のバージョン: 6.4.0
 
 ## バージョニング方針
 
@@ -14,6 +14,16 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **6.4.0**: 患者の他ワークスペース移動機能 (案 3: 元データ無傷 + マーカー方式)
+  - **データモデル**: `patient.transferredAt: number` (0 = 未移動 / 移動時刻 ms) + `patient.transferredTo: string` (移動先 ws の label) を追加。元の name / room は触らない。`isPatientEmpty` は transferredAt が立っていたら false (履歴として残す)
+  - **`features/move-patient.js`**: 新規モジュール。`listOtherWorkspaces` / `appendPatientToWorkspace` / `movePatient` / `openMovePatientModal` / `initMovePatient` を export
+  - **移動の挙動**: 移動先 ws の bundle を IDB から load → patients 末尾に append (新 pid + status=BLUE + transferredAt クリア) → save。元 ws の患者を transferredAt/transferredTo 設定 + status=GRAY (物理 delete はしない、admin sync 連携時の誤データ消失を防ぐ)
+  - **表示装飾**: `formatPatientLabel` で transferredAt > 0 なら名前に `(移)` prefix。`patientRoomCompare` ソートで transferredAt > 0 を末尾グループに押し出す。患者詳細画面ヘッダ直下に「{dest} へ転棟済 ({date})」のグレーバナー
+  - **UI 入口**: 患者詳細画面の QR ボタン左に move-right アイコンボタン (`detailMovePatientBtn`)。タップで移動先ピッカー (現アクティブ以外の ws 一覧) → 確認 → 実行
+  - **バグ修正**: `normalizePatientArray` の status whitelist に `STATUS.BLUE` が漏れており、BLUE 患者が次回ロードで NONE にリセットされていた問題を併せて修正
+  - **i18n**: `move.{title,hint,confirm,list.empty,failed,banner,namePrefix}` を追加
+  - **テスト**: `transferredAt が立っていれば空患者扱いしない` を追加 (53 件全通過)
+  - **注意 (admin sync との関係)**: 現在 admin 機能は未実装。移動操作は物理 delete op を発火しないため、将来 admin が入っても他端末でデータが消えるリスクはない設計。admin 実装時に「移動先 ws を持たない端末向け」の表示ルール (= 元 ws のマーカーが信頼できる) を整える想定
 - **6.3.2**: フォーマット入力モーダルの仕上げ
   - **iOS sticky inputMode 対策強化**: `setupNumericInput()` / `setupTextInput()` ヘルパを導入。IDL プロパティと HTML 属性 (`inputmode`) の両方を設定し、`pattern` / `autocomplete=off` / `autocapitalize=off` / `spellcheck=false` を付与、`focus` イベントで再アサート。fraction の数値入力でアルファベットキーボードが出るバグと、フィールド移動後にキーボード種別が残るバグを抑制
   - **入力欄の縦揃え**: `body.mixed` を flex → CSS grid 4 列 (`label / value / unit / memo`) に変更。fraction の `numer / "/" / denom` は `formatInputFracGroup` でラップして value セルに収め、date は空 unit span を出して列を保つ。これで BP / P / SpO2 / RR / T などで unit と memo の先頭が縦に揃う

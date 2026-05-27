@@ -494,8 +494,14 @@
           <span id="detailDoctorSlot"></span>
           <!-- 患者についてるタグをインライン表示。長押しで外せる。空きスペース次第で末尾を ... 表示 -->
           <div id="detailInlineTags" class="inlineTagsRow"></div>
+          <!-- 「他ワークスペースへ移動済」バナー差込先 (JS から content set) -->
+          <div id="detailTransferredBannerHost"></div>
         </div>
         <div class="detailTopActions">
+          <!-- 他のワークスペースへ患者を移動 (lucide: move-right-3) -->
+          <button class="iconBtn" id="detailMovePatientBtn" type="button" data-i18n-title="move.title" data-i18n-aria="move.title" title="他のワークスペースへ移動" aria-label="他のワークスペースへ移動">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h13"/><path d="m13 6 6 6-6 6"/><path d="M21 4v16"/></svg>
+          </button>
           <button class="iconBtn" id="qrToggleBtn" type="button" title="QRコード表示" aria-label="QRコード表示" aria-pressed="false">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="5" y="5" width="3" height="3" fill="currentColor"/><rect x="16" y="5" width="3" height="3" fill="currentColor"/><rect x="5" y="16" width="3" height="3" fill="currentColor"/><rect x="14" y="14" width="3" height="3" fill="currentColor"/><rect x="19" y="14" width="2" height="2" fill="currentColor"/><rect x="14" y="19" width="2" height="2" fill="currentColor"/><rect x="19" y="19" width="2" height="2" fill="currentColor"/></svg>
           </button>
@@ -719,6 +725,17 @@
         <div class="popupTitle" id="disclaimerTitle">これは個人メモです</div>
         <div id="disclaimerBody" style="font-size:13px;color:#333;line-height:1.6;margin-bottom:14px;white-space:pre-line;text-align:left;">本アプリは医師個人の業務支援メモであり、正式な医療記録ではありません。</div>
         <button class="primary" id="disclaimerCloseBtn" type="button">確認しました</button>
+      </div>
+    </div>
+
+    <!-- 患者を他ワークスペースへ移動: 移動先ピッカー -->
+    <div class="popupMenuOverlay" id="movePatientOverlay">
+      <div class="popupMenu movePatientMenu">
+        <div class="popupTitle" data-i18n="move.title">他のワークスペースへ移動</div>
+        <div class="movePatientHint" id="movePatientHint" data-i18n="move.hint">移動先のワークスペースを選んでください。元のワークスペースには「(移)」マークで履歴が残ります。</div>
+        <div class="ioDbList" id="movePatientList"></div>
+        <div style="height:10px;"></div>
+        <button class="secondary" id="movePatientCancelBtn" type="button" data-i18n="common.cancel">キャンセル</button>
       </div>
     </div>
 

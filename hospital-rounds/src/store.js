@@ -217,6 +217,12 @@ export function makeDefaultPatient() {
     a: { text: "" },
     p: { text: "" },
     updatedAt: 0,
+    // 他ワークスペースへ移動した時に立つマーカー。元データ (name / room) は触らず、
+    // 表示・ソート時のみ装飾する。
+    //   transferredAt: 移動した時刻 (ms epoch)。0 = 未移動。
+    //   transferredTo: 移動先ワークスペースの label (表示用)。
+    transferredAt: 0,
+    transferredTo: "",
   };
 }
 
@@ -237,6 +243,8 @@ export function isPatientEmpty(p) {
   if (p.oFree) return false;
   if (p.a && p.a.text) return false;
   if (p.p && p.p.text) return false;
+  // 「移動済」マーカーが立っているスロットは履歴として残してあるので空ではない
+  if (p.transferredAt) return false;
   return true;
 }
 
@@ -321,7 +329,7 @@ function normalizePatientArray(arr) {
     const d = makeDefaultPatient();
     out[i] = {
       pid: (r && typeof r.pid === "string" && r.pid) ? r.pid : d.pid,
-      status: (r && typeof r.status === "string" && [STATUS.NONE, STATUS.YELLOW, STATUS.GREEN, STATUS.GRAY].includes(r.status)) ? r.status : d.status,
+      status: (r && typeof r.status === "string" && [STATUS.NONE, STATUS.YELLOW, STATUS.GREEN, STATUS.GRAY, STATUS.BLUE].includes(r.status)) ? r.status : d.status,
       name: (r && typeof r.name === "string") ? r.name : d.name,
       room: (r && typeof r.room === "string") ? r.room : (r && typeof r.room === "number" ? String(r.room) : d.room),
       tags: (r && Array.isArray(r.tags))
@@ -335,6 +343,8 @@ function normalizePatientArray(arr) {
       a: { text: (r && r.a && typeof r.a.text === "string") ? r.a.text : d.a.text },
       p: { text: (r && r.p && typeof r.p.text === "string") ? r.p.text : d.p.text },
       updatedAt: (r && typeof r.updatedAt === "number") ? r.updatedAt : 0,
+      transferredAt: (r && typeof r.transferredAt === "number") ? r.transferredAt : 0,
+      transferredTo: (r && typeof r.transferredTo === "string") ? r.transferredTo : "",
     };
   }
   return out;

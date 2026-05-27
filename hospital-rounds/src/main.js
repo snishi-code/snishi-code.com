@@ -24,6 +24,7 @@ import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./fea
 import { DOCS_BUNDLE } from "./docs-bundle.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initFormats, setOnTextChanged as setOnFormatTextChanged } from "./features/formats.js";
+import { initMovePatient } from "./features/move-patient.js";
 import { t, applyI18n } from "./i18n.js";
 import { initImportExport } from "./features/import-export.js";
 import { initSharedQr, refreshSharedQrIfActive, initMemoQr, refreshMemoQrIfActive } from "./features/qr-shared.js";
@@ -330,6 +331,11 @@ initFormats();
 setOnFormatTextChanged(() => {
   doRenderDetail();
   if (typeof renderQrIfNeeded === "function") renderQrIfNeeded();
+});
+
+initMovePatient({
+  renderHome: doRenderHome,
+  renderDetail: doRenderDetail,
 });
 
 // ============================

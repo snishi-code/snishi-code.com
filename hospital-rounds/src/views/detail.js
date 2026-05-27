@@ -8,6 +8,8 @@ import { utf8ByteLength } from "../payload.js";
 import { qrcodegen } from "../libs/qrcodegen.js";
 import { makePatientTagPicker, getPatientTags, setPatientTags } from "../features/tags.js";
 import { makeRoomInput, formatPatientLabel } from "../features/room.js";
+import { isPatientTransferred } from "../features/move-patient.js";
+import { t } from "../i18n.js";
 import { isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
 import { scanQR, isScannerSupported } from "../features/qr-scan.js";
@@ -161,6 +163,21 @@ function clearQrError() {
   if (qrError) { qrError.style.display = "none"; qrError.textContent = ""; }
 }
 
+// 患者ヘッダ直下に「他ワークスペースへ移動済」の控えめなバナーを出す。
+// 元 ws の患者として履歴として残った状態 (転棟マーカー) のみ表示。
+function renderTransferredBanner(p) {
+  const host = document.getElementById("detailTransferredBannerHost");
+  if (!host) return;
+  host.textContent = "";
+  if (!isPatientTransferred(p)) return;
+  const banner = document.createElement("div");
+  banner.className = "detailTransferredBanner";
+  const d = new Date(p.transferredAt);
+  const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  banner.textContent = t("move.banner", { dest: p.transferredTo || "?", date: ymd });
+  host.appendChild(banner);
+}
+
 function syncQrToggleButtons() {
   const b = document.getElementById("qrToggleBtn");
   if (!b) return;
@@ -297,6 +314,7 @@ export function renderDetail(syncDetailMemoDisplay) {
   }
 
   renderInlineTags();
+  renderTransferredBanner(p);
 
   if (sText) sText.value = p.s;
   if (aText) aText.value = p.a.text;

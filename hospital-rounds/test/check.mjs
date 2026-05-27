@@ -281,6 +281,14 @@ await test("status NONE + oFree text is NOT empty", async () => {
   assert.equal(store.isPatientEmpty(p), false);
 });
 
+await test("status NONE + transferredAt set is NOT empty (移動済マーカー)", async () => {
+  const store = await freshStore();
+  const p = store.makeDefaultPatient();
+  p.transferredAt = Date.now();
+  p.transferredTo = "3階病棟";
+  assert.equal(store.isPatientEmpty(p), false);
+});
+
 await test("status GRAY (終了マーク) with empty fields is NOT empty", async () => {
   const store = await freshStore();
   const p = store.makeDefaultPatient();
