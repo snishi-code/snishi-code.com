@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 7.4.0
+現在のバージョン: 7.5.0
 
 ## バージョニング方針
 
@@ -14,6 +14,17 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **7.5.0**: style.css を 9 ファイルに分割 (DX 改善)
+  - 2804 行の単一 style.css を `src/style/{base,header,views,detail,formats,memo-shared,tags,settings,popups}.css` の 9 ファイルに分割
+  - **src/style.css は manifest のみ** (9 個の `@import` 文と分割方針のコメント)
+  - vite-plugin-singlefile が build 時に全 css を 1 つの `<style>` として
+    index.html に inline 化するので、**本番出力は分割前と同じ** (599 KB)
+  - 分割の目的は開発体験 (DX) の改善のみ
+    - PR diff が小さくなる (formatStrip だけ触る変更で 644 行ファイルだけ開けば良い)
+    - grep / IDE 検索が浅くなる
+    - git blame が意味のある粒度になる
+  - 全 164 selector が分割後も保持されていることを `comm` で検証
+  - テスト 57 件パス、build 成功、本番サイズほぼ不変
 - **7.4.0**: main.js 解体 + i18n 漏れ全件修正
   - **main.js を「組み立て役」に戻した**: 729 行 → 472 行 (-35%)、inline 関数 19 個 → 1 個。
     本来 features/views に居るべきロジックを切り出し:
