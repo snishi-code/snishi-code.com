@@ -72,7 +72,8 @@ export function bindTapOrLongPress(el, onTap, onLongPress, longMs = 600) {
 // QR generation helpers
 // ============================
 
-const MAX_BYTES_PER_QR = 800;
+// 患者画面 QR (平文 SOAP) のページ上限。qr-protocol.js の MAX_BYTES と整合。
+const MAX_BYTES_PER_QR = 750;
 
 // 患者画面 QR は EMR に接続された QR スキャナで「そのまま打鍵」される用途
 // なので、各ページの内容は SOAP テキストそのままにする。多ページ時のページ

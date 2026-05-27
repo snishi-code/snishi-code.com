@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 7.1.1
+現在のバージョン: 7.2.0
 
 ## バージョニング方針
 
@@ -14,6 +14,23 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **7.2.0**: QR Wire Format Authority + DEFLATE 圧縮で 5 種統一
+  - **背景**: ユーザ提案で QR 生成ロジックを「平文 (PT のみ)」「圧縮+暗号 (HM/MM/SH/ST/FMT)」の 2 パターンに整理。設計 2 原則を明文化:
+    - 原則 ①「可変領域は冒頭辞書 + index 参照」(ユーザが順序を変えても壊れない)
+    - 原則 ②「コード固定値は wire に含めない」(enum 許容値・デフォルト値は受信側コードで復元)
+  - **`qr-protocol.js` を Wire Format Authority に拡張**: 冒頭に長文コメントで設計原則・短キー命名規約・enum 表・互換性ルール (WIRE_V bump 条件)・圧縮 prefix 互換性を一元定義。各 kind ファイルは必ず本ファイルが export するヘルパーを経由するルールに。`PANEL_BY_INDEX` / `KIND_BY_INDEX` / `MODE_BY_INDEX` を export し、`formatToWire` / `formatFromWire` / `patientToWire` / `patientFromWire` / `tagGroupToWire` / `tagGroupFromWire` / `tagGroupAssignToWire` / `tagGroupAssignFromWire` / `buildTagDict` で wire ↔ domain 変換を共通化
+  - **enum を数値 index 化** (原則 ②): `panel` (S/O/A/P → 0/1/2/3)、`kind` (text/number/fraction/date → 0/1/2/3)、`tagGroup.mode` (multi/single → 0/1) を全 kind で index 化。デフォルト値 (joiner `, `、pinned/isDefault の false 等) は wire から省略
+  - **タグ辞書共有化** (原則 ①): HM/MM/SH の top-level キーを `tags` → `td` に統一。ST 内の `format.tags` も settings.tags 辞書を共有して数値 index に。`tagGroupAssign` を `{タグ名:groupId}` → `[[tag_idx, group_idx]]` のペア配列に。tagGroups の `id` を wire から除外 (受信側で新発番)
+  - **FMT QR (単独フォーマット) を共通ヘルパー化**: 短キー化 + enum 数値化が自動適用。tags は dict なしの inline 文字列 (FMT は単独なので辞書化のオーバーヘッドを避ける)
+  - **`crypto-payload.js` に DEFLATE 圧縮層を追加**: 新 wire prefix `E2:` = `base64url(iv ‖ AES-GCM(deflate-raw(plain)))`。CompressionStream API (iPad Safari 16.4+) を使用、未対応端末は try/catch で `E1:` (圧縮なし) に自動 fallback。受信側は `E1:` / `E2:` 両方を読める (forward compat: 旧 v7.1.x で生成された QR も新版で読める)
+  - **`maxBytes` を 750 で 5 kind 統一**: PT (800) / HM-SH (800) / ST (1100) / FMT (800) のバラバラだった上限を、QR version ~20 (~97 modules) で iPad camera で確実にスキャンできる 750 に統一。圧縮層が入ったことで ST も 1 ページに収まる
+  - **WIRE_V bump**: HM/MM/SH v2→v3、ST v3→v4、FMT v1→v2
+  - **実測 (defaults + 30 患者 + メモ込み)**:
+    - HM (25 患者 + タグ): plain 702 chars → E2 暗号 283 chars (**59.7% 圧縮**)、2 ページ → **1 ページ**
+    - MM (30 患者 + メモ): plain 1992 → E2 458 chars (**77% 圧縮**、LZ77 がメモ繰り返しを大幅潰し)、3 ページ → **1 ページ**
+    - ST (defaults): plain 564 → E2 526 chars (**7% 圧縮**、データ小で deflate オーバーヘッドあり)、1 ページ
+  - **CLAUDE.md 更新**: 「QR Wire Format」セクションを追加。新規 feature 開発者向けに「qr-protocol.js を必ず経由」「2 原則」「WIRE_V bump 条件は qr-protocol.js 冒頭参照」を明示
+  - **テスト**: 46 → 57 件。enum 表の安定性 (歩哨テスト)、formatToWire / formatFromWire round-trip (tag dict あり/なし両方)、patientToWire / patientFromWire、tagGroup wire、tagGroupAssign の [[tag_idx, group_idx]] 形式 round-trip、ST 全体 round-trip、HM/MM v3 round-trip、E2 (deflate) 生成、E1 (legacy v7.1.x) 復号互換、平文パススルーを追加
 - **7.1.1**: QR セキュリティ UI 非表示化 + 設定 QR の wire 短縮
   - **QR セキュリティ UI を非表示**: `qrSecurityCard` HTML を index.html から撤去、`renderQrSecurity` 関数 (約 60 行) を settings-view.js から削除。`settings.qrEncryption` / `settings.qrRedistribution` の設定モデル自体は維持しており、defaults (HM/MM/SH/ST/FMT 全暗号化 ON、HM/MM のみ再配布制限) が引き続きアクティブ。将来管理機能で再露出する想定で「現時点ではユーザに見えないバック設定」に格下げ。i18n キー 11 個 (`settings.title.qrSecurity` / `qrSecurity.*` 系 + `qrSettings.summary.defaults`) を strings.ja.json から削除
   - **設定 QR の wire format v3 (短キー化)**: 同一情報を保ったまま `formatToWire` / `itemToWire` で短キーに圧縮。formats → "f" / clearTargets → "ct" / tags → "tg" / tagGroups → "tgs" / tagGroupingEnabled → "tge" / tagGroupAssign → "tga"、format 内は name→n / panel→p / joiner→j / labelSep→ls / tags→t / pinned→pn / isDefault→d / items→i、item 内は label→l / kind→k / unit→u / normal→nm。空配列 / `false` 等の default 値は省略してさらに圧縮。format `id` は wire に載せない (受信側で新発番)。WIRE_V を 2 → 3 に bump

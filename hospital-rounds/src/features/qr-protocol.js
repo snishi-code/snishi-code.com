@@ -1,7 +1,102 @@
 "use strict";
 
-import { appState } from "../store.js";
+import { appState, settings } from "../store.js";
 import { utf8ByteLength } from "../payload.js";
+import {
+  FORMAT_PANELS,
+  FORMAT_ITEM_KINDS,
+  DEFAULT_ITEM_KIND,
+  DEFAULT_LABEL_SEP_OTHER,
+  DEFAULT_LABEL_SEP_TEXT,
+  GROUP_MODE_SINGLE,
+  GROUP_MODE_MULTI,
+} from "../constants.js";
+
+// ========================================================================
+// QR Wire Format Authority (最終仕様)
+//
+// このファイルはすべての QR 種 (HM/MM/SH/ST/FMT) が従う共通仕様を定義する。
+// 各 kind ファイル (qr-home.js / qr-shared.js / qr-settings.js / qr-format.js)
+// は本ファイルが export するヘルパーを **必ず経由** すること。独自の wire
+// format を定義しないこと。
+//
+// ── 設計 2 原則 ──
+//
+// 原則 ①「可変領域は冒頭辞書 + index 参照」:
+//   ユーザーが順序や内容を変えうるもの (タグ名、フォーマット並び、項目並び等)
+//   は、ペイロード冒頭に辞書を 1 回だけ置き、本体は数値 index で参照する。
+//   位置依存のスキーマ宣言は禁止 (順序が変わると壊れる)。
+//
+// 原則 ②「コード固定値は wire に含めない」:
+//   コード側で決まっている enum 許容値・デフォルト値は wire に乗せない。
+//   受信側コードが復元する。enum 値は数値 index で送る (本ファイルの
+//   PANEL_BY_INDEX 等を参照)。デフォルトと等価な値は省略する。
+//
+// ── 短キー命名規約 ──
+//
+//   トップレベル:
+//     v   = version (WIRE_V)
+//     td  = tag dictionary (string[]、1-based で参照される)
+//     p   = patients array (HM/MM/SH)
+//     f   = formats array (ST) / format object (FMT)
+//     ct  = clearTargets (ST)
+//     tge = tagGroupingEnabled (ST)
+//     tgs = tagGroups array (ST)
+//     tga = tagGroupAssign as [[tag_idx, group_idx], ...] (ST)
+//
+//   患者 (p[i]):
+//     r = room
+//     n = name
+//     t = tag indices (td への 1-based 参照; 文字列も互換受信)
+//     c = content (MM/SH のみ; HM では省略)
+//
+//   フォーマット (f[i] または FMT の f):
+//     n  = name
+//     p  = panel index (PANEL_BY_INDEX への 0-based 参照)
+//     j  = joiner       (default は省略)
+//     ls = labelSep     (default は省略)
+//     t  = tag indices (td への 1-based 参照、または辞書なしなら文字列配列)
+//     pn = pinned       (false は省略)
+//     d  = isDefault    (false は省略)
+//     i  = items array
+//
+//   フォーマット項目 (f[i].i[j]):
+//     l  = label
+//     k  = kind index (KIND_BY_INDEX への 0-based 参照)
+//     u  = unit         (空は省略)
+//     nm = normal       (空は省略)
+//
+//   タググループ (tgs[i]):
+//     n = name
+//     m = mode index (MODE_BY_INDEX への 0-based 参照)
+//     注: id は wire に含めない (受信側で新発番)
+//
+// ── 互換性ルール (WIRE_V bump 判定) ──
+//
+//   bump 必須:
+//     - 既存フィールドの意味変更・削除
+//     - enum 許容値の追加 (旧版が未知 index を解釈できないため)
+//     - 短キー名の変更
+//
+//   bump 不要:
+//     - 新規フィールドの追加 (normalize 側が未知フィールドを温存する仕組み
+//       のおかげで forward compat)
+//
+// ── 圧縮 prefix の互換性 ──
+//
+//   "E1:" = AES-GCM のみ (deflate なし、v7.1.x)
+//   "E2:" = AES-GCM(deflate-raw(plain)) (v7.2.0+)
+//   送信側は最新のみ生成、受信側は過去全 prefix を読めること。
+//
+// ── 将来の開発者へ ──
+//
+//   この設計は「ユーザーの編集自由と互換性を両立する」ために選ばれた。
+//   「キー名を直書きする」「enum を文字列のまま送る」「位置依存の配列に
+//   する」といった素朴な実装に戻すと、ユーザーが順序を変えた途端に壊れる
+//   データ破壊バグになりうる。本仕様を絶対に逸脱しないこと。
+//   詳細議論は git log で v7.2.0 のコミットメッセージを参照。
+//
+// ========================================================================
 
 // 共有QR・メモQR・JSON保存のファイル名・detail.js の受信タイムスタンプで
 // 再利用するアプリ共通のタイムスタンプ文字列
@@ -18,22 +113,246 @@ export function buildTimestampHeader() {
 }
 
 // ============================
-// 多ページ QR 共通プロトコル
+// Enum index tables (原則 ②)
+// ============================
+// PANEL_BY_INDEX / KIND_BY_INDEX / MODE_BY_INDEX は wire の数値 index を
+// 文字列 enum 値に復元するためのテーブル。新規 enum 値を末尾に追加する
+// 時は WIRE_V を bump する必要がある (旧版が未知 index を解釈できない)。
+
+export const PANEL_BY_INDEX = Object.freeze(FORMAT_PANELS.slice());      // ["S","O","A","P"]
+export const KIND_BY_INDEX  = Object.freeze(FORMAT_ITEM_KINDS.slice());  // ["text","number","fraction","date"]
+export const MODE_BY_INDEX  = Object.freeze([GROUP_MODE_MULTI, GROUP_MODE_SINGLE]); // ["multi","single"]
+
+const PANEL_INDEX = Object.fromEntries(PANEL_BY_INDEX.map((v, i) => [v, i]));
+const KIND_INDEX  = Object.fromEntries(KIND_BY_INDEX.map((v, i) => [v, i]));
+const MODE_INDEX  = Object.fromEntries(MODE_BY_INDEX.map((v, i) => [v, i]));
+
+function panelToIdx(s) {
+  const i = PANEL_INDEX[s];
+  return typeof i === "number" ? i : PANEL_INDEX.O; // default O
+}
+function panelFromIdx(i) {
+  return PANEL_BY_INDEX[i] || "O";
+}
+function kindToIdx(s) {
+  const i = KIND_INDEX[s];
+  return typeof i === "number" ? i : KIND_INDEX[DEFAULT_ITEM_KIND];
+}
+function kindFromIdx(i) {
+  return KIND_BY_INDEX[i] || DEFAULT_ITEM_KIND;
+}
+function modeToIdx(s) {
+  const i = MODE_INDEX[s];
+  return typeof i === "number" ? i : MODE_INDEX[GROUP_MODE_MULTI];
+}
+function modeFromIdx(i) {
+  return MODE_BY_INDEX[i] || GROUP_MODE_MULTI;
+}
+
+// ============================
+// Tag dictionary helpers (原則 ①)
+// ============================
+// 送信側の settings.tags を辞書として 1 回だけ wire に乗せ、その他の
+// タグ参照は 1-based の数値 index に置換する。受信側は辞書から文字列を
+// 復元する。dict が null の時 (= FMT の単独 QR で辞書化のオーバーヘッドを
+// 避けたい場合) は文字列のまま wire に乗せる。
+
+// 送信側の現在のタグ辞書を取得 (settings.tags のコピー)
+export function buildTagDict() {
+  return (settings.tags || []).slice();
+}
+
+// タグ名配列 → wire 用の値配列。dict 指定時は 1-based index、なしは文字列のまま。
+function tagsToWire(tagNames, dict) {
+  if (!Array.isArray(tagNames)) return [];
+  if (dict) {
+    const out = [];
+    for (const name of tagNames) {
+      const idx = dict.indexOf(name);
+      if (idx >= 0) out.push(idx + 1);
+    }
+    return out;
+  }
+  return tagNames.filter(s => typeof s === "string");
+}
+
+// wire の値配列 → タグ名配列。数値は dict から、文字列はそのまま (互換受信)。
+function tagsFromWire(wireValues, dict) {
+  if (!Array.isArray(wireValues)) return [];
+  const out = [];
+  for (const v of wireValues) {
+    if (typeof v === "number") {
+      const name = dict?.[v - 1];
+      if (name) out.push(name);
+    } else if (typeof v === "string" && v) {
+      out.push(v);
+    }
+  }
+  return out;
+}
+
+// ============================
+// Format ↔ wire (原則 ① + ②)
+// ============================
+
+export function formatToWire(format, tagDict) {
+  const f = format || {};
+  const o = {
+    n: String(f.name || ""),
+    p: panelToIdx(f.panel),
+  };
+  // default 値は省略 (原則 ②)
+  if (typeof f.joiner === "string" && f.joiner !== ", ") o.j = f.joiner;
+  if (typeof f.labelSep === "string") {
+    // labelSep の default は item の kind 構成によって決まるが、wire 上は
+    // 「明示されていれば省略しない」シンプルルール。受信側で復元
+    o.ls = f.labelSep;
+  }
+  const tWire = tagsToWire(Array.isArray(f.tags) ? f.tags : [], tagDict);
+  if (tWire.length) o.t = tWire;
+  if (f.pinned) o.pn = 1;
+  if (f.isDefault) o.d = 1;
+  o.i = (Array.isArray(f.items) ? f.items : []).map(itemToWire);
+  return o;
+}
+
+export function formatFromWire(wire, tagDict) {
+  const w = wire || {};
+  const items = (Array.isArray(w.i) ? w.i : []).map(itemFromWire);
+  const labelSep = typeof w.ls === "string"
+    ? w.ls
+    : (items.length && items.every(it => it.kind === "text") ? DEFAULT_LABEL_SEP_TEXT : DEFAULT_LABEL_SEP_OTHER);
+  return {
+    name: String(w.n || ""),
+    panel: panelFromIdx(w.p),
+    joiner: typeof w.j === "string" ? w.j : ", ",
+    labelSep,
+    tags: tagsFromWire(w.t, tagDict),
+    pinned: !!w.pn,
+    isDefault: !!w.d,
+    items,
+  };
+}
+
+function itemToWire(it) {
+  const o = { l: String(it?.label ?? ""), k: kindToIdx(it?.kind) };
+  if (typeof it?.unit === "string" && it.unit) o.u = it.unit;
+  if (typeof it?.normal === "string" && it.normal) o.nm = it.normal;
+  return o;
+}
+
+function itemFromWire(w) {
+  const kind = kindFromIdx(w?.k);
+  const o = { label: String(w?.l || ""), kind };
+  if (typeof w?.u === "string") o.unit = w.u;
+  if (typeof w?.nm === "string") o.normal = w.nm;
+  return o;
+}
+
+// ============================
+// Patient ↔ wire (HM/MM/SH 用)
+// ============================
+//   patientToWire は HM では fieldName=null で content を省く。
+//   MM/SH では fieldName="memo"/"shared" を渡して content を載せる。
+
+export function patientToWire(patient, tagDict, fieldName) {
+  const p = patient || {};
+  const room = String(p.room || "").trim();
+  const name = String(p.name || "").trim();
+  const tagIdxs = tagsToWire(Array.isArray(p.tags) ? p.tags : [], tagDict);
+  const content = fieldName ? String(p[fieldName] ?? "").trim() : "";
+
+  const isEmpty = !room && !name && tagIdxs.length === 0 && !content;
+  if (isEmpty) return {};
+  const obj = {};
+  if (room) obj.r = room;
+  if (name) obj.n = name;
+  if (tagIdxs.length) obj.t = tagIdxs;
+  if (fieldName) obj.c = content;
+  return obj;
+}
+
+export function patientFromWire(wire, tagDict) {
+  const w = wire || {};
+  return {
+    room: String(w.r || ""),
+    name: String(w.n || ""),
+    tags: tagsFromWire(w.t, tagDict),
+    content: String(w.c || ""),
+  };
+}
+
+// ============================
+// Tag groups (ST のみ)
+// ============================
+//   tgs 内は { n, m } で id は持たない。受信側が新発番する。
+//   tga は [[tag_idx, group_idx], ...] の 1-based ペア配列。
+
+export function tagGroupToWire(g) {
+  return {
+    n: String(g?.name || ""),
+    m: modeToIdx(g?.mode),
+  };
+}
+
+export function tagGroupFromWire(w) {
+  return {
+    // id は wire に無いので新発番 (random)
+    id: "grp_" + Math.random().toString(36).slice(2, 10),
+    name: String(w?.n || ""),
+    mode: modeFromIdx(w?.m),
+  };
+}
+
+// tagGroupAssign は in-memory では { tagName: groupId } の object。
+// wire 上は [[tag_idx, group_idx], ...] (両方 1-based)。
+export function tagGroupAssignToWire(assignObj, tagDict, groupsArr) {
+  if (!assignObj || typeof assignObj !== "object") return [];
+  const groupIdToIdx = new Map();
+  (groupsArr || []).forEach((g, i) => { if (g?.id) groupIdToIdx.set(g.id, i + 1); });
+  const out = [];
+  for (const [tagName, groupId] of Object.entries(assignObj)) {
+    const ti = tagDict ? tagDict.indexOf(tagName) + 1 : 0;
+    const gi = groupIdToIdx.get(groupId) || 0;
+    if (ti > 0 && gi > 0) out.push([ti, gi]);
+  }
+  return out;
+}
+
+// wire の [[tag_idx, group_idx]] → in-memory の { tagName: groupId }。
+// resolvedGroups は decode 済の新発番 ID 付きグループ配列。
+export function tagGroupAssignFromWire(wireArr, tagDict, resolvedGroups) {
+  if (!Array.isArray(wireArr)) return {};
+  const out = {};
+  for (const pair of wireArr) {
+    if (!Array.isArray(pair) || pair.length !== 2) continue;
+    const [ti, gi] = pair;
+    const tagName = tagDict?.[ti - 1];
+    const groupId = resolvedGroups?.[gi - 1]?.id;
+    if (tagName && groupId) out[tagName] = groupId;
+  }
+  return out;
+}
+
+// ============================
+// 多ページ QR 共通プロトコル (transport layer)
 //
-// すべての QR 種（ホーム/メモ/共有/設定…）が以下のページ書式を共有する:
+// すべての QR 種が以下のページ書式を共有する:
 //
 //   RND_<KIND> #<batchId> N/M\n<本文>
 //
-//   - KIND: HM | MM | SH | ST など 2 文字以上の大文字
+//   - KIND: HM | MM | SH | ST | FMT など 2 文字以上の大文字
 //   - batchId: 1 回の送信を識別する短い ID（Date.now().toString(36)）
 //   - N/M: ページ番号 / 総ページ数
 //
-// 本文は種ごとに自由（terse pipe 区切り、JSON、etc.）。共通のエスケープ
-// ユーティリティ (escapeField/unescapeField/splitEscapedPipe) を本モジュールで
-// 提供する。改行は `\n` 2 文字にエスケープして 1 行 = 1 レコードを保つ。
+// 本文は wire format の文字列 (JSON.stringify した短キー JSON)、または
+// "E1:" / "E2:" で始まる暗号化された base64url 文字列。
 // ============================
 
-const MAX_BYTES = 800;
+// 5 種すべての QR の上限。QR version ~20 (~97 modules) 程度で iPad camera
+// で確実にスキャンできる範囲。圧縮で 1 ページに収めにくい場合は複数ページに
+// 分割される。
+const MAX_BYTES = 750;
 // 'RND_HM #abcdef12 99/99\n' = 約 25 バイト。余裕を持って 50 バイト確保
 const HEADER_BUDGET = 50;
 const HEADER_RE = /^RND_([A-Z]+)\s+#(\S+)\s+(\d+)\/(\d+)\n([\s\S]*)$/;
@@ -86,7 +405,7 @@ export function splitEscapedPipe(line) {
 // Page chunking + headers
 //
 // payload を `budget` バイト以下に分割。可能な限り `\n` 境界で切り、
-// 改行が無い payload（設定 JSON など）もコードポイント境界で分割する。
+// 改行が無い payload（暗号化された base64 など）もコードポイント境界で分割する。
 // チャンクは境界の `\n` を保持するので、受信側は ""（空文字）で連結すれば
 // 元の payload に戻る。
 // ============================

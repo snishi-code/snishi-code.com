@@ -25,7 +25,9 @@ import { t } from "../i18n.js";
 // と DOM 配線だけを担当する。
 // ============================
 
-const MAX_BYTES = 800;
+// qr-protocol.js の MAX_BYTES (750) と整合。各 kind 個別 override は撤去
+// (v7.2.0 で 5 種統一)。1 ページに収まらない場合は複数ページに分割される。
+const MAX_BYTES = 750;
 
 function drawQrToCanvas(canvasId, text) {
   const canvas = document.getElementById(canvasId);

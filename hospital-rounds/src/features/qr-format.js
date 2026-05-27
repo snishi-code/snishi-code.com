@@ -13,27 +13,25 @@
 //   - tags: 受信側に未登録のタグは無視 (タグ辞書を勝手に増やさない)
 //
 // 移植性のため、store への直接書き込みは行わず、`setFormatStoreAdapter`
-// で渡された adapter を経由する。これにより qr-format.js は store の構造を
-// 知らずに動く (他アプリへの移植や Preact 化時の差し替えが容易)。
+// で渡された adapter を経由する。
+//
+// wire format は qr-protocol.js の formatToWire / formatFromWire に委譲。
+// FMT は単独フォーマット QR なので tag dict のオーバーヘッドを避けるため
+// tags は文字列のまま wire に乗せる (formatToWire に tagDict=null を渡す)。
 // ============================
 
-import { FORMAT_PANELS, FORMAT_ITEM_KINDS, DEFAULT_ITEM_KIND, DEFAULT_LABEL_SEP_TEXT, DEFAULT_LABEL_SEP_OTHER } from "../constants.js";
+import { DEFAULT_LABEL_SEP_TEXT, DEFAULT_LABEL_SEP_OTHER } from "../constants.js";
 import { createQrFlow } from "./qr-flow.js";
+import { formatToWire, formatFromWire } from "./qr-protocol.js";
 import { t } from "../i18n.js";
 
-const WIRE_V = 1;
+const WIRE_V = 2;
 
 // 共有対象。null なら encodePayload が空ペイロードを返す (= 何も表示しない)
 let _formatToShare = null;
 export function setFormatToShare(format) { _formatToShare = format || null; }
 
-// store adapter: 受信フォーマット適用時の read/write を外から注入する。
-//   getExistingFormats(): 現存フォーマット配列 (read-only) を返す。同名チェックに使う
-//   getKnownTags():        登録済タグ名の配列。未登録タグの除外に使う
-//   addFormat(newFmt):     新フォーマットを永続化する。store / IDB への書き込みは
-//                          adapter の責務 (本モジュールは触らない)
-//   shouldEncrypt():       QR 暗号化フラグ (省略時は false = 平文)
-// adapter 未注入時は no-op フォールバック (テスト時 / 移植先未配線時の安全装置)
+// store adapter: 受信フォーマット適用時の read/write を外から注入する
 let _adapter = {
   getExistingFormats: () => [],
   getKnownTags: () => [],
@@ -51,34 +49,22 @@ function newFmtId() {
 
 function encodePayload() {
   if (!_formatToShare) return "";
-  // ID は送信に含めない (受信側で新発番)。本質的なフィールドだけ載せる
-  const f = _formatToShare;
-  const slim = {
+  // 単独フォーマットなので tag dict 化はしない (tagDict=null で文字列のまま)
+  const obj = {
     v: WIRE_V,
-    name: String(f.name || ""),
-    panel: FORMAT_PANELS.includes(f.panel) ? f.panel : "O",
-    joiner: typeof f.joiner === "string" ? f.joiner : ", ",
-    labelSep: typeof f.labelSep === "string" ? f.labelSep : DEFAULT_LABEL_SEP_OTHER,
-    tags: Array.isArray(f.tags) ? f.tags.filter(t => typeof t === "string") : [],
-    pinned: !!f.pinned,
-    isDefault: !!f.isDefault,
-    items: (Array.isArray(f.items) ? f.items : []).map(it => {
-      const kind = FORMAT_ITEM_KINDS.includes(it?.kind) ? it.kind : DEFAULT_ITEM_KIND;
-      const o = { label: String(it?.label ?? ""), kind };
-      if (kind === "number" || kind === "fraction") o.unit = String(it?.unit ?? "");
-      else o.normal = String(it?.normal ?? "");
-      return o;
-    }),
+    f: formatToWire(_formatToShare, null),
   };
-  return JSON.stringify(slim);
+  return JSON.stringify(obj);
 }
 
 function decodePayload(payload) {
   const obj = JSON.parse(String(payload || ""));
   if (!obj || typeof obj !== "object") throw new Error(t("qrFormat.invalid"));
   if (obj.v !== WIRE_V) throw new Error(t("qrFormat.versionMismatch", { a: obj.v, b: WIRE_V }));
-  if (!obj.name || typeof obj.name !== "string") throw new Error(t("qrFormat.noName"));
-  return obj;
+  if (!obj.f || typeof obj.f !== "object") throw new Error(t("qrFormat.noName"));
+  const fmt = formatFromWire(obj.f, null);
+  if (!fmt.name) throw new Error(t("qrFormat.noName"));
+  return fmt;
 }
 
 // 受信したフォーマットを適用 (常に新規追加。ID 新発番、同名は (2)/(3)... に rename、
@@ -102,8 +88,8 @@ function applyReceivedFormat(safe, ctrl) {
 
   // 未登録タグを除外
   const knownTags = new Set(_adapter.getKnownTags() || []);
-  const safeTags = (Array.isArray(safe.tags) ? safe.tags : []).filter(t => knownTags.has(t));
-  const droppedTags = (Array.isArray(safe.tags) ? safe.tags : []).filter(t => !knownTags.has(t));
+  const safeTags = (Array.isArray(safe.tags) ? safe.tags : []).filter(tg => knownTags.has(tg));
+  const droppedTags = (Array.isArray(safe.tags) ? safe.tags : []).filter(tg => !knownTags.has(tg));
 
   const summaryParts = [
     t("qrFormat.summary.panel", { panel: safe.panel || "O" }),
@@ -115,28 +101,25 @@ function applyReceivedFormat(safe, ctrl) {
 
   if (!confirm(t("qrFormat.import.confirm", { name: finalName, summary }))) return;
 
-  // 構築
+  // 構築 (formatFromWire で得たオブジェクトをそのまま使うが、id と name と
+  // tags / isDefault を case-by-case で調整)
+  const items = Array.isArray(safe.items) ? safe.items : [];
+  const labelSep = safe.labelSep || (
+    items.length && items.every(it => it && it.kind === "text")
+      ? DEFAULT_LABEL_SEP_TEXT : DEFAULT_LABEL_SEP_OTHER
+  );
   const newFmt = {
     id: newFmtId(),
     name: finalName,
     panel: safe.panel,
     joiner: safe.joiner,
-    labelSep: safe.labelSep || (
-      Array.isArray(safe.items) && safe.items.every(it => it && it.kind === "text")
-        ? DEFAULT_LABEL_SEP_TEXT : DEFAULT_LABEL_SEP_OTHER
-    ),
+    labelSep,
     tags: safeTags,
     pinned: !!safe.pinned,
     // isDefault は受信時は無効化 (元端末の運用にすぎない。受信側で勝手に既定文に
     // すり替わると混乱するため。必要なら受信後に手動でチェック)
     isDefault: false,
-    items: (Array.isArray(safe.items) ? safe.items : []).map(it => {
-      const kind = FORMAT_ITEM_KINDS.includes(it?.kind) ? it.kind : DEFAULT_ITEM_KIND;
-      const out = { label: String(it?.label ?? ""), kind };
-      if (kind === "number" || kind === "fraction") out.unit = String(it?.unit ?? "");
-      else out.normal = String(it?.normal ?? "");
-      return out;
-    }),
+    items,
   };
 
   // 保存は adapter に委譲。store の実態を qr-format.js は知らない

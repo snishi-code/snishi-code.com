@@ -506,13 +506,55 @@ section("QR security (encryption + redistribution)");
 
 await test("encryptPayload + decryptPayload round-trip", async () => {
   // Node 18+ には globalThis.crypto.subtle がある (Web Crypto API)
+  // Node 17+ には CompressionStream がある (deflate-raw 含む)
   const m = await import("../src/features/crypto-payload.js");
-  const plain = "RND_HM #abc 1/1\n{\"v\":2,\"p\":[{\"r\":\"203\",\"n\":\"テスト太郎\"}]}";
+  const plain = "RND_HM #abc 1/1\n{\"v\":3,\"p\":[{\"r\":\"203\",\"n\":\"テスト太郎\"}]}";
   const enc = await m.encryptPayload(plain);
-  assert.ok(m.isEncrypted(enc), "encrypted payload has E1: prefix");
+  assert.ok(m.isEncrypted(enc), "encrypted payload has E1 or E2 prefix");
   assert.notEqual(enc, plain, "ciphertext differs from plaintext");
   const dec = await m.decryptPayload(enc);
   assert.equal(dec, plain, "round-trip recovers exact plaintext");
+});
+
+await test("encryptPayload generates E2 (deflate) when CompressionStream is available", async () => {
+  // Node 17+ で CompressionStream が使えるので、デフォルトでは E2 が生成される。
+  // E1 fallback は CompressionStream 未対応端末でのみ起きる挙動
+  const m = await import("../src/features/crypto-payload.js");
+  // 圧縮で確実に縮む繰り返しデータ
+  const plain = "abcdef".repeat(50);
+  const enc = await m.encryptPayload(plain);
+  assert.ok(enc.startsWith("E2:"), "should be E2 when CompressionStream is available");
+  // 圧縮後は明らかに短くなっている (元データ 300B → 暗号化後でも 100 chars 未満が期待)
+  assert.ok(enc.length < plain.length, `compressed+encrypted (${enc.length}) shorter than plain (${plain.length})`);
+});
+
+await test("decryptPayload can read legacy E1 (no deflate) format", async () => {
+  // v7.1.x で生成された E1 形式 (AES-GCM のみ、deflate なし) が読めることを確認
+  // E1 を直接生成 (内部関数を呼べないので、deflate を bypass した固定値で検証)
+  const m = await import("../src/features/crypto-payload.js");
+  const plain = "this is a v7.1.x style plaintext";
+
+  // E1 を artificially 作る: APP_KEY と同じ鍵で AES-GCM 暗号化
+  const APP_KEY_BYTES = new Uint8Array([
+    0x47, 0xa5, 0x1c, 0x9b, 0x38, 0x6d, 0x2e, 0x71,
+    0xf4, 0x83, 0x05, 0xcc, 0x9a, 0x4d, 0x62, 0x18,
+    0xb7, 0x29, 0x5a, 0xe0, 0x3c, 0x91, 0x8f, 0x46,
+    0xd2, 0x57, 0x6a, 0x0b, 0xfd, 0xe5, 0x18, 0x73,
+  ]);
+  const key = await crypto.subtle.importKey("raw", APP_KEY_BYTES, { name: "AES-GCM" }, false, ["encrypt"]);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(plain));
+  const combined = new Uint8Array(iv.length + ct.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(ct), iv.length);
+  let s = "";
+  for (let i = 0; i < combined.length; i++) s += String.fromCharCode(combined[i]);
+  const b64url = btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const e1 = "E1:" + b64url;
+
+  assert.ok(m.isEncrypted(e1), "E1 is recognized as encrypted");
+  const dec = await m.decryptPayload(e1);
+  assert.equal(dec, plain, "v7.2.0 decryptPayload reads v7.1.x E1 format");
 });
 
 await test("decryptPayload passes plain text through", async () => {
@@ -556,6 +598,199 @@ await test("encodePatientList excludes external patients when redistribution=res
   const freeJson = m.encodePatientList({ fieldName: null, includeEmpty: true, kind: "HM" });
   const freeParsed = JSON.parse(freeJson);
   assert.ok(freeParsed.p.some(o => o.n === "外部受信さん"), "external also included when free");
+});
+
+// ============================
+// 12) QR Wire Format Authority (qr-protocol.js)
+// ============================
+section("QR wire format (qr-protocol.js)");
+
+await test("PANEL/KIND/MODE enum tables are stable (bump WIRE_V if you add to these)", async () => {
+  const p = await import("../src/features/qr-protocol.js");
+  // 順序を変えると旧 wire の index が破壊される。本テストは「うっかり順序を
+  // 変えないための歩哨」。enum を増やす時は WIRE_V を bump する必要がある。
+  assert.deepEqual([...p.PANEL_BY_INDEX], ["S", "O", "A", "P"]);
+  assert.deepEqual([...p.KIND_BY_INDEX], ["text", "number", "fraction", "date"]);
+  assert.deepEqual([...p.MODE_BY_INDEX], ["multi", "single"]);
+});
+
+await test("formatToWire / formatFromWire round-trip with tag dict", async () => {
+  const p = await import("../src/features/qr-protocol.js");
+  const fmt = {
+    name: "バイタル",
+    panel: "O",
+    joiner: ", ",
+    labelSep: " ",
+    tags: ["内科", "救急"],
+    pinned: true,
+    isDefault: false,
+    items: [
+      { label: "BP", kind: "fraction", unit: "mmHg" },
+      { label: "P", kind: "number", unit: "bpm" },
+      { label: "発熱", kind: "text", normal: "なし" },
+    ],
+  };
+  const dict = ["内科", "外科", "救急"];
+  const wire = p.formatToWire(fmt, dict);
+
+  // 短キーと enum 数値化の確認
+  assert.equal(wire.n, "バイタル");
+  assert.equal(wire.p, 1, "panel O = index 1");
+  assert.deepEqual(wire.t, [1, 3], "tags use 1-based dict indices");
+  assert.equal(wire.pn, 1);
+  assert.equal(wire.d, undefined, "isDefault=false is omitted");
+  assert.equal(wire.i[0].k, 2, "kind fraction = index 2");
+  assert.equal(wire.i[1].k, 1, "kind number = index 1");
+  assert.equal(wire.i[2].k, 0, "kind text = index 0");
+
+  // round-trip
+  const restored = p.formatFromWire(wire, dict);
+  assert.equal(restored.name, fmt.name);
+  assert.equal(restored.panel, "O");
+  assert.deepEqual(restored.tags, fmt.tags);
+  assert.equal(restored.pinned, true);
+  assert.equal(restored.isDefault, false);
+  assert.equal(restored.items.length, 3);
+  assert.equal(restored.items[0].kind, "fraction");
+  assert.equal(restored.items[1].kind, "number");
+  assert.equal(restored.items[2].kind, "text");
+});
+
+await test("formatToWire with null dict embeds tag strings (for FMT QR)", async () => {
+  const p = await import("../src/features/qr-protocol.js");
+  const fmt = { name: "X", panel: "S", tags: ["内科", "外科"], items: [] };
+  const wire = p.formatToWire(fmt, null);
+  assert.deepEqual(wire.t, ["内科", "外科"], "with null dict, tags are inline strings");
+  const restored = p.formatFromWire(wire, null);
+  assert.deepEqual(restored.tags, ["内科", "外科"]);
+});
+
+await test("patientToWire / patientFromWire round-trip", async () => {
+  const p = await import("../src/features/qr-protocol.js");
+  const dict = ["内科", "外科"];
+  const wire = p.patientToWire(
+    { room: "201", name: "テスト", tags: ["外科"], memo: "メモ本体" },
+    dict,
+    "memo",
+  );
+  assert.equal(wire.r, "201");
+  assert.equal(wire.n, "テスト");
+  assert.deepEqual(wire.t, [2], "外科 = index 2");
+  assert.equal(wire.c, "メモ本体");
+
+  const restored = p.patientFromWire(wire, dict);
+  assert.equal(restored.room, "201");
+  assert.equal(restored.name, "テスト");
+  assert.deepEqual(restored.tags, ["外科"]);
+  assert.equal(restored.content, "メモ本体");
+});
+
+await test("patientToWire returns empty {} when all fields blank", async () => {
+  const p = await import("../src/features/qr-protocol.js");
+  const wire = p.patientToWire({ room: "", name: "", tags: [], memo: "" }, [], "memo");
+  assert.deepEqual(wire, {});
+});
+
+await test("tagGroupToWire / tagGroupFromWire round-trip (id is regenerated)", async () => {
+  const p = await import("../src/features/qr-protocol.js");
+  const g = { id: "orig_id", name: "診療科", mode: "single" };
+  const wire = p.tagGroupToWire(g);
+  assert.equal(wire.n, "診療科");
+  assert.equal(wire.m, 1, "single = index 1");
+  assert.equal(wire.id, undefined, "id is not on wire");
+
+  const restored = p.tagGroupFromWire(wire);
+  assert.equal(restored.name, "診療科");
+  assert.equal(restored.mode, "single");
+  assert.ok(restored.id && restored.id.startsWith("grp_"), "id is freshly generated");
+  assert.notEqual(restored.id, "orig_id");
+});
+
+await test("tagGroupAssign round-trip via [tag_idx, group_idx]", async () => {
+  const p = await import("../src/features/qr-protocol.js");
+  const dict = ["内科", "外科", "救急"];
+  const groups = [
+    { id: "g1", name: "診療科", mode: "single" },
+    { id: "g2", name: "緊急度", mode: "multi" },
+  ];
+  const assignObj = { "内科": "g1", "外科": "g1", "救急": "g2" };
+  const wire = p.tagGroupAssignToWire(assignObj, dict, groups);
+  // Order may vary, so compare as sets
+  const wireSet = new Set(wire.map(pair => pair.join(",")));
+  assert.ok(wireSet.has("1,1"), "内科 → g1");
+  assert.ok(wireSet.has("2,1"), "外科 → g1");
+  assert.ok(wireSet.has("3,2"), "救急 → g2");
+  assert.equal(wire.length, 3);
+
+  // 受信側で new IDs を割り振った groups を使って復元
+  const resolvedGroups = [
+    { id: "new_g_A", name: "診療科", mode: "single" },
+    { id: "new_g_B", name: "緊急度", mode: "multi" },
+  ];
+  const restored = p.tagGroupAssignFromWire(wire, dict, resolvedGroups);
+  assert.equal(restored["内科"], "new_g_A");
+  assert.equal(restored["外科"], "new_g_A");
+  assert.equal(restored["救急"], "new_g_B");
+});
+
+await test("qr-settings encode/decode round-trip with formats + tagGroups", async () => {
+  const store = await freshStore();
+  // 仕込み: タグ辞書 + tagGroups + tagGroupAssign
+  store.settings.tags = ["内科", "外科", "救急"];
+  store.settings.tagGroups = [
+    { id: "g_doctor", name: "診療科", mode: "single" },
+  ];
+  store.settings.tagGroupAssign = { "内科": "g_doctor", "外科": "g_doctor" };
+  store.settings.tagGroupingEnabled = true;
+
+  // qr-settings.js は flow に encodePayload/decodePayload を渡しているだけで
+  // export していない。 同じ振る舞いを再現するため、qr-protocol の helper を
+  // 直接呼んでテスト。
+  const proto = await import("../src/features/qr-protocol.js");
+  const tagDict = store.settings.tags.slice();
+  const wireFormats = store.settings.formats.map(f => proto.formatToWire(f, tagDict));
+  const wireGroups = store.settings.tagGroups.map(proto.tagGroupToWire);
+  const wireAssign = proto.tagGroupAssignToWire(store.settings.tagGroupAssign, tagDict, store.settings.tagGroups);
+
+  // 復号
+  const restoredFormats = wireFormats.map(w => proto.formatFromWire(w, tagDict));
+  const restoredGroups = wireGroups.map(proto.tagGroupFromWire);
+  const restoredAssign = proto.tagGroupAssignFromWire(wireAssign, tagDict, restoredGroups);
+
+  // panel/kind enum が文字列に戻っている
+  assert.equal(restoredFormats[0].panel, store.settings.formats[0].panel);
+  assert.equal(restoredFormats[0].items[0].kind, store.settings.formats[0].items[0].kind);
+
+  // tagGroupAssign 復元: タグ名は同じ、groupId は新発番
+  for (const tagName of Object.keys(store.settings.tagGroupAssign)) {
+    const origGroupName = store.settings.tagGroups.find(g => g.id === store.settings.tagGroupAssign[tagName])?.name;
+    const newGroupId = restoredAssign[tagName];
+    const newGroupName = restoredGroups.find(g => g.id === newGroupId)?.name;
+    assert.equal(newGroupName, origGroupName, `tag ${tagName} stays assigned to "${origGroupName}"`);
+  }
+});
+
+await test("qr-patient-list v3 round-trip via encodePatientList + decodePatientList", async () => {
+  const store = await freshStore();
+  store.appState.patients[0].name = "山田";
+  store.appState.patients[0].room = "301";
+  store.appState.patients[0].tags = ["内科"];
+  store.appState.patients[0].memo = "経過良好";
+  store.settings.qrRedistribution.MM = "free";
+
+  const m = await import("../src/features/qr-patient-list.js");
+  const json = m.encodePatientList({ fieldName: "memo", includeEmpty: false, kind: "MM" });
+  const parsed = JSON.parse(json);
+  assert.equal(parsed.v, 3, "WIRE_V is 3");
+  assert.ok(Array.isArray(parsed.td), "tag dict is present");
+  assert.ok(parsed.p.length > 0, "patient array non-empty");
+
+  const decoded = m.decodePatientList(json);
+  assert.deepEqual(decoded.tagNames, parsed.td);
+  const found = decoded.patients.find(x => x.name === "山田");
+  assert.ok(found, "patient round-trips");
+  assert.equal(found.room, "301");
+  assert.equal(found.content, "経過良好");
 });
 
 // ============================

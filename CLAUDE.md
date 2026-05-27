@@ -124,6 +124,16 @@ snishi-code.com のソースリポジトリ。医療・個人向けの PWA / 単
 
 確認ダイアログだけでなく、**ツールチップ・aria-label・placeholder・popup タイトル・成功/失敗メッセージなど全てが対象**。新機能追加 PR を書く時は最後に `grep -n '"[ぁ-んァ-ヶ一-龯]"' src/` で漏れがないか確認すると良い。
 
+### QR Wire Format (端末間データ交換時の規約)
+
+複数端末間で QR を介してデータをやり取りするアプリ (`hospital-rounds` 等) では、wire format の中身を扱う処理は **必ず `src/features/qr-protocol.js` が export するヘルパーを経由** すること。各 feature ファイル (`qr-home.js` / `qr-shared.js` / `qr-settings.js` / `qr-format.js` 等) で独自の wire format を新規定義しないこと。
+
+設計 2 原則:
+- **可変領域は冒頭辞書 + index 参照**: ユーザーが順序や内容を変えうるもの (タグ名等) は冒頭に辞書を 1 回置いて以降は数値 index で参照
+- **コード固定値は wire に含めない**: enum 許容値・デフォルト値はコード側 (`PANEL_BY_INDEX` 等) で復元
+
+新規 wire フィールド追加・enum 拡張・短キー rename を行う時は **必ず** `qr-protocol.js` 冒頭の「QR Wire Format Authority」コメント (互換性ルール一覧) と各 kind の `WIRE_V` 定数を読んでから対応する。
+
 ### アクセシビリティの基本
 
 - ステータス・選択状態を色だけで示さない（形・アイコン・テキスト併用）
