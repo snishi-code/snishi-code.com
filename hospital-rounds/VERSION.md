@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 7.1.0
+現在のバージョン: 7.1.1
 
 ## バージョニング方針
 
@@ -14,6 +14,12 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **7.1.1**: QR セキュリティ UI 非表示化 + 設定 QR の wire 短縮
+  - **QR セキュリティ UI を非表示**: `qrSecurityCard` HTML を index.html から撤去、`renderQrSecurity` 関数 (約 60 行) を settings-view.js から削除。`settings.qrEncryption` / `settings.qrRedistribution` の設定モデル自体は維持しており、defaults (HM/MM/SH/ST/FMT 全暗号化 ON、HM/MM のみ再配布制限) が引き続きアクティブ。将来管理機能で再露出する想定で「現時点ではユーザに見えないバック設定」に格下げ。i18n キー 11 個 (`settings.title.qrSecurity` / `qrSecurity.*` 系 + `qrSettings.summary.defaults`) を strings.ja.json から削除
+  - **設定 QR の wire format v3 (短キー化)**: 同一情報を保ったまま `formatToWire` / `itemToWire` で短キーに圧縮。formats → "f" / clearTargets → "ct" / tags → "tg" / tagGroups → "tgs" / tagGroupingEnabled → "tge" / tagGroupAssign → "tga"、format 内は name→n / panel→p / joiner→j / labelSep→ls / tags→t / pinned→pn / isDefault→d / items→i、item 内は label→l / kind→k / unit→u / normal→nm。空配列 / `false` 等の default 値は省略してさらに圧縮。format `id` は wire に載せない (受信側で新発番)。WIRE_V を 2 → 3 に bump
+  - **`maxBytes: 1100` を ST flow に設定**: 設定 QR は一括書き出し 1 ショット用途であり HM/MM のような頻繁な更新ではないので、1 QR にできるだけ収まる密度に。QR ver ~26 (~117 modules) で iPad camera で十分読める範囲。デフォルト (800B) の 1.4 倍
+  - **結果**: defaults の状態で plaintext 992 → 644 chars、暗号化後 1507 → 1043 bytes、ページ数 **3 → 1** ページに
+  - テスト 46 件 / ビルド 595 KB 維持
 - **7.1.0**: QR セキュリティ (暗号化 + 再配布制限) を kind 別の設定として導入
   - **暗号化**: `features/crypto-payload.js` 新設。Web Crypto API (AES-GCM 256bit、IV 12B、認証 tag 16B) でアプリ固定鍵 (32B、ビルドに埋め込み) を使った encrypt/decrypt。wire format は `E1:<base64url(iv ‖ ciphertext)>`。バージョン prefix `E1:` で将来更新に備える
   - **qr-flow.js**: `cfg.shouldEncrypt: () => boolean` を追加。送信時 encryptPayload で包む。受信時 `isEncrypted` 判定で自動 decrypt → cfg.decodePayload へ。patient detail QR (clinical → 電子カルテ貼付) は元から外部読取前提なので encrypt 対象外

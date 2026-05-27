@@ -391,16 +391,9 @@
         </div>
       </div>
 
-      <!-- QR セキュリティ: kind 別の暗号化 / 再配布制限トグル。デフォルト値は
-           constants.js の DEFAULT_QR_{ENCRYPTION,REDISTRIBUTION} 参照。
-           UI は settings-view.js の renderQrSecurity が生成する -->
-      <div class="card" id="qrSecurityCard">
-        <div class="cardHead">
-          <div class="label" data-i18n="settings.title.qrSecurity">QR セキュリティ</div>
-        </div>
-        <div class="cardBody" id="qrSecurityBody"></div>
-      </div>
-
+      <!-- v7.1+ QR セキュリティ (暗号化 / 再配布制限) はユーザ向け UI からは隠す。
+           設定モデル (settings.qrEncryption / qrRedistribution) はそのまま機能する
+           ので、デフォルト値で常時 ON で動く。将来 admin 機能で expose する想定。 -->
       </div>
     </section>
 

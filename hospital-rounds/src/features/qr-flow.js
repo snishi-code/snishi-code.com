@@ -114,7 +114,7 @@ export function createQrFlow(cfg) {
       }
     }
     qrPages = payload
-      ? encodePages({ kind: cfg.kind, payload, batchId: newBatchId(), maxBytes: MAX_BYTES })
+      ? encodePages({ kind: cfg.kind, payload, batchId: newBatchId(), maxBytes: cfg.maxBytes || MAX_BYTES })
       : [];
     qrPageIndex = 0;
     renderQrPage();

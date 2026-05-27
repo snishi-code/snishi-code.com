@@ -5,70 +5,93 @@ import { createQrFlow } from "./qr-flow.js";
 import { t } from "../i18n.js";
 
 // ============================
-// 設定QR
+// 設定 QR
 //
-// JSON + 短縮キー方式。トップレベルは in-memory と同名（可読性優先）、繰り返し
-// 多い oRules / tagGroups の中だけ短縮キーで bytes 節約。位置依存配列や
-// スキーマ宣言（ks）は使わず key-based に統一しているので、フィールドの
-// 追加・削除・順序変更すべてに耐性がある。
+// wire format v3 (v7.1.1+): bytes 削減のため、formats / items は短キーで
+// シリアライズする。clearTargets 等の小さい構造はそのまま (既に短い)。
 //
 // 形式:
 //   {
-//     "v": 2,
-//     "defaults":     {"s":"","a":"著変なし","p":"現行加療継続"},
-//     "oRules":       [{"k":"general","l":"General","n":"良好","a":1?}],
-//     "clearTargets": {"memo":false,"s":true,...},
-//     "tags":         ["内科","外科"],
-//     "tagGroupingEnabled": false,
-//     "tagGroups":    [{"id":"abc","name":"診療科","mode":"single"}],
-//     "tagGroupAssign": {"内科":"abc"}
+//     "v": 3,
+//     "f": [   // formats (短縮: name=n, panel=p, joiner=j, labelSep=ls, tags=t,
+//              //                pinned=pn, isDefault=d, items=i;
+//              //          item: label=l, kind=k, unit=u, normal=nm)
+//       {"n":"バイタル","p":"O","j":", ","ls":" ","pn":1,
+//        "i":[{"l":"BP","k":"fraction","u":"mmHg"},{"l":"P","k":"number","u":"bpm"},...]},
+//       ...
+//     ],
+//     "ct": {"memo":false,"s":true,...},  // clearTargets
+//     "tg": ["内科","外科"],               // tags (省略時は無し)
+//     "tge": 1,                            // tagGroupingEnabled (省略時は false)
+//     "tgs": [{"id":"abc","name":"診療科","mode":"single"}],  // tagGroups (省略時は無し)
+//     "tga": {"内科":"abc"}                // tagGroupAssign (省略時は無し)
 //   }
 //
-//   - oRules: k/l/n = key/label/normalText（多数繰り返すので短縮）。
-//     a (fromAdmin) は真の時だけ 1 を載せる
-//   - clearTargets: ビットフィールドではなく key-based の object
-//     （フィールド追加に強い）
-//   - tagGroups: id/name/mode は in-memory 同名（数が少ないので短縮メリット薄い）
-//
-// 端末固有値 (deviceId) は載せない。受信側でも上書きされない。
+// デフォルト値 (空配列 / false 等) は省略してさらに圧縮。
+// id は wire に載せない (受信側で新発番)。
+// 端末固有値 (deviceId) も載せない。
 // ============================
 
-const WIRE_V = 2;
-const SAFE_FIELDS = [
-  "defaults",
-  "formats",
-  "clearTargets",
-  "tags",
-  "tagGroups",
-  "tagGroupingEnabled",
-  "tagGroupAssign",
-];
+const WIRE_V = 3;
 
-function buildSafeSettings() {
-  const out = {};
-  for (const k of SAFE_FIELDS) {
-    if (settings[k] !== undefined) out[k] = settings[k];
-  }
-  return out;
+function formatToWire(f) {
+  const o = { n: String(f.name || ""), p: String(f.panel || "O") };
+  if (typeof f.joiner === "string") o.j = f.joiner;
+  if (typeof f.labelSep === "string") o.ls = f.labelSep;
+  if (Array.isArray(f.tags) && f.tags.length) o.t = f.tags.slice();
+  if (f.pinned) o.pn = 1;
+  if (f.isDefault) o.d = 1;
+  o.i = (Array.isArray(f.items) ? f.items : []).map(itemToWire);
+  return o;
+}
+function itemToWire(it) {
+  const o = { l: String(it?.label ?? "") };
+  if (typeof it?.kind === "string") o.k = it.kind;
+  if (typeof it?.unit === "string" && it.unit) o.u = it.unit;
+  if (typeof it?.normal === "string" && it.normal) o.nm = it.normal;
+  return o;
+}
+function wireToFormat(w) {
+  return {
+    name: String(w?.n || ""),
+    panel: String(w?.p || "O"),
+    joiner: typeof w?.j === "string" ? w.j : ", ",
+    labelSep: typeof w?.ls === "string" ? w.ls : " ",
+    tags: Array.isArray(w?.t) ? w.t.slice() : [],
+    pinned: !!w?.pn,
+    isDefault: !!w?.d,
+    items: (Array.isArray(w?.i) ? w.i : []).map(wireToItem),
+  };
+}
+function wireToItem(w) {
+  const o = { label: String(w?.l || "") };
+  if (typeof w?.k === "string") o.kind = w.k;
+  if (typeof w?.u === "string") o.unit = w.u;
+  if (typeof w?.nm === "string") o.normal = w.nm;
+  return o;
 }
 
 function encodePayload() {
-  const s = buildSafeSettings();
   const out = { v: WIRE_V };
-  if (s.defaults) out.defaults = s.defaults;
-  if (Array.isArray(s.formats)) out.formats = s.formats;
-  if (s.clearTargets) out.clearTargets = s.clearTargets;
-  if (Array.isArray(s.tags)) out.tags = s.tags;
-  if (typeof s.tagGroupingEnabled === "boolean") out.tagGroupingEnabled = s.tagGroupingEnabled;
-  if (Array.isArray(s.tagGroups)) {
-    out.tagGroups = s.tagGroups.map(g => ({
+  if (Array.isArray(settings.formats) && settings.formats.length) {
+    out.f = settings.formats.map(formatToWire);
+  }
+  if (settings.clearTargets && typeof settings.clearTargets === "object") {
+    out.ct = settings.clearTargets;
+  }
+  if (Array.isArray(settings.tags) && settings.tags.length) {
+    out.tg = settings.tags.slice();
+  }
+  if (settings.tagGroupingEnabled) out.tge = 1;
+  if (Array.isArray(settings.tagGroups) && settings.tagGroups.length) {
+    out.tgs = settings.tagGroups.map(g => ({
       id: String(g.id || ""),
       name: String(g.name || ""),
       mode: g.mode === "single" ? "single" : "multi",
     }));
   }
-  if (s.tagGroupAssign && Object.keys(s.tagGroupAssign).length) {
-    out.tagGroupAssign = s.tagGroupAssign;
+  if (settings.tagGroupAssign && typeof settings.tagGroupAssign === "object" && Object.keys(settings.tagGroupAssign).length) {
+    out.tga = settings.tagGroupAssign;
   }
   return JSON.stringify(out);
 }
@@ -79,34 +102,25 @@ function decodePayload(payload) {
   if (obj.v !== WIRE_V) throw new Error(t("qrSettings.versionMismatch", { a: obj.v, b: WIRE_V }));
 
   const out = {};
-  if (obj.defaults && typeof obj.defaults === "object") {
-    out.defaults = {
-      s: String(obj.defaults.s || ""),
-      a: String(obj.defaults.a || ""),
-      p: String(obj.defaults.p || ""),
-    };
-  }
-  if (Array.isArray(obj.formats)) {
-    out.formats = obj.formats;
-  }
-  if (obj.clearTargets && typeof obj.clearTargets === "object") {
+  if (Array.isArray(obj.f)) out.formats = obj.f.map(wireToFormat);
+  if (obj.ct && typeof obj.ct === "object") {
     out.clearTargets = {};
-    for (const [k, v] of Object.entries(obj.clearTargets)) {
+    for (const [k, v] of Object.entries(obj.ct)) {
       if (typeof v === "boolean") out.clearTargets[k] = v;
     }
   }
-  if (Array.isArray(obj.tags)) out.tags = obj.tags.filter(x => typeof x === "string");
-  if (typeof obj.tagGroupingEnabled === "boolean") out.tagGroupingEnabled = obj.tagGroupingEnabled;
-  if (Array.isArray(obj.tagGroups)) {
-    out.tagGroups = obj.tagGroups.map(g => ({
+  if (Array.isArray(obj.tg)) out.tags = obj.tg.filter(x => typeof x === "string");
+  out.tagGroupingEnabled = !!obj.tge;
+  if (Array.isArray(obj.tgs)) {
+    out.tagGroups = obj.tgs.map(g => ({
       id: String(g?.id || ""),
       name: String(g?.name || ""),
       mode: g?.mode === "single" ? "single" : "multi",
     }));
   }
-  if (obj.tagGroupAssign && typeof obj.tagGroupAssign === "object") {
+  if (obj.tga && typeof obj.tga === "object") {
     out.tagGroupAssign = {};
-    for (const [k, v] of Object.entries(obj.tagGroupAssign)) {
+    for (const [k, v] of Object.entries(obj.tga)) {
       if (typeof k === "string" && typeof v === "string") out.tagGroupAssign[k] = v;
     }
   }
@@ -116,6 +130,8 @@ function decodePayload(payload) {
 let onAppliedHandler = null;
 export function setOnSettingsApplied(fn) { onAppliedHandler = fn; }
 
+const APPLIED_FIELDS = ["formats", "clearTargets", "tags", "tagGroups", "tagGroupingEnabled", "tagGroupAssign"];
+
 function applySettings(safe, ctrl) {
   if (!safe) {
     alert(t("qrSettings.parse.failed"));
@@ -124,7 +140,6 @@ function applySettings(safe, ctrl) {
   const summary = [];
   if (Array.isArray(safe.tags)) summary.push(t("qrSettings.summary.tags", { n: safe.tags.length }));
   if (Array.isArray(safe.formats)) summary.push(t("qrSettings.summary.formats", { n: safe.formats.length }));
-  if (safe.defaults) summary.push(t("qrSettings.summary.defaults"));
   if (safe.clearTargets) summary.push(t("qrSettings.summary.clearTargets"));
   if (Array.isArray(safe.tagGroups)) summary.push(t("qrSettings.summary.tagGroups", { n: safe.tagGroups.length }));
   const summaryText = summary.length ? `（${summary.join(", ")}）` : "";
@@ -133,7 +148,7 @@ function applySettings(safe, ctrl) {
   if (!ok) return;
 
   const next = { ...settings };
-  for (const k of SAFE_FIELDS) {
+  for (const k of APPLIED_FIELDS) {
     if (safe[k] !== undefined) next[k] = safe[k];
   }
   setSettings(next);
@@ -160,6 +175,10 @@ const flow = createQrFlow({
   decodePayload,
   onApply: applySettings,
   shouldEncrypt: () => !!settings.qrEncryption?.ST,
+  // 設定 QR は一括書き出しの 1 ショット用途。HM/MM のように頻繁ではないので
+  // 1 QR にできるだけ収まる密度に。QR ver ~26 (~117 modules) で iPad camera で
+  // 十分読める範囲。デフォルト (= 800B) の 1.4 倍。
+  maxBytes: 1100,
 });
 
 export const initSettingsQr = () => flow.init();
