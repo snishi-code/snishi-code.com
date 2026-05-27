@@ -13,6 +13,29 @@ import { t } from "../i18n.js";
 let activeSession = null;
 const DEDUP_MS = 2000;
 
+// カメラ QR スキャナを起動 → 読み取り結果を該当 textarea に追記してから
+// input イベントを発火するボタンの汎用ワイヤリング。
+// scratch/paste 系 UI (sharedPasteCard / memoPasteCard 等) で使う想定。
+// scanner 非対応端末ではボタンを disabled にする。
+export function wireScanButton(btnId, areaId) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  if (!isScannerSupported()) {
+    btn.disabled = true;
+    btn.title = t("qr.scanner.unsupported");
+  }
+  btn.addEventListener("click", async () => {
+    const text = await scanQR();
+    if (text == null) return;
+    const area = document.getElementById(areaId);
+    if (!area) return;
+    const cur = area.value || "";
+    const sep = cur && !cur.endsWith("\n") ? "\n" : "";
+    area.value = cur + sep + text;
+    area.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
 export function isScannerSupported() {
   return !!(navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === "function");
 }

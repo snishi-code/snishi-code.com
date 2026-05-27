@@ -6,6 +6,7 @@ import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features
 import { makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
 import { formatPatientLabel, isRoomSortActive } from "../features/room.js";
 import { bindTapOrLongPress, nextStatusInCycle, statusOnLongPress } from "./detail.js";
+import { t } from "../i18n.js";
 
 let _editMode = false;
 
@@ -29,7 +30,7 @@ function countGreen() {
 export function updateCountChip() {
   const countChip = document.getElementById("countChip");
   if (!countChip) return;
-  countChip.textContent = "緑: " + countGreen() + " / " + appState.patients.length;
+  countChip.textContent = t("home.countChip", { n: countGreen(), total: appState.patients.length });
 }
 
 function renderHomeTagFilter(onChange) {

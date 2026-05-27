@@ -1,6 +1,6 @@
 "use strict";
 
-import { appState, selectedNo } from "../store.js";
+import { appState, selectedNo, saveSettings } from "../store.js";
 import { exitAllEdits } from "./edit-toggle.js";
 
 export function showView(which, pushState = true) {
@@ -56,4 +56,61 @@ export function lastSharedNo() {
     if (m) return i;
   }
   return 0;
+}
+
+// ============================
+// Nav buttons (header tabs)
+// ============================
+// header の Memo/Shared/Settings/Home ボタン → 該当 view の renderer を
+// 走らせて showView。render 関数群は呼び出し側の renderers factory から
+// 注入する (依存を明示)。
+export function createNavigators(deps) {
+  const { doRenderHome, doRenderMemo, doRenderShared, renderSettings } = deps;
+
+  function navToMemo() {
+    doRenderMemo();
+    showView("memo");
+  }
+  function navToShared() {
+    doRenderShared();
+    showView("shared");
+  }
+  function navToHome() {
+    // home に戻るタイミングで settings をフラッシュ (画面遷移時の確実な保存)
+    saveSettings();
+    doRenderHome();
+    showView("home");
+  }
+  function navToSettings() {
+    renderSettings();
+    showView("settings");
+  }
+
+  return { navToMemo, navToShared, navToHome, navToSettings };
+}
+
+// ============================
+// Docs ページ ナビゲーション
+// ============================
+// 説明書 (アプリ内ヘルプ) は DOCS_BUNDLE に bundle 化されているため、外部
+// ネットワークも service-worker キャッシュも要らない。iframe.srcdoc に
+// 文字列ベースで流し込む。
+// 画像 URL のプレースホルダ `__BASE__/` は現在の base URL (deploy 先による
+// 違い: prod は /hospital-rounds/、test サブドメインは /) に置換される。
+// `import.meta.env.BASE_URL` は vite-plugin-singlefile が `./` に上書き
+// するので使わず、document.baseURI から導出する。
+export function createDocsOpener(deps) {
+  const { docsBundle, renderDocsDemo } = deps;
+  const docsBase = new URL("./", document.baseURI).pathname;
+
+  return function openDocsPage(pageName) {
+    const iframe = document.getElementById("docsIframe");
+    if (!iframe) return;
+    const key = pageName.endsWith(".html") ? pageName : pageName + ".html";
+    const html = (docsBundle[key] || docsBundle["index.html"] || "")
+      .replaceAll("__BASE__/", docsBase);
+    iframe.srcdoc = html;
+    showView("docs");
+    if (typeof renderDocsDemo === "function") renderDocsDemo();
+  };
 }

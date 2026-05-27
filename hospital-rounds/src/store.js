@@ -11,6 +11,7 @@ import {
   clone,
 } from "./constants.js";
 import { projectBundle, parseBundle, getSection, SECTION } from "./bundle.js";
+import { t } from "./i18n.js";
 import {
   loadBundle as storageLoad,
   saveBundle as storageSave,
@@ -292,7 +293,7 @@ export function normalizeLoaded(raw) {
   const arr = raw && raw.patients && Array.isArray(raw.patients) ? raw.patients : (Array.isArray(raw) ? raw : null);
   return {
     v: 3,
-    title: (raw && typeof raw.title === "string") ? raw.title : "回診",
+    title: (raw && typeof raw.title === "string") ? raw.title : t("app.title"),
     patients: normalizePatientArray(arr),
   };
 }
@@ -327,7 +328,7 @@ export function normalizeRosterMeta(raw) {
 // ============================
 
 export let settings = defaultSettings();
-export let appState = { v: 3, title: "回診", patients: normalizePatientArray(null) };
+export let appState = { v: 3, title: t("app.title"), patients: normalizePatientArray(null) };
 export let rosterState = null;          // populated lazily when roster features are used
 export let selectedNo = 1;
 
@@ -353,8 +354,7 @@ function applyBundleToLive(bundle) {
   settings = normalizeSettings(sSettings || {});
   appState = {
     v: 3,
-    // device title が未設定 (= 初回起動) なら i18n 循環回避のためベタ書きで "回診"
-    title: deviceTitle || "回診",
+    title: deviceTitle || t("app.title"),
     patients: normalizePatientArray(Array.isArray(sPatients) ? sPatients : null),
   };
   rosterState = normalizeRosterMeta({
@@ -367,9 +367,9 @@ function applyBundleToLive(bundle) {
 
 // device-wide title を書き換え & live state へ反映。caller は UI を再描画する責務。
 export function updateDeviceTitle(title) {
-  const t = String(title || "");
-  appState.title = t || "回診";
-  setDeviceAppTitle(t);
+  const next = String(title || "");
+  appState.title = next || t("app.title");
+  setDeviceAppTitle(next);
 }
 
 // Async hydration. main.js must `await initStore()` before rendering anything
@@ -477,7 +477,7 @@ export async function createWorkspace(label) {
     console.error("save before create failed:", e);
   }
   // 2) 空の bundle を構築 (default 50 患者 + 既定 settings)
-  const emptyAppState = { v: 3, title: "回診", patients: normalizePatientArray(null) };
+  const emptyAppState = { v: 3, title: t("app.title"), patients: normalizePatientArray(null) };
   const emptyBundle = projectBundle({
     appState: emptyAppState,
     rosterState: null,

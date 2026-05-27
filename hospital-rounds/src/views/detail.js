@@ -106,7 +106,7 @@ function splitTextToFitQr(raw, ecl) {
         hi = mid - 1;
       }
     }
-    if (best <= pos) throw new Error("分割してもQRに入りません（1文字でも不可）");
+    if (best <= pos) throw new Error(t("detail.qr.tooLong"));
     pages.push(cps.slice(pos, best).join(""));
     pos = best;
   }
@@ -412,7 +412,7 @@ export function initDetailEvents(renderHomeFn) {
   if (detailScanBtn) {
     if (!isScannerSupported()) {
       detailScanBtn.disabled = true;
-      detailScanBtn.title = "このブラウザはカメラ非対応";
+      detailScanBtn.title = t("qr.scanner.unsupported");
     }
     detailScanBtn.addEventListener("click", async () => {
       const text = await scanQR();

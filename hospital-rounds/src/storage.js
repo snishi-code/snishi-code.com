@@ -21,6 +21,7 @@
 //   setActiveWorkspaceId(id)   -> void    (同期)
 
 import { BUNDLE_FORMAT, parseBundle } from "./bundle.js";
+import { t } from "./i18n.js";
 
 const DB_NAME = "hospital-rounds";
 const DB_VERSION = 1;
@@ -29,7 +30,11 @@ const STORE_NAME = "bundles";
 // 初回起動時 / v4 系からのマイグレーション時に既定で active になる ID。
 // 既存ユーザの "default" レコードがそのままアクティブになる。
 const DEFAULT_WORKSPACE_ID = "default";
-export const DEFAULT_WORKSPACE_LABEL = "メイン";
+// "default" ワークスペースの表示名。i18n 化のため関数経由で参照する。
+// (export const をベタ文字列にすると module 評価時に t() を呼べないため)
+export function getDefaultWorkspaceLabel() {
+  return t("ws.default.label");
+}
 
 // active workspace ID は IDB ではなく localStorage に置く:
 //   - 値は短い文字列 (= 容量問題なし)
@@ -169,7 +174,7 @@ export async function saveBundle(bundle, id, label) {
     } catch (_) { /* ignore */ }
   }
   if (finalLabel == null) {
-    finalLabel = (targetId === DEFAULT_WORKSPACE_ID) ? DEFAULT_WORKSPACE_LABEL : "";
+    finalLabel = (targetId === DEFAULT_WORKSPACE_ID) ? getDefaultWorkspaceLabel() : "";
   }
   const rec = {
     id: targetId,
@@ -196,7 +201,7 @@ export async function listBundles() {
     const all = await idbReq(tx.objectStore(STORE_NAME).getAll());
     return all.map(r => ({
       id: r.id,
-      label: r.label || (r.id === DEFAULT_WORKSPACE_ID ? DEFAULT_WORKSPACE_LABEL : ""),
+      label: r.label || (r.id === DEFAULT_WORKSPACE_ID ? getDefaultWorkspaceLabel() : ""),
       title: r.title || "",
       updatedAt: r.updatedAt || 0,
     }));

@@ -3,24 +3,26 @@
 import "./style.css";
 
 import { STATUS } from "./constants.js";
-import { STORAGE_KEYS, listBundles, getActiveWorkspaceId, renameBundle } from "./storage.js";
+import { STORAGE_KEYS } from "./storage.js";
 import {
   appState, settings, selectedNo,
   setAppState, setRosterState, setSelectedNo,
-  saveNow, scheduleSave, saveSettings,
+  saveNow, saveSettings,
   normalizeLoaded,
   setMarkUpdatedHandler, requestStoragePersistence,
   initStore, flushSavePending, setOnWorkspaceChanged,
-  updateDeviceTitle,
 } from "./store.js";
 
 import { renderHome, updateCountChip, setHomeEditMode } from "./views/home.js";
 import { renderDetail, renderQrIfNeeded, initDetailEvents, initStatusButtons, initQrNavButtons } from "./views/detail.js";
-import { renderMemoScreen, setMemoEditMode, getMemoEditMode } from "./views/memo.js";
-import { renderSharedScreen, setSharedEditMode, getSharedEditMode } from "./views/shared-list.js";
+import { renderMemoScreen, setMemoEditMode } from "./views/memo.js";
+import { renderSharedScreen, setSharedEditMode } from "./views/shared-list.js";
 import { renderSettings, initSettingsView } from "./views/settings-view.js";
 
-import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./features/navigation.js";
+import { showView, syncDetailMemoDisplay, createNavigators, createDocsOpener } from "./features/navigation.js";
+import { createRenderers } from "./features/renderers.js";
+import { initHeaderMenu, closeHeaderMenu } from "./features/header-menu.js";
+import { initAppTitle, refreshAppWsLabel } from "./features/app-title.js";
 import { DOCS_BUNDLE } from "./docs-bundle.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initFormats, setOnTextChanged as setOnFormatTextChanged, setFormatStoreAdapter } from "./features/formats.js";
@@ -35,7 +37,7 @@ import { initHomeQr, refreshHomeQrIfActive } from "./features/qr-home.js";
 import { initSettingsQr, refreshSettingsQrIfActive, setOnSettingsApplied } from "./features/qr-settings.js";
 import { createEditToggle } from "./features/edit-toggle.js";
 import { sortPatientsByRoom, invalidateSortSnapshot } from "./features/room.js";
-import { scanQR, isScannerSupported } from "./features/qr-scan.js";
+import { wireScanButton } from "./features/qr-scan.js";
 import { flushCommit, compactHistory } from "./features/roster.js";
 import { initDocsDemo, renderDocsDemo, resetDocsDemo } from "./docs/docs-demo.js";
 import { initNoAutofill } from "./features/no-autofill.js";
@@ -43,167 +45,83 @@ import { maybeShowPwaInitDialog } from "./features/pwa-init.js";
 import { maybeShowDisclaimer } from "./features/splash-disclaimer.js";
 
 // ============================
-// PWA 初回起動チェック
+// Boot 0: PWA 初回起動チェック + IDB hydration
 // ============================
 // 初回 PWA 起動 (= Safari でテスト入力したデータが PWA 側に共有されている状態)
 // に限り、ユーザに「テスト用データを削除して開始するか」を確認する。
-// 「削除して開始」を選ぶと内部で reload するため戻ってこない。
 await maybeShowPwaInitDialog();
 
-// ============================
-// Async hydration (IndexedDB)
-// ============================
 // store.js は module-init 時に state を読み込まなくなったので、ここで明示的に
-// 待つ。以降のすべての top-level コード (renderHome / appTitleInput.value =
-// appState.title 等) は hydration 完了後に実行される。
-// ES modules の top-level await により main.js モジュール全体が suspend し、
-// vite/ブラウザの ESM ローダがその完了を待ってくれる。
+// 待つ。以降のすべての top-level コードは hydration 完了後に実行される。
 await initStore();
 
 // アクティブワークスペースの roster commits のうち 30 日より古いものを
 // baseSnapshot に折りたたむ (個人情報の長期保持を避けるため)。
-// 起動直後に 1 回呼ぶだけで idempotent。
 try { compactHistory(); } catch (e) { console.warn("compactHistory failed:", e); }
 
 // ============================
-// Wrappers that capture current context
+// Boot 1: Renderers + Navigators (組み立てだけ)
 // ============================
+// 各画面の render 関数群と nav ボタンの handler 群を factory で生成する。
+// 相互参照 (doRenderMemo → navigateToPatient → doRenderDetail 等) は
+// renderers.js 内のクロージャで完結する。
+const renderers = createRenderers({
+  renderHome,
+  renderDetail,
+  renderMemoScreen,
+  renderSharedScreen,
+  setSelectedNo,
+  showView,
+  syncDetailMemoDisplay,
+  refreshSharedQrIfActive,
+  refreshMemoQrIfActive,
+  refreshHomeQrIfActive,
+  refreshSettingsQrIfActive,
+});
+const { doRenderHome, doRenderDetail, doRenderMemo, doRenderShared, navigateToPatient, refreshPatientUI } = renderers;
 
-function doRenderHome() {
-  renderHome((i) => {
-    setSelectedNo(i);
-    doRenderDetail();
-    showView("detail");
-  });
-}
+const { navToHome, navToMemo, navToShared, navToSettings } = createNavigators({
+  doRenderHome, doRenderMemo, doRenderShared, renderSettings,
+});
 
-function doRenderDetail() {
-  renderDetail(syncDetailMemoDisplay);
-}
-
-// 管理機能撤去後、編集モード関連の表示制御は createEditToggle の `.editActive`
-// クラスに任せる。これらの関数は no-op だが互換性のため残す (callers を残し
-// たまま将来何かの表示制御を入れたくなった時のフック)。
-function updateMemoEditBtnVisibility() { /* no-op (admin removed) */ }
-function updateSharedEditBtnVisibility() { /* no-op (admin removed) */ }
-
-function navigateToPatient(i) {
-  // 共通の編集トグルが showView で自動 exit するので、ここでは個別 reset 不要
-  setSelectedNo(i);
-  doRenderDetail();
-  showView("detail");
-}
-
-function doRenderMemo(opts) {
-  renderMemoScreen(doRenderHome, opts, navigateToPatient);
-}
-
-function doRenderShared(opts) {
-  renderSharedScreen(doRenderHome, opts, navigateToPatient);
-}
+const openDocsPage = createDocsOpener({ docsBundle: DOCS_BUNDLE, renderDocsDemo });
 
 // ============================
-// finishDataChange handler
+// Boot 2: Settings / Detail wiring
 // ============================
+initSettingsView(doRenderDetail, renderQrIfNeeded, refreshPatientUI);
+initDetailEvents(doRenderHome);
+initStatusButtons(doRenderHome);
+initQrNavButtons();
 
+// finishDataChange handler: ドラッグ並び替え後など、データ変化のたびに
+// 開いてる view と home QR を refresh
 setDataChangeHandler(() => {
   const viewId = document.querySelector(".view.active")?.id;
   if (viewId === "homeView") doRenderHome();
   else if (viewId === "memoView") doRenderMemo();
   else if (viewId === "sharedView") doRenderShared();
   updateCountChip();
-  // 名簿が変わったらホームQRも追随
   refreshHomeQrIfActive();
 });
 
 // ============================
-// Settings wiring
+// Boot 3: History / nav buttons
 // ============================
-
-function refreshPatientUI() {
-  const viewId = document.querySelector(".view.active")?.id;
-  if (viewId === "memoView") doRenderMemo();
-  else if (viewId === "sharedView") doRenderShared();
-  else if (viewId === "detailView") doRenderDetail();
-  else if (viewId === "homeView") doRenderHome();
-  refreshSharedQrIfActive();
-  refreshMemoQrIfActive();
-  refreshHomeQrIfActive();
-  refreshSettingsQrIfActive();
-}
-
-initSettingsView(doRenderDetail, renderQrIfNeeded, refreshPatientUI);
-
-// ============================
-// Detail event bindings
-// ============================
-
-initDetailEvents(doRenderHome);
-initStatusButtons(doRenderHome);
-initQrNavButtons();
-
-// ============================
-// Navigation button handlers
-// ============================
-
 history.replaceState({ view: "home" }, "", "");
 
 window.addEventListener("popstate", (e) => {
   const v = (e.state && e.state.view) || "home";
   showView(v, false);
-  // Re-render so changes from another view (e.g. status flip on detail) are reflected
   if (v === "home") doRenderHome();
   else if (v === "memo") doRenderMemo();
   else if (v === "shared") doRenderShared();
   else if (v === "detail") doRenderDetail();
 });
 
-function navToMemo() {
-  doRenderMemo();
-  showView("memo");
-}
-function navToShared() {
-  doRenderShared();
-  showView("shared");
-}
-function navToHome() {
-  saveSettings();
-  doRenderHome();
-  showView("home");
-}
-
-const headerMemoBtn = document.getElementById("headerMemoBtn");
-const headerSharedBtn = document.getElementById("headerSharedBtn");
-const headerSettingsBtn = document.getElementById("headerSettingsBtn");
-
-function navToSettings() {
-  renderSettings();
-  showView("settings");
-}
-
-if (headerMemoBtn) headerMemoBtn.addEventListener("click", navToMemo);
-if (headerSharedBtn) headerSharedBtn.addEventListener("click", navToShared);
-if (headerSettingsBtn) headerSettingsBtn.addEventListener("click", navToSettings);
-// Docs are bundled into the app (DOCS_BUNDLE) so the help view works offline
-// without any network or service-worker cache hits. Image URLs inside the
-// bundle use a `__BASE__/` placeholder so the same bundle works under any
-// deployment base (prod: /hospital-rounds/, test サブドメイン: /). The actual
-// path is derived from the current page URL — `import.meta.env.BASE_URL` is
-// not used because vite-plugin-singlefile rewrites it to `./` regardless of
-// the configured base.
-const DOCS_BASE = new URL("./", document.baseURI).pathname;
-function openDocsPage(pageName) {
-  const iframe = document.getElementById("docsIframe");
-  if (!iframe) return;
-  const key = pageName.endsWith(".html") ? pageName : pageName + ".html";
-  const html = (DOCS_BUNDLE[key] || DOCS_BUNDLE["index.html"] || "")
-    .replaceAll("__BASE__/", DOCS_BASE);
-  iframe.srcdoc = html;
-  showView("docs");
-  // 上部のインタラクティブデモバーを描画。state は別ページ間で維持される
-  // (説明書を抜けると MutationObserver 経由で resetDocsDemo() が走る)。
-  renderDocsDemo();
-}
+document.getElementById("headerMemoBtn")?.addEventListener("click", navToMemo);
+document.getElementById("headerSharedBtn")?.addEventListener("click", navToShared);
+document.getElementById("headerSettingsBtn")?.addEventListener("click", navToSettings);
 
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".helpLinkBtn");
@@ -212,7 +130,6 @@ document.addEventListener("click", (e) => {
   if (!page) return;
   openDocsPage(page);
 });
-
 // Intra-docs navigation requested from the iframe (prev/next/breadcrumb links)
 window.addEventListener("message", (e) => {
   if (!e.data || e.data.type !== "docs-nav") return;
@@ -220,11 +137,10 @@ window.addEventListener("message", (e) => {
   openDocsPage(e.data.page);
 });
 
-// ホーム・メモ・共有の編集トグルは共通ヘルパで定義。鉛筆 → 編集モード /
-// 外側クリック or ビュー遷移で表示モードに戻る。
-// ホーム編集モードでは患者ボタンがタップ＝ステータスサイクル / 長押し＝白に。
-updateMemoEditBtnVisibility();
-updateSharedEditBtnVisibility();
+// ============================
+// Boot 4: Edit toggles (home / memo / shared)
+// ============================
+// 鉛筆 → 編集モード / 外側クリック or ビュー遷移で表示モードに戻る。
 createEditToggle({
   triggerBtn: document.getElementById("homeEditBtn"),
   container: document.getElementById("homeView"),
@@ -245,9 +161,8 @@ createEditToggle({
 });
 
 // ============================
-// Import / Export
+// Boot 5: Import / Export / autofill / action menu
 // ============================
-
 initImportExport({
   renderHome: doRenderHome,
   renderDetail: doRenderDetail,
@@ -255,24 +170,16 @@ initImportExport({
   renderMemoScreen: doRenderMemo,
   renderSharedScreen: doRenderShared,
   showView,
-  // DB モーダルから active ws の rename が走ったらヘッダーの ws 名表示も更新
   refreshHeaderWsLabel: refreshAppWsLabel,
 });
-
-// ============================
-// PHI 保護: ブラウザ autofill による origin またぎの漏洩防止
-// ============================
-
 initNoAutofill();
-
-// ============================
-// Action menu (long-press)
-// ============================
-
 initActionMenu();
 
+// ============================
+// Boot 6: Formats / QR adapters
+// ============================
 // formats.js / qr-format.js は移植性のため store を直接触らず adapter 経由で書き込む。
-// ここで store の実体に紐付ける ("hospital-rounds 内で動かす時の adapter")
+// ここで store の実体に紐付ける ("hospital-rounds 内で動かす時の adapter")。
 setFormatStoreAdapter({
   saveFormat: (target, { isNew }) => {
     if (!Array.isArray(settings.formats)) settings.formats = [];
@@ -318,16 +225,14 @@ initMovePatient({
 
 initQrFormat();
 setOnFormatApplied(() => {
-  // 受信したフォーマットを settings.formats[] に追加した直後。設定画面が
-  // 開いていればフォーマット一覧と patient strip を再描画する
   renderSettings();
   doRenderDetail();
 });
 
-// フォーマットグループ機能
 initFormatGroups({
   renderDetail: doRenderDetail,
 });
+
 // QR フォーマット overlay の close ボタン + overlay 外クリックで閉じる配線。
 // × ボタンには data-close-popup も付いているのでグローバルハンドラが overlay
 // を閉じるが、closeQrFormatOverlay は flow.close() / setFormatToShare(null) の
@@ -338,13 +243,12 @@ document.getElementById("qrFormatOverlay")?.addEventListener("click", (e) => {
 });
 
 // ============================
-// Global popup close handler (data-close-popup)
+// Boot 7: Global popup close handler (data-close-popup)
 // ============================
 // 「閉じるだけ」のポップアップ用の event delegation。HTML 側で
 //   <button class="popupCloseX" data-close-popup ...> × </button>
 // を置けば、追加 JS なしで「外側 overlay を閉じる」挙動が手に入る。
-// 追加クリーンアップ (state クリア・flow.close 等) が必要な popup は
-// 既存の id 経由 listener と併用する (この handler は冪等)。
+// 追加クリーンアップが必要な popup は既存の id 経由 listener と併用する。
 document.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-close-popup]");
   if (!btn) return;
@@ -352,15 +256,15 @@ document.addEventListener("click", (e) => {
 });
 
 // ============================
-// Shared QR (show + read with bug fix)
+// Boot 8: Shared/Memo/Home/Settings QR + paste cards
 // ============================
-
 initSharedQr();
 initMemoQr();
 initHomeQr();
 initSettingsQr();
-// 設定QR受信後はビュー全体を再描画して反映を即時に見せる
 setOnSettingsApplied(() => refreshPatientUI());
+
+// 部屋番号でソート (home/memo/shared 共通)。現在開いている view を再描画。
 function doSortByRoom() {
   if (!confirm(t("main.sortByRoom.confirm"))) return;
   const cur = appState.patients[selectedNo - 1];
@@ -375,153 +279,75 @@ function doSortByRoom() {
   if (viewId === "memoView") doRenderMemo();
   else if (viewId === "sharedView") doRenderShared();
 }
-
-const homeRoomSortBtn = document.getElementById("homeRoomSortBtn");
-const memoRoomSortBtn = document.getElementById("memoRoomSortBtn");
-const sharedRoomSortBtn = document.getElementById("sharedRoomSortBtn");
-if (homeRoomSortBtn) homeRoomSortBtn.addEventListener("click", doSortByRoom);
-if (memoRoomSortBtn) memoRoomSortBtn.addEventListener("click", doSortByRoom);
-if (sharedRoomSortBtn) sharedRoomSortBtn.addEventListener("click", doSortByRoom);
-
-// ============================
-// Paste card close buttons
-// ============================
+document.getElementById("homeRoomSortBtn")?.addEventListener("click", doSortByRoom);
+document.getElementById("memoRoomSortBtn")?.addEventListener("click", doSortByRoom);
+document.getElementById("sharedRoomSortBtn")?.addEventListener("click", doSortByRoom);
 
 // 共有画面：×でそのまま閉じる（受信内容を続きでスキャンするケースに備え確認なし）
-const sharedPasteCloseBtn = document.getElementById("sharedPasteCloseBtn");
-if (sharedPasteCloseBtn) {
-  sharedPasteCloseBtn.addEventListener("click", () => {
-    const card = document.getElementById("sharedPasteCard");
-    if (card) card.classList.remove("active");
-  });
-}
+document.getElementById("sharedPasteCloseBtn")?.addEventListener("click", () => {
+  document.getElementById("sharedPasteCard")?.classList.remove("active");
+});
 
 // メモ画面：受信メモはスキャン直後のスクラッチ表示で、閉じると内容も破棄する。
 // 誤タップでスキャン結果を失わないよう確認を入れる。
-const memoPasteCloseBtn = document.getElementById("memoPasteCloseBtn");
-if (memoPasteCloseBtn) {
-  memoPasteCloseBtn.addEventListener("click", () => {
-    const area = document.getElementById("memoPasteArea");
-    const hasContent = !!(area && String(area.value || "").trim());
-    if (hasContent && !confirm(t("main.recvMemo.close.confirm"))) return;
-    const card = document.getElementById("memoPasteCard");
-    if (card) card.classList.remove("active");
-    if (area) area.value = "";
-  });
-}
-
-// カメラ QR スキャナ。読み取り結果を該当 textarea に追記してから input イベントを起こす
-// （既存の貼付ハンドラはこれで普通に発火する）。
-function wireScanButton(btnId, areaId) {
-  const btn = document.getElementById(btnId);
-  if (!btn) return;
-  if (!isScannerSupported()) {
-    btn.disabled = true;
-    btn.title = t("qr.scanner.unsupported");
-  }
-  btn.addEventListener("click", async () => {
-    const text = await scanQR();
-    if (text == null) return;
-    const area = document.getElementById(areaId);
-    if (!area) return;
-    const cur = area.value || "";
-    const sep = cur && !cur.endsWith("\n") ? "\n" : "";
-    area.value = cur + sep + text;
-    area.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-}
+document.getElementById("memoPasteCloseBtn")?.addEventListener("click", () => {
+  const area = document.getElementById("memoPasteArea");
+  const hasContent = !!(area && String(area.value || "").trim());
+  if (hasContent && !confirm(t("main.recvMemo.close.confirm"))) return;
+  document.getElementById("memoPasteCard")?.classList.remove("active");
+  if (area) area.value = "";
+});
 
 // Paste-card camera handles continuation scans (text accumulates in the area).
 wireScanButton("sharedPasteScanBtn", "sharedPasteArea");
 wireScanButton("adminImportScanBtn", "adminImportArea");
 
 // ============================
-// Reset
+// Boot 9: Reset / Clear actions (header menu)
 // ============================
+document.getElementById("resetBtn")?.addEventListener("click", () => {
+  closeHeaderMenu();
+  if (!confirm(t("main.clearAllInput.confirm"))) return;
+  setAppState(normalizeLoaded(null));
+  // Roster commits reference the previous pids; drop the sync metadata so a
+  // future admin enable starts from a clean baseline.
+  setRosterState(null);
+  saveNow();
+  doRenderHome();
+  doRenderDetail();
+  showView("home");
+});
 
-const resetBtn = document.getElementById("resetBtn");
-if (resetBtn) {
-  resetBtn.addEventListener("click", () => {
-    closeHeaderMenu();
-    const ok = confirm(t("main.clearAllInput.confirm"));
-    if (!ok) return;
-    setAppState(normalizeLoaded(null));
-    // Roster commits reference the previous pids; drop the sync metadata so a
-    // future admin enable starts from a clean baseline.
-    setRosterState(null);
-    saveNow();
-    doRenderHome();
-    doRenderDetail();
-    showView("home");
-  });
-}
-
-const clearAllBtn = document.getElementById("clearAllBtn");
-if (clearAllBtn) {
-  clearAllBtn.addEventListener("click", () => {
-    closeHeaderMenu();
-    const ok = confirm(t("clear.confirm"));
-    if (!ok) return;
-    const ct = settings.clearTargets;
-    const now = Date.now();
-    for (const p of appState.patients) {
-      if (ct.memo) p.memo = "";
-      if (ct.s) p.s = "";
-      if (ct.o) {
-        p.oFree = "";
-      }
-      if (ct.a) p.a = { text: "" };
-      if (ct.p) p.p = { text: "" };
-      if (ct.shared) p.shared = "";
-      if (p.status === STATUS.YELLOW && ct.statusYellow) p.status = STATUS.NONE;
-      else if (p.status === STATUS.GREEN && ct.statusGreen) p.status = STATUS.NONE;
-      else if (p.status === STATUS.GRAY && ct.statusGray) p.status = STATUS.NONE;
-      else if (p.status === STATUS.BLUE && ct.statusBlue) p.status = STATUS.NONE;
-      p.updatedAt = now;
-    }
-    saveNow();
-    doRenderHome();
-    doRenderDetail();
-  });
-}
-
-// ============================
-// App title
-// ============================
-
-function updateAppTitle(val) {
-  // 端末固定 title。localStorage 経由で永続化、live state にも反映。
-  updateDeviceTitle(val || t("app.title"));
-  document.title = appState.title;
-}
-
-// 現在アクティブなワークスペースの label を非同期に取得 → ヘッダー入力欄へ反映
-async function refreshAppWsLabel() {
-  const inp = document.getElementById("appWsLabelInput");
-  if (!inp) return;
-  try {
-    const activeId = getActiveWorkspaceId();
-    const all = await listBundles();
-    const me = all.find(r => r.id === activeId);
-    inp.value = me ? (me.label || t("io.ws.untitled")) : "";
-  } catch (e) {
-    console.warn("refreshAppWsLabel failed:", e);
+document.getElementById("clearAllBtn")?.addEventListener("click", () => {
+  closeHeaderMenu();
+  if (!confirm(t("clear.confirm"))) return;
+  const ct = settings.clearTargets;
+  const now = Date.now();
+  for (const p of appState.patients) {
+    if (ct.memo) p.memo = "";
+    if (ct.s) p.s = "";
+    if (ct.o) p.oFree = "";
+    if (ct.a) p.a = { text: "" };
+    if (ct.p) p.p = { text: "" };
+    if (ct.shared) p.shared = "";
+    if (p.status === STATUS.YELLOW && ct.statusYellow) p.status = STATUS.NONE;
+    else if (p.status === STATUS.GREEN && ct.statusGreen) p.status = STATUS.NONE;
+    else if (p.status === STATUS.GRAY && ct.statusGray) p.status = STATUS.NONE;
+    else if (p.status === STATUS.BLUE && ct.statusBlue) p.status = STATUS.NONE;
+    p.updatedAt = now;
   }
-}
+  saveNow();
+  doRenderHome();
+  doRenderDetail();
+});
 
 // ============================
-// Boot
+// Boot 10: Lifecycle hooks (save flush / workspace switch)
 // ============================
-
-// store.js hydrates appState / rosterState / settings from storage at module
-// init, so no explicit load step is needed here.
-
-// Drop the room-sort snapshot whenever any patient is edited
+// 患者編集のたびに room-sort のキャッシュを破棄
 setMarkUpdatedHandler(() => invalidateSortSnapshot());
 
-// Flush any pending op-batch + debounce 中の save を、離脱・バックグラウンド化時に
-// 即時フラッシュ。IDB は async だが microtask 単位で transaction が開始されれば
-// page hide 中も完了することが多い。
+// ページ離脱・バックグラウンド化時に op-batch + 保存待ちを即時フラッシュ
 window.addEventListener("beforeunload", () => {
   try { flushCommit(); } catch (_) {}
   try { flushSavePending(); } catch (_) {}
@@ -533,11 +359,9 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-// Workspace 切替時に画面全体を再描画する。store 側で live state は既に
-// 入れ替わっているので、ここでは render を走らせるだけ。
+// Workspace 切替時に画面全体を再描画する。
 setOnWorkspaceChanged(() => {
-  // 患者 index を前 ws から引きずらないように、再描画前に必ずリセット (詳細画面に
-  // 出ていた場合、旧 ws の slot 51 を新 ws で開こうとして空患者が描画されるバグ対策)
+  // 患者 index を前 ws から引きずらないように、再描画前に必ずリセット
   setSelectedNo(1);
   refreshPatientUI();
   // タイトル (端末固定なので変化しない) の表示同期 + ws label を更新
@@ -547,122 +371,39 @@ setOnWorkspaceChanged(() => {
   refreshAppWsLabel();
 });
 
-// タイトル / ワークスペース名 入力欄: 共通の編集トグルで管理。
-//   - 普段は readonly。タイトル input をタップ → ホーム遷移
-//   - 鉛筆タップで両方とも編集可、外側クリック・Enter で確定
-//   - タイトルは端末固定 (updateAppTitle 経由で localStorage に保存)
-//   - ws name は renameBundle で IDB の label を更新 (現アクティブ ws の label)
-const appTitleInput = document.getElementById("appTitleInput");
-const appWsLabelInput = document.getElementById("appWsLabelInput");
-const headerEditTitleBtn = document.getElementById("headerEditTitleBtn");
-const appTitleRow = document.querySelector(".appTitleRow");
+// ============================
+// Boot 11: タイトル / WS 名 入力欄 (header)
+// ============================
+// 普段は readonly。タイトル input をタップ → ホーム遷移。鉛筆で両方とも編集可。
+// 編集確定 (blur / Enter) で renameBundle を発火する (app-title.js の責務)。
+// createEditToggle の戻り値 (titleToggle) は app-title.js から getter 経由で
+// 参照させる (相互参照を避けるため、後で setTitleToggle で渡す)。
 let titleToggle = null;
-
-// field-sizing 未対応ブラウザ向けの size 属性同期。
-function syncInputSize(inp) {
-  if (!inp) return;
-  const len = (inp.value || "").length || 1;
-  inp.size = Math.max(2, Math.min(20, len));
-}
-
-if (appTitleInput) {
-  appTitleInput.value = appState.title;
-  updateAppTitle(appState.title);
-  syncInputSize(appTitleInput);
-  appTitleInput.addEventListener("input", (e) => {
-    updateAppTitle(e.target.value);
-    syncInputSize(appTitleInput);
-    // title は localStorage に保存済 (updateDeviceTitle 内)。
-    // bundle 側の meta.title も整合させるため debounce save も発火しておく
-    scheduleSave();
-  });
-  appTitleInput.addEventListener("click", () => {
-    if (!titleToggle?.isEditing()) navToHome();
-  });
-  appTitleInput.addEventListener("keydown", (e) => {
-    if (titleToggle?.isEditing() && e.key === "Enter") {
-      e.preventDefault();
-      titleToggle.exit();
-    }
-  });
-}
-
-if (appWsLabelInput) {
-  // 初期値は async fetch で埋まる
-  refreshAppWsLabel();
-  appWsLabelInput.placeholder = t("header.ws.placeholder");
-  appWsLabelInput.addEventListener("input", () => syncInputSize(appWsLabelInput));
-  // 編集確定時 (blur or Enter) に renameBundle を呼ぶ。input 中はまだ保存しない
-  // (タイプ途中の中間状態が IDB に頻繁に書かれるのを避ける)
-  const commitWsLabel = async () => {
-    const newLabel = String(appWsLabelInput.value || "").trim();
-    const activeId = getActiveWorkspaceId();
-    if (!newLabel) {
-      // 空入力は無視して直前の値に戻す
-      refreshAppWsLabel();
-      return;
-    }
-    try {
-      await renameBundle(activeId, newLabel);
-    } catch (e) {
-      console.error("ws rename failed:", e);
-      refreshAppWsLabel();
-    }
-  };
-  appWsLabelInput.addEventListener("blur", commitWsLabel);
-  appWsLabelInput.addEventListener("keydown", (e) => {
-    if (titleToggle?.isEditing() && e.key === "Enter") {
-      e.preventDefault();
-      titleToggle.exit();
-    }
-  });
-}
-
+initAppTitle({
+  getTitleToggle: () => titleToggle,
+  navToHome,
+});
 titleToggle = createEditToggle({
-  triggerBtn: headerEditTitleBtn,
-  container: appTitleRow,
+  triggerBtn: document.getElementById("headerEditTitleBtn"),
+  container: document.querySelector(".appTitleRow"),
   onEnter: () => {
-    if (appTitleInput) {
-      appTitleInput.readOnly = false;
-      appTitleInput.focus();
-      appTitleInput.select();
-    }
-    if (appWsLabelInput) appWsLabelInput.readOnly = false;
+    const a = document.getElementById("appTitleInput");
+    const w = document.getElementById("appWsLabelInput");
+    if (a) { a.readOnly = false; a.focus(); a.select(); }
+    if (w) w.readOnly = false;
   },
   onExit: () => {
-    if (appTitleInput) {
-      appTitleInput.readOnly = true;
-      appTitleInput.blur();
-    }
-    if (appWsLabelInput) {
-      appWsLabelInput.readOnly = true;
-      appWsLabelInput.blur();
-    }
+    const a = document.getElementById("appTitleInput");
+    const w = document.getElementById("appWsLabelInput");
+    if (a) { a.readOnly = true; a.blur(); }
+    if (w) { w.readOnly = true; w.blur(); }
   },
 });
 
-// ハンバーガーメニュー（設定・印刷・データ管理 (DB)）。ヘッダー右の ☰ で開閉し、
-// 各アイコンをタップしたらメニューを閉じてから実行する。データ管理は
-// import-export.js が settingsDbBtn を見ているので、ここではメニュー close だけ追加。
-const headerMenuBtn = document.getElementById("headerMenuBtn");
-const headerMenuOverlay = document.getElementById("headerMenuOverlay");
-function closeHeaderMenu() {
-  if (headerMenuOverlay) headerMenuOverlay.classList.remove("active");
-}
-function openHeaderMenu() {
-  if (headerMenuOverlay) headerMenuOverlay.classList.add("active");
-}
-if (headerMenuBtn) headerMenuBtn.addEventListener("click", () => {
-  if (headerMenuOverlay?.classList.contains("active")) closeHeaderMenu();
-  else openHeaderMenu();
-});
-if (headerMenuOverlay) headerMenuOverlay.addEventListener("click", (e) => {
-  if (e.target === headerMenuOverlay) closeHeaderMenu();
-});
-
-// DB アイコンは settingsDbBtn の ID のままハンバーガー内に置いてあり、
-// import-export.js が click を拾って chooser を開く。ここではメニュー close だけ追加。
-document.getElementById("settingsDbBtn")?.addEventListener("click", closeHeaderMenu);
+// ============================
+// Boot 12: Header menu (☰) + storage label
+// ============================
+initHeaderMenu();
 
 const storageKeyLabel = document.getElementById("storageKeyLabel");
 if (storageKeyLabel) storageKeyLabel.textContent = `${STORAGE_KEYS.db}.${STORAGE_KEYS.store}`;
@@ -670,9 +411,8 @@ if (storageKeyLabel) storageKeyLabel.textContent = `${STORAGE_KEYS.db}.${STORAGE
 requestStoragePersistence();
 
 // ============================
-// Web 版警告バナー: PWA (standalone) でない時のみ表示
+// Boot 13: Web 版警告バナー (PWA でない場合のみ表示)
 // ============================
-// iOS Safari は navigator.standalone、それ以外は matchMedia('(display-mode: standalone)') で判定
 {
   const banner = document.getElementById("webWarningBanner");
   const isStandalone =
@@ -681,6 +421,9 @@ requestStoragePersistence();
   if (banner) banner.style.display = isStandalone ? "none" : "";
 }
 
+// ============================
+// Boot 14: Docs demo + ヘッダー高さ measurement
+// ============================
 // 説明書ビューのインタラクティブデモバーを初期化 (リロード btn 紐づけ)。
 // state は docs-demo.js 内のメモリのみ。実患者・実 settings に影響なし。
 initDocsDemo();
@@ -698,7 +441,6 @@ initDocsDemo();
 }
 
 // ヘッダー高さを CSS 変数化。.detailTop の sticky 用 top オフセットに使う。
-// モバイルでは内容が wrap して 68px+ になることがあるので実測が必須。
 {
   const header = document.querySelector("header");
   if (header) {
@@ -715,15 +457,16 @@ initDocsDemo();
   }
 }
 
-// HTML 内の data-i18n / data-i18n-title / data-i18n-aria / data-i18n-placeholder を
-// すべて t() で埋める。動的に作る DOM は各 renderer で t() を直接使う。
+// ============================
+// Boot 15: 初回描画 + スプラッシュ
+// ============================
+// HTML 内の data-i18n* をすべて t() で埋める。動的 DOM は各 renderer で t() を使う。
 applyI18n();
 doRenderHome();
 setSelectedNo(1);
 doRenderDetail();
 showView("home");
 
-// 月 1 回程度、「これは個人メモであり正式な医療記録ではない」旨のスプラッシュを表示。
+// 月 1 回程度、「これは個人メモであり正式な医療記録ではない」旨のスプラッシュ。
 // home が描画されてから出すので、ユーザは閉じた瞬間にホーム画面に戻れる。
-// データ削除の可能性がある pwa-init とは違い await の必要はないが、await しても安全。
 maybeShowDisclaimer();

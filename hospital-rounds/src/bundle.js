@@ -1,5 +1,7 @@
 "use strict";
 
+import { t } from "./i18n.js";
+
 // ============================
 // Bundle format
 //
@@ -93,7 +95,7 @@ export function projectBundle({
   if (want.has(SECTION.META)) {
     // appState.title が空ならアプリ名フォールバック。bundle.js は import 循環を
     // 避けるため i18n を直接 import せず、defaults.json のフォールバックを使う
-    out.sections.meta = { title: String(appState?.title || "回診") };
+    out.sections.meta = { title: String(appState?.title || t("app.title")) };
   }
   if (want.has(SECTION.SETTINGS) && settings) {
     out.sections.settings = settings;

@@ -2,6 +2,7 @@
 
 import { appState, settings } from "../store.js";
 import { utf8ByteLength } from "../payload.js";
+import { t } from "../i18n.js";
 import {
   FORMAT_PANELS,
   FORMAT_ITEM_KINDS,
@@ -103,7 +104,7 @@ import {
 //   ${title}_YYYY_MMDD_HHMM
 export function buildTimestampHeader() {
   const d = new Date();
-  const titleSafe = (appState.title || "回診").replace(/[\\/:*?"<>|]/g, "_");
+  const titleSafe = (appState.title || t("app.title")).replace(/[\\/:*?"<>|]/g, "_");
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");

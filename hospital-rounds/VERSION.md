@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 7.3.0
+現在のバージョン: 7.4.0
 
 ## バージョニング方針
 
@@ -14,6 +14,39 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **7.4.0**: main.js 解体 + i18n 漏れ全件修正
+  - **main.js を「組み立て役」に戻した**: 729 行 → 472 行 (-35%)、inline 関数 19 個 → 1 個。
+    本来 features/views に居るべきロジックを切り出し:
+    - `features/renderers.js` (新設): `createRenderers(deps)` factory で
+      `doRenderHome / doRenderDetail / doRenderMemo / doRenderShared / navigateToPatient / refreshPatientUI`
+      を相互参照可能な closure として返す
+    - `features/navigation.js` (拡張): `createNavigators(deps)` で
+      `navToHome / navToMemo / navToShared / navToSettings` を追加。
+      docs ナビゲーションも `createDocsOpener(deps)` で抽出
+    - `features/header-menu.js` (新設): `initHeaderMenu()` + `closeHeaderMenu()` /
+      `openHeaderMenu()`。ハンバーガーメニューの開閉と settingsDbBtn の menu
+      閉じ配線をここに集約
+    - `features/app-title.js` (新設): タイトル / WS 名 入力欄の配線を集約。
+      `initAppTitle({getTitleToggle, navToHome})` でセットアップ、
+      `refreshAppWsLabel()` / `updateAppTitle()` / `syncInputSize()` を export
+    - `features/qr-scan.js` (拡張): `wireScanButton(btnId, areaId)` を public export
+    - 死コード `updateMemoEditBtnVisibility` / `updateSharedEditBtnVisibility`
+      (admin 撤去の no-op 残骸) を削除
+    - 未使用 `features/crypto.js` (admin 撤去で誰も import していない) を完全削除
+  - **i18n 漏れを 35 → 0 件**: 規約に違反していた直書き日本語を全て `t()` に。
+    - `settings-view.js` 14 箇所 (編集 / 削除 / 単選択 / 複数選択 / グループ削除 /
+      未分類 / グループ追加 / タグ名 / 閉じる / 別グループ / 未入力 / メモ / 共有 /
+      ステータス：黄〜青 / 未登録メッセージ 等)
+    - `views/home.js` の「緑: N / total」count chip
+    - `views/detail.js` の QR 上限エラー + カメラ非対応 tooltip
+    - `store.js` / `bundle.js` / `import-export.js` / `qr-protocol.js` の
+      `"回診"` フォールバック → `t("app.title")`
+    - `storage.js` の `DEFAULT_WORKSPACE_LABEL = "メイン"` → `getDefaultWorkspaceLabel()`
+      関数化 (module 評価時の i18n 順序問題回避)
+  - **新 i18n キー 23 個追加** (`settings.format.list.empty` / `settings.clear.*` /
+    `settings.tagGroup.*` / `settings.tag.placeholder` / `ws.default.label` /
+    `home.countChip` / `detail.qr.tooLong` 等)
+  - テスト 57 件 / ビルド 599 KB
 - **7.3.0**: フォーマットグループ ピッカーの簡素化 + ポップアップ × ボタン共通化
   - **フォーマットグループ ピッカー**: 「この患者の pin 表示を…」ヒント文を撤去。
     「通常 (全 pin 表示)」ボタンを廃止し、登録済みグループだけを並べる単選択トグルに。

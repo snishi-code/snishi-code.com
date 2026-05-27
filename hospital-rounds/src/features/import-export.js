@@ -115,7 +115,7 @@ function importedAppStateFromBundle(bundle) {
   const sPatients = getSection(bundle, SECTION.PATIENTS);
   const sMeta = getSection(bundle, SECTION.META);
   return normalizeLoaded({
-    title: sMeta && typeof sMeta.title === "string" ? sMeta.title : "回診",
+    title: sMeta && typeof sMeta.title === "string" ? sMeta.title : t("app.title"),
     patients: Array.isArray(sPatients) ? sPatients : null,
   });
 }

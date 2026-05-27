@@ -18,13 +18,15 @@ const TRASH_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" s
 
 const CLEAR_KEY_ORDER = ["memo", "s", "o", "a", "p", "shared", "statusYellow", "statusGreen", "statusGray", "statusBlue"];
 
-const CLEAR_ITEM_TITLE = {
-  memo: "メモ", s: "S", o: "O", a: "A", p: "P", shared: "共有",
-  statusYellow: "ステータス：黄（保留）",
-  statusGreen: "ステータス：緑（済）",
-  statusGray: "ステータス：灰（完了）",
-  statusBlue: "ステータス：青（追記）",
-};
+// CLEAR_KEY_ORDER の各 key に対する表示ラベルを i18n から取得。
+// 「メモ」「共有」は専用キー、SOAP パネルは panel.* を再利用、ステータス系は
+// settings.clear.statusXxx の専用キー。
+function clearItemTitle(key) {
+  if (key === "memo") return t("settings.clear.memo");
+  if (key === "shared") return t("settings.clear.shared");
+  if (key === "s" || key === "o" || key === "a" || key === "p") return t("panel." + key.toUpperCase());
+  return t("settings.clear." + key);
+}
 
 const PANELS_IN_ORDER = ["S", "O", "A", "P"];
 
@@ -39,7 +41,7 @@ function renderFormatListForPanel(panel) {
     empty.style.padding = "8px 4px";
     empty.style.color = "#6b7280";
     empty.style.fontSize = "13px";
-    empty.textContent = "未登録。右上の + から追加してください。";
+    empty.textContent = t("settings.format.list.empty");
     host.appendChild(empty);
     return;
   }
@@ -73,8 +75,8 @@ function renderFormatListForPanel(panel) {
     const editBtn = document.createElement("button");
     editBtn.type = "button";
     editBtn.className = "iconBtn";
-    editBtn.title = "編集";
-    editBtn.setAttribute("aria-label", "編集");
+    editBtn.title = t("common.edit");
+    editBtn.setAttribute("aria-label", t("common.edit"));
     editBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
     editBtn.addEventListener("click", () => {
       startEditFormat(f, () => {
@@ -87,8 +89,8 @@ function renderFormatListForPanel(panel) {
     const del = document.createElement("button");
     del.type = "button";
     del.className = "iconBtn";
-    del.title = "削除";
-    del.setAttribute("aria-label", "削除");
+    del.title = t("common.delete");
+    del.setAttribute("aria-label", t("common.delete"));
     del.innerHTML = TRASH_SVG;
     del.addEventListener("click", () => {
       if (!confirm(t("format.delete.confirm", { name: f.name }))) return;
@@ -181,7 +183,7 @@ function buildClearTargetLabelContent(key) {
     span.innerHTML = key === "memo" ? MEMO_SVG : SHARED_SVG;
     return span;
   }
-  return document.createTextNode(CLEAR_ITEM_TITLE[key]);
+  return document.createTextNode(clearItemTitle(key));
 }
 
 function renderClearTargets() {
@@ -193,8 +195,9 @@ function renderClearTargets() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "clearTargetBtn" + (settings.clearTargets?.[key] ? " selected" : "");
-    btn.title = CLEAR_ITEM_TITLE[key];
-    btn.setAttribute("aria-label", CLEAR_ITEM_TITLE[key]);
+    const label = clearItemTitle(key);
+    btn.title = label;
+    btn.setAttribute("aria-label", label);
     btn.appendChild(buildClearTargetLabelContent(key));
     const x = document.createElement("span");
     x.className = "clearTargetX";
@@ -247,8 +250,8 @@ function renderTagGroups() {
     const nameBtn = document.createElement("button");
     nameBtn.type = "button";
     nameBtn.className = "tagGroupName";
-    nameBtn.textContent = g.name || "（未入力）";
-    nameBtn.title = "タップで名前を変更";
+    nameBtn.textContent = g.name || t("settings.tagGroup.name.empty");
+    nameBtn.title = t("settings.tagGroup.name.tap");
     nameBtn.addEventListener("click", () => {
       const nv = prompt(t("settings.tagGroup.rename.prompt"), g.name);
       if (nv === null) return;
@@ -261,7 +264,7 @@ function renderTagGroups() {
     const modeBtn = document.createElement("button");
     modeBtn.type = "button";
     modeBtn.className = "iconBtn";
-    modeBtn.title = g.mode === GROUP_MODE_SINGLE ? "単選択（タップで複数選択へ）" : "複数選択（タップで単選択へ）";
+    modeBtn.title = g.mode === GROUP_MODE_SINGLE ? t("settings.tagGroup.mode.toSingle") : t("settings.tagGroup.mode.toMulti");
     modeBtn.innerHTML = g.mode === GROUP_MODE_SINGLE ? SINGLE_ICON : MULTI_ICON;
     modeBtn.addEventListener("click", () => {
       setGroupMode(g.id, g.mode === GROUP_MODE_SINGLE ? GROUP_MODE_MULTI : GROUP_MODE_SINGLE);
@@ -274,7 +277,7 @@ function renderTagGroups() {
     const addTagBtn = document.createElement("button");
     addTagBtn.type = "button";
     addTagBtn.className = "iconBtn";
-    addTagBtn.title = "このグループに含めるタグを選ぶ";
+    addTagBtn.title = t("settings.tagGroup.addTag.title");
     addTagBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
     addTagBtn.addEventListener("click", () => openGroupMembershipPicker(g.id, addTagBtn));
     head.appendChild(addTagBtn);
@@ -282,7 +285,7 @@ function renderTagGroups() {
     const delBtn = document.createElement("button");
     delBtn.type = "button";
     delBtn.className = "iconBtn";
-    delBtn.title = "グループ削除";
+    delBtn.title = t("settings.tagGroup.delete.title");
     delBtn.innerHTML = TRASH_SVG;
     delBtn.addEventListener("click", () => {
       if (!confirm(t("settings.tagGroup.delete.confirm", { name: g.name }))) return;
@@ -301,17 +304,17 @@ function renderTagGroups() {
     if (tags.length === 0) {
       const empty = document.createElement("div");
       empty.className = "qrHint";
-      empty.textContent = "（タグなし）";
+      empty.textContent = t("settings.tagGroup.empty");
       body.appendChild(empty);
     } else {
-      for (const t of tags) {
+      for (const tagName of tags) {
         const chip = document.createElement("span");
         chip.className = "tagChip";
         chip.style.cursor = "pointer";
-        chip.title = "タップでこのグループから外す";
-        chip.textContent = t;
+        chip.title = t("settings.tagGroup.chip.remove");
+        chip.textContent = tagName;
         chip.addEventListener("click", () => {
-          setTagGroup(t, "");
+          setTagGroup(tagName, "");
           renderTagGroups();
           if (_renderPatientUIFn) _renderPatientUIFn();
         });
@@ -326,7 +329,7 @@ function renderTagGroups() {
   const addGroupBtn = document.createElement("button");
   addGroupBtn.type = "button";
   addGroupBtn.className = "tagGroupAdd";
-  addGroupBtn.title = "グループ追加";
+  addGroupBtn.title = t("settings.tagGroup.add.title");
   addGroupBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
   addGroupBtn.addEventListener("click", () => {
     const nm = prompt(t("settings.tagGroup.add.prompt"));
@@ -342,7 +345,7 @@ function renderTagGroups() {
     const hint = document.createElement("div");
     hint.className = "qrHint";
     hint.style.cssText = "margin-top:10px;";
-    hint.textContent = `未分類のタグ: ${un.length}件`;
+    hint.textContent = t("settings.tagGroup.unassigned", { n: un.length });
     host.appendChild(hint);
   }
 }
@@ -358,24 +361,24 @@ function openGroupMembershipPicker(groupId, anchor) {
   panel.style.cssText = "background:#fff;border-radius:12px;max-width:360px;width:100%;max-height:70vh;display:flex;flex-direction:column;overflow:hidden;";
   const head = document.createElement("div");
   head.style.cssText = "padding:10px 14px;border-bottom:1px solid var(--line);font-weight:700;";
-  head.textContent = "このグループに含めるタグを選択";
+  head.textContent = t("settings.tagGroup.picker.title");
   panel.appendChild(head);
   const body = document.createElement("div");
   body.style.cssText = "overflow:auto;padding:8px 14px;";
   const tags = getAllTags();
-  for (const t of tags) {
-    const cur = getGroupForTag(t);
+  for (const tagName of tags) {
+    const cur = getGroupForTag(tagName);
     const lbl = document.createElement("label");
     lbl.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 0;";
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.checked = cur === groupId;
     cb.addEventListener("change", () => {
-      setTagGroup(t, cb.checked ? groupId : "");
+      setTagGroup(tagName, cb.checked ? groupId : "");
     });
     lbl.appendChild(cb);
     const sp = document.createElement("span");
-    sp.textContent = t + (cur && cur !== groupId ? "（別グループ）" : "");
+    sp.textContent = tagName + (cur && cur !== groupId ? t("settings.tagGroup.picker.otherGroup") : "");
     lbl.appendChild(sp);
     body.appendChild(lbl);
   }
@@ -385,7 +388,7 @@ function openGroupMembershipPicker(groupId, anchor) {
   const closeBtn = document.createElement("button");
   closeBtn.type = "button";
   closeBtn.className = "secondary";
-  closeBtn.textContent = "閉じる";
+  closeBtn.textContent = t("common.close");
   closeBtn.addEventListener("click", () => {
     overlay.remove();
     renderTagGroups();
@@ -410,7 +413,7 @@ function makeTagChip(idx) {
   const labelBtn = document.createElement("button");
   labelBtn.type = "button";
   labelBtn.className = "tagSettingChipLabel";
-  labelBtn.textContent = name || "（未入力）";
+  labelBtn.textContent = name || t("settings.tagGroup.name.empty");
   wrap.appendChild(labelBtn);
 
   bindLongPressAndDrag(
@@ -437,7 +440,7 @@ function openInlineTagEditor(chipWrap, idx) {
   inp.type = "text";
   inp.className = "tagSettingInput";
   inp.value = settings.tags[idx] || "";
-  inp.placeholder = "タグ名";
+  inp.placeholder = t("settings.tag.placeholder");
   let done = false;
   const finalize = (commit) => {
     if (done) return;
