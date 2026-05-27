@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 7.2.0
+現在のバージョン: 7.3.0
 
 ## バージョニング方針
 
@@ -14,6 +14,24 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **7.3.0**: フォーマットグループ ピッカーの簡素化 + ポップアップ × ボタン共通化
+  - **フォーマットグループ ピッカー**: 「この患者の pin 表示を…」ヒント文を撤去。
+    「通常 (全 pin 表示)」ボタンを廃止し、登録済みグループだけを並べる単選択トグルに。
+    選択中のグループを再タップすると解除されて通常状態 (activeFormatGroupId="") に
+    戻る。「通常」を選ぶ専用エントリは不要 (= 何も選んでいない状態が通常)
+  - **共通 × アイコン (`.popupCloseX`)**: 「閉じるだけ」の 4 ポップアップ
+    (formatGroupPicker / qrFormat / movePatient / ioChooser) で、横幅いっぱいの
+    「閉じる」ボタンを撤去し、右上隅の × アイコンに統一。タッチ領域は 44x44 を
+    維持しつつ視覚は 20px の控えめサイズ
+  - **`data-close-popup` event delegation**: main.js にグローバルハンドラを 1 つだけ
+    追加し、`data-close-popup` 属性が付いた要素のクリックで親 `.popupMenuOverlay`
+    を閉じる。新規 popup を追加しても配線不要。追加クリーンアップが要る popup は
+    既存の id 経由 listener と加算的に動く (冪等)
+  - **未使用 i18n キー削除**: `formatGroup.picker.hint`, `formatGroup.option.none`,
+    `formatGroup.option.none.sub`
+  - **未使用 CSS 削除**: `.formatGroupHint`
+  - **CLAUDE.md 更新**: 「ポップアップの共通基盤」セクションを追加 (× アイコンの
+    使い分け、`data-close-popup` 規約、44x44 タッチ領域の維持方針)
 - **7.2.0**: QR Wire Format Authority + DEFLATE 圧縮で 5 種統一
   - **背景**: ユーザ提案で QR 生成ロジックを「平文 (PT のみ)」「圧縮+暗号 (HM/MM/SH/ST/FMT)」の 2 パターンに整理。設計 2 原則を明文化:
     - 原則 ①「可変領域は冒頭辞書 + index 参照」(ユーザが順序を変えても壊れない)

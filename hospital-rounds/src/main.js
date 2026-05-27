@@ -328,10 +328,27 @@ setOnFormatApplied(() => {
 initFormatGroups({
   renderDetail: doRenderDetail,
 });
-// QR フォーマット overlay の close ボタン + overlay 外クリックで閉じる配線
+// QR フォーマット overlay の close ボタン + overlay 外クリックで閉じる配線。
+// × ボタンには data-close-popup も付いているのでグローバルハンドラが overlay
+// を閉じるが、closeQrFormatOverlay は flow.close() / setFormatToShare(null) の
+// 追加クリーンアップが要るので個別 listener も残す (両 listener は冪等)。
 document.getElementById("qrFormatCloseBtn")?.addEventListener("click", closeQrFormatOverlay);
 document.getElementById("qrFormatOverlay")?.addEventListener("click", (e) => {
   if (e.target.id === "qrFormatOverlay") closeQrFormatOverlay();
+});
+
+// ============================
+// Global popup close handler (data-close-popup)
+// ============================
+// 「閉じるだけ」のポップアップ用の event delegation。HTML 側で
+//   <button class="popupCloseX" data-close-popup ...> × </button>
+// を置けば、追加 JS なしで「外側 overlay を閉じる」挙動が手に入る。
+// 追加クリーンアップ (state クリア・flow.close 等) が必要な popup は
+// 既存の id 経由 listener と併用する (この handler は冪等)。
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-close-popup]");
+  if (!btn) return;
+  btn.closest(".popupMenuOverlay")?.classList.remove("active");
 });
 
 // ============================

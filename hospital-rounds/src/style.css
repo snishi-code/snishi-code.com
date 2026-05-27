@@ -2180,6 +2180,42 @@
       width: 260px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
       animation: popScale 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      position: relative; /* .popupCloseX の絶対配置のため */
+    }
+
+    /* ============================
+       共通 × アイコン (ポップアップ右上)
+       ============================
+       「閉じる」だけのポップアップで横幅いっぱいのボタンを置く代わりに、
+       右上隅の控えめな × を使う。視覚的なアイコンは小さいが、タップ領域は
+       アクセシビリティ規約に合わせて 44x44 を維持。
+       data-close-popup 属性で main.js のグローバルハンドラが overlay を
+       閉じる (event delegation)。追加クリーンアップが必要な popup は
+       id 経由で個別に handler を attach する。 */
+    .popupMenu .popupCloseX {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background 0.15s, color 0.15s;
+    }
+    .popupMenu .popupCloseX:hover,
+    .popupMenu .popupCloseX:focus-visible {
+      background: var(--bg);
+      color: var(--ink);
     }
 
     @keyframes popScale {
@@ -2233,12 +2269,6 @@
       width: min(92vw, 360px);
       max-width: 360px;
       box-sizing: border-box;
-    }
-    .formatGroupHint {
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.5;
-      margin-bottom: 8px;
     }
     .formatGroupPickerRow {
       width: 100% !important;

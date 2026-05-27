@@ -90,15 +90,9 @@ function renderPickerList() {
   const current = String(p?.activeFormatGroupId || "");
   const groups = getAllFormatGroups();
 
-  // 通常 (= グループ無し) エントリ
-  host.appendChild(buildPickerRow({
-    id: "",
-    name: t("formatGroup.option.none"),
-    selected: !current,
-    sub: t("formatGroup.option.none.sub"),
-  }));
-
   if (!groups.length) {
+    // グループ未登録なら、設定画面への誘導メッセージのみ。「通常」ボタンは
+    // そもそも選択肢ではない (= 通常状態は「何も選んでいない」状態そのもの)。
     const empty = document.createElement("div");
     empty.className = "formatGroupPickerEmpty";
     empty.textContent = t("formatGroup.picker.empty");
@@ -106,6 +100,8 @@ function renderPickerList() {
     return;
   }
 
+  // 選択中のグループを再タップすると解除されて通常状態 (activeFormatGroupId="")
+  // に戻る。「通常」を選ぶための専用エントリは置かない。
   for (const g of groups) {
     host.appendChild(buildPickerRow({
       id: g.id,
@@ -133,7 +129,8 @@ function buildPickerRow({ id, name, selected, sub }) {
   row.addEventListener("click", () => {
     const p = appState.patients[selectedNo - 1];
     if (p) {
-      p.activeFormatGroupId = String(id || "");
+      // 選択中の行を再タップ → 解除 (通常へ)。それ以外は新規選択
+      p.activeFormatGroupId = selected ? "" : String(id || "");
       markUpdated(selectedNo);
       scheduleSave();
     }

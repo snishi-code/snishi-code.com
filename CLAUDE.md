@@ -124,6 +124,29 @@ snishi-code.com のソースリポジトリ。医療・個人向けの PWA / 単
 
 確認ダイアログだけでなく、**ツールチップ・aria-label・placeholder・popup タイトル・成功/失敗メッセージなど全てが対象**。新機能追加 PR を書く時は最後に `grep -n '"[ぁ-んァ-ヶ一-龯]"' src/` で漏れがないか確認すると良い。
 
+### ポップアップの共通基盤
+
+`.popupMenuOverlay` / `.popupMenu` を使ったモーダル UI で、**「閉じる」だけの動作で十分なポップアップは、横幅いっぱいの「閉じる」ボタンではなく、右上の `.popupCloseX` (× アイコン) を使う**。
+
+```html
+<div class="popupMenuOverlay" id="someOverlay">
+  <div class="popupMenu someMenu">
+    <button class="popupCloseX" type="button" data-close-popup
+            data-i18n-aria="common.close" aria-label="閉じる">
+      <svg width="20" height="20" viewBox="0 0 24 24" ...><line .../><line .../></svg>
+    </button>
+    <div class="popupTitle">タイトル</div>
+    <!-- 本文 -->
+  </div>
+</div>
+```
+
+- `data-close-popup` 属性により `main.js` のグローバルハンドラが overlay を閉じる (event delegation。新しい popup を追加しても配線不要)
+- タッチ領域は 44x44 を維持 (CSS で確保)、視覚的な × アイコンは 20px の控えめサイズ
+- 「保存」「キャンセル」「適用」など意味のあるアクションを持つポップアップは従来通り横幅ボタンを使う (× は使わない)
+- 「確認しました」など単一アクションの確認系は従来通り (× ではなく大きなボタンが metaphor 的に正しい)
+- 追加クリーンアップ (state リセット・関連 flow の close 等) が要る popup は、× ボタンに id を併用して個別 listener を attach する (グローバルハンドラと加算的に動く)
+
 ### QR Wire Format (端末間データ交換時の規約)
 
 複数端末間で QR を介してデータをやり取りするアプリ (`hospital-rounds` 等) では、wire format の中身を扱う処理は **必ず `src/features/qr-protocol.js` が export するヘルパーを経由** すること。各 feature ファイル (`qr-home.js` / `qr-shared.js` / `qr-settings.js` / `qr-format.js` 等) で独自の wire format を新規定義しないこと。
