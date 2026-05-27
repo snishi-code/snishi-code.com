@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 6.5.0
+現在のバージョン: 6.6.0
 
 ## バージョニング方針
 
@@ -14,6 +14,16 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **6.6.0**: フォーマット 1 つを QR で共有する機能 (FMT wire kind)
+  - `src/features/qr-format.js` 新設。`createQrFlow` を kind=FMT で利用。送受信ライフサイクルは既存 QR インフラ (qr-protocol / qr-flow / qr-scan) を流用
+  - **送信**: フォーマット編集モーダル左下に QR アイコンボタン (`formatEditQrShareBtn`)。タップで `qrFormatOverlay` を開き編集中のフォーマット (= 未保存の状態でも OK) を QR エンコード表示
+  - **受信ポリシー** (前回合意):
+    - ID: 常に新発番 (上書きせず別物として追加)
+    - 同名: `(2)`, `(3)`... 自動 rename
+    - tags: 受信側に未登録のタグは無視
+    - isDefault: 受信時は強制 false (元端末の運用設定を勝手に押し付けない)
+  - i18n: `qrFormat.*`, `qr.kind.format` 追加
+  - HTML: `qrFormatOverlay` + `qrFormatWrap` + scan/prev/next ボタン
 - **6.5.0**: タイトル端末固定化 + ヘッダーに WS 名表示 + 画面更新バグ修正
   - **タイトル端末固定化**: 旧 `appState.title` (= per-workspace の `bundle.sections.meta.title`) を localStorage `hospital_rounds_device_app_title` に移行。workspace 切替や新規作成で title が「回診」に reset される不具合を解消。`storage.js#{getDeviceAppTitle,setDeviceAppTitle,migrateLegacyTitleIfNeeded}` を追加。初回起動時のみ旧 meta.title を localStorage へ 1 回マイグレート
   - **ヘッダーに WS 名表示**: `appWsLabelInput` をタイトル input の右に追加 (`/` セパレータ付き)。鉛筆編集モードで両方とも編集可能、Enter / blur で確定 (title は `updateDeviceTitle`、ws name は `renameBundle`)。DB モーダルから rename した時にもヘッダー表示が更新される (`refreshHeaderWsLabel` callback)

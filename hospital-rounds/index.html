@@ -695,6 +695,12 @@
           <button class="secondary" id="formatEditAddItemBtn" type="button" data-i18n="format.addItem" style="width:100%;margin-top:8px;">＋ 項目追加</button>
         </div>
         <div class="formatEditActions">
+          <!-- QR 共有 (左に独立配置。新規作成中で id 未確定でも見えるが、まだ未保存
+               なので押された時に「先に保存してください」と促す挙動にする) -->
+          <button class="iconBtn formatEditQrBtn" id="formatEditQrShareBtn" type="button" data-i18n-title="qrFormat.share.title" data-i18n-aria="qrFormat.share.title" title="このフォーマットを QR で共有" aria-label="このフォーマットを QR で共有">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="5" y="5" width="3" height="3" fill="currentColor"/><rect x="16" y="5" width="3" height="3" fill="currentColor"/><rect x="5" y="16" width="3" height="3" fill="currentColor"/><rect x="14" y="14" width="3" height="3" fill="currentColor"/><rect x="19" y="14" width="2" height="2" fill="currentColor"/><rect x="14" y="19" width="2" height="2" fill="currentColor"/><rect x="19" y="19" width="2" height="2" fill="currentColor"/></svg>
+          </button>
+          <div style="flex:1 1 auto;"></div>
           <button class="secondary" id="formatEditCancelBtn" type="button" data-i18n="common.cancel">キャンセル</button>
           <button class="primary" id="formatEditSaveBtn" type="button" data-i18n="common.save">保存</button>
         </div>
@@ -729,6 +735,36 @@
         <div class="popupTitle" id="disclaimerTitle">これは個人メモです</div>
         <div id="disclaimerBody" style="font-size:13px;color:#333;line-height:1.6;margin-bottom:14px;white-space:pre-line;text-align:left;">本アプリは医師個人の業務支援メモであり、正式な医療記録ではありません。</div>
         <button class="primary" id="disclaimerCloseBtn" type="button">確認しました</button>
+      </div>
+    </div>
+
+    <!-- フォーマット 1 つを QR で共有 (送受信兼用)。
+         qr-format.js が createQrFlow に下の DOM ID 一式を渡して配線する。
+         show ボタンはオーバーレイ open 時に自動 active 化されるため隠す。 -->
+    <div class="popupMenuOverlay" id="qrFormatOverlay">
+      <div class="popupMenu qrFormatMenu">
+        <div class="popupTitle" data-i18n="qrFormat.title">フォーマット QR</div>
+        <div class="card qrWrap" id="qrFormatWrap">
+          <div class="cardHead">
+            <span class="qrHint"><span class="mono" id="qrFormatPageMeta"></span></span>
+            <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+              <button class="iconBtn" id="qrFormatPrevBtn" type="button" data-i18n-title="qr.prev" data-i18n-aria="qr.prev" title="前" aria-label="前">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <button class="iconBtn" id="qrFormatNextBtn" type="button" data-i18n-title="qr.next" data-i18n-aria="qr.next" title="次" aria-label="次">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+              <button class="iconBtn" id="qrFormatScanBtn" type="button" data-i18n-title="qr.scan" data-i18n-aria="qr.scan" title="カメラで QR を読む" aria-label="カメラで QR を読む">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </button>
+            </div>
+          </div>
+          <canvas id="qrFormatCanvas" width="800" height="800"></canvas>
+        </div>
+        <!-- show ボタンは createQrFlow が要求するが、このオーバーレイでは常時 active なので非表示 -->
+        <button id="qrFormatShowBtn" type="button" style="display:none;"></button>
+        <div style="height:10px;"></div>
+        <button class="secondary" id="qrFormatCloseBtn" type="button" data-i18n="common.close">閉じる</button>
       </div>
     </div>
 

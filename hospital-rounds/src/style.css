@@ -2297,6 +2297,44 @@
       max-width: 360px;
       box-sizing: border-box;
     }
+
+    /* フォーマット QR 共有モーダル: QR を大きめに表示できる幅 */
+    .popupMenu.qrFormatMenu {
+      width: min(94vw, 480px);
+      max-width: 480px;
+      box-sizing: border-box;
+    }
+    .popupMenu.qrFormatMenu .qrWrap {
+      margin: 8px 0;
+    }
+    /* qrWrap は通常 display:none + .active で表示。overlay 内では常時表示でいい */
+    .popupMenu.qrFormatMenu .qrWrap {
+      display: block !important;
+    }
+
+    /* フォーマット編集モーダルの QR 共有ボタン (action 行の左端) */
+    .formatEditActions {
+      align-items: center;
+    }
+    .formatEditQrBtn {
+      flex: 0 0 auto;
+      width: 36px !important;
+      height: 36px;
+      padding: 6px !important;
+      margin: 0 !important;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .formatEditQrBtn:hover {
+      background: #f3f4f6;
+      color: var(--text);
+    }
     .movePatientHint {
       font-size: 12px;
       color: var(--muted);

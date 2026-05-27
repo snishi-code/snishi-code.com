@@ -31,6 +31,7 @@ import {
   DEFAULT_LABEL_SEP_TEXT, DEFAULT_LABEL_SEP_OTHER,
 } from "../constants.js";
 import { makeTagPicker, getAllTags, getPatientTags, setPatientTags } from "./tags.js";
+import { openQrFormatOverlay } from "./qr-format.js";
 import { t, applyI18n } from "../i18n.js";
 
 // strip 右端のハンバーガー (パネルごとの「全フォーマット一覧 = お気に入りトグル popup」を開く)
@@ -780,10 +781,24 @@ export function initFormats() {
   const editCancel = document.getElementById("formatEditCancelBtn");
   const editAddItem = document.getElementById("formatEditAddItemBtn");
   const editOverlay = document.getElementById("formatEditOverlay");
+  const editQrShare = document.getElementById("formatEditQrShareBtn");
   if (editSave) editSave.addEventListener("click", saveFormatEdit);
   if (editCancel) editCancel.addEventListener("click", closeFormatEditModal);
   if (editAddItem) editAddItem.addEventListener("click", addFormatItem);
   if (editOverlay) editOverlay.addEventListener("click", (e) => {
     if (e.target === editOverlay) closeFormatEditModal();
+  });
+  // QR 共有: 編集中のフォーマット (= _currentEdit.target) を渡してオーバーレイを開く。
+  // 未保存でも編集中状態の中身がそのまま QR 化される (= 試行錯誤しやすい)。
+  // ただし name 空のままは弾く。
+  if (editQrShare) editQrShare.addEventListener("click", () => {
+    if (!_currentEdit) return;
+    const target = _currentEdit.target;
+    const name = String(target?.name || "").trim();
+    if (!name) {
+      alert(t("format.name.required"));
+      return;
+    }
+    openQrFormatOverlay(target);
   });
 }
