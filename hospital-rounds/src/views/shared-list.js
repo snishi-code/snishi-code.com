@@ -4,7 +4,6 @@ import { appState, selectedNo, markUpdated, scheduleSave } from "../store.js";
 import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
 import { makePatientTagPicker, makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
 import { makeRoomInput, formatPatientLabel, isRoomSortActive } from "../features/room.js";
-import { isNonAdminTerminal } from "../features/admin.js";
 import { refreshSharedQrIfActive } from "../features/qr-shared.js";
 import { recordOp } from "../features/roster.js";
 import { statusClass } from "./home.js";
@@ -24,7 +23,7 @@ function renderSharedTagFilter(rerender) {
 function renderSharedSortBtn() {
   const btn = document.getElementById("sharedRoomSortBtn");
   if (!btn) return;
-  btn.style.display = isNonAdminTerminal() ? "none" : "";
+  btn.style.display = "";
   btn.classList.toggle("editActive", isRoomSortActive());
 }
 

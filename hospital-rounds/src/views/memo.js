@@ -5,7 +5,6 @@ import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features
 import { syncDetailMemoDisplay } from "../features/navigation.js";
 import { makePatientTagPicker, makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
 import { makeRoomInput, formatPatientLabel, isRoomSortActive } from "../features/room.js";
-import { isNonAdminTerminal } from "../features/admin.js";
 import { refreshMemoQrIfActive } from "../features/qr-shared.js";
 import { recordOp } from "../features/roster.js";
 import { statusClass } from "./home.js";
@@ -25,7 +24,7 @@ function renderMemoTagFilter(rerender) {
 function renderMemoSortBtn() {
   const btn = document.getElementById("memoRoomSortBtn");
   if (!btn) return;
-  btn.style.display = isNonAdminTerminal() ? "none" : "";
+  btn.style.display = "";
   btn.classList.toggle("editActive", isRoomSortActive());
 }
 

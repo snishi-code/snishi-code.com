@@ -38,12 +38,9 @@ export const DEFAULT_LABEL_SEP_TEXT = "：";
 export const DEFAULT_LABEL_SEP_OTHER = " ";
 
 export const DEFAULT_TAGS = APP_DEFAULTS.tags;
-export const DEFAULT_ADMIN_ENABLED = APP_DEFAULTS.adminEnabled;
-export const DEFAULT_ADMIN_TERMINAL = APP_DEFAULTS.adminTerminal;
 
-// Roster diff sync (admin feature)
+// Roster diff sync (dormant in v7.0.0+, future feature の基盤)
 export const ROSTER_DIFF_WINDOW_DAYS = APP_DEFAULTS._app.rosterDiffWindowDays;
-export const DEFAULT_ROSTER_PASSPHRASE = APP_DEFAULTS.rosterPassphrase;
 
 // Tag filter modes
 export const TAG_FILTER_MODE_AND = "and";

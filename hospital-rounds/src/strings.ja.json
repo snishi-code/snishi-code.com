@@ -1,13 +1,10 @@
 {
   "_comment": "アプリのユーザー向け文字列。{name} のような波カッコはプレースホルダ。将来 strings.en.json などを並べることで多言語化可能。",
-
   "app.title": "回診",
-
   "panel.S": "S",
   "panel.O": "O",
   "panel.A": "A",
   "panel.P": "P",
-
   "common.save": "保存",
   "common.cancel": "キャンセル",
   "common.close": "閉じる",
@@ -28,13 +25,10 @@
   "common.type": "種類",
   "common.joiner": "区切り",
   "common.items": "項目",
-
   "type.numeric": "数値",
   "type.text": "文字",
-
   "patient.delete.confirm": "この患者には入力データがあります。削除しますか？",
   "patient.delete.bulk.confirm": "{n} 件の中に入力データのある患者が含まれます。すべて削除しますか？",
-
   "format.title": "フォーマット",
   "format.new": "新規フォーマット",
   "format.new.aria": "新規フォーマット",
@@ -76,7 +70,6 @@
   "format.itemKind.aria": "様式を選ぶ",
   "format.tags.title": "このフォーマットに付くタグ",
   "format.tags.aria": "このフォーマットに付くタグ",
-
   "tag.add.aria": "新規タグ",
   "tag.add.title": "新規タグ",
   "tag.add.duplicate": "「{name}」は既に登録されています。",
@@ -95,7 +88,6 @@
   "tag.filter.clear.aria": "選択をすべて解除",
   "tag.filter.clear.title": "選択をすべて解除",
   "tag.filter.clear.confirm": "選択中のタグをすべて解除します。よろしいですか？",
-
   "patientButton.opAria": "{name} の操作",
   "patientButton.action.add1.title": "1人追加（下へ）",
   "patientButton.action.add1.aria": "1人追加（下へ）",
@@ -105,9 +97,13 @@
   "patientButton.action.delete1.aria": "1人削除",
   "patientButton.action.delete5.title": "5人削除（下へ）",
   "patientButton.action.delete5.aria": "5人削除（下へ）",
+  "patientButton.action.move1.title": "1人を他ワークスペースへ移動",
+  "patientButton.action.move1.aria": "1人を他ワークスペースへ移動",
+  "patientButton.action.move5.title": "5人を他ワークスペースへ移動",
+  "patientButton.action.move5.aria": "5人を他ワークスペースへ移動",
+  "move.confirm.bulk": "{count} 人を「{dest}」へ移動します。元のワークスペースには「(移)」マークで残ります。よろしいですか？",
   "patientButton.action.close.title": "閉じる",
   "patientButton.action.close.aria": "閉じる",
-
   "clear.confirm": "全患者の対象項目をクリアします。よろしいですか？",
   "clearTarget.memo": "メモ",
   "clearTarget.shared": "共有",
@@ -115,50 +111,29 @@
   "clearTarget.statusGreen": "ステータス：緑（済）",
   "clearTarget.statusGray": "ステータス：灰（完了）",
   "clearTarget.statusBlue": "ステータス：青（追記）",
-
   "reset.all.confirm": "全データを消去します。元に戻せません。本当に消去しますか？",
   "reset.all.confirm2": "本当によろしいですか？この操作は元に戻せません。",
-
   "import.title": "データ取込",
   "import.withSettings": "設定も取り込む",
   "import.patientsOnly": "患者のみ取込",
-
   "export.failed": "データの出力に失敗しました。",
-
-  "admin.toggle.confirm.on": "この端末を管理端末にします。同じ病棟・チーム内で 1 台のみにしてください。\nよろしいですか？",
-  "admin.toggle.confirm.off": "管理機能をオフにします。よろしいですか？",
-  "admin.toggle.locked": "この端末は管理端末から名簿を受け取っているためオフにできません。\n管理から外れたい場合は、管理機能オフの端末から名簿を取り直してください。",
-  "admin.passphrase.prompt": "名簿コピーに使う「合言葉」を設定してください。\n12 文字以上、日本語・英語・記号など自由。受信側にも口頭などで共有してください。",
-  "admin.passphrase.tooShort": "合言葉は 12 文字以上にしてください (現在 {len} 文字)。",
-  "admin.passphrase.hint.minlen": "12 文字以上。英数字・記号や日本語を混ぜると強くなります。",
-  "admin.passphrase.strength.tooShort": "短すぎる",
-  "admin.passphrase.strength.weak": "弱い",
-  "admin.passphrase.strength.ok": "可",
-  "admin.passphrase.strength.good": "良い",
-  "admin.passphrase.strength.strong": "強い",
-
   "qr.scanner.unsupported": "このブラウザはカメラ非対応",
   "qr.send.title": "送信",
   "qr.recv.title": "受信",
   "qr.notReady": "（受信中）",
-
-  "adminTerminal.incompletePatients.confirm": "次の位置の患者は部屋番号またはタグが未入力です: {sample}\n\n[OK]を押して進むと、これらの患者の名前・部屋番号・タグはクリアされます（SOAP・メモ・共有は残ります）。\n[キャンセル]で編集に戻れます。",
-
   "qrSettings.summary.tags": "タグ {n} 件",
   "qrSettings.summary.formats": "フォーマット {n} 件",
   "qrSettings.summary.defaults": "デフォルト文",
   "qrSettings.summary.clearTargets": "クリア対象",
   "qrSettings.summary.tagGroups": "タググループ {n} 件",
-  "qrSettings.import.confirm": "現在の設定 {summary} を上書きします。\n管理機能・端末固有設定は維持されます。よろしいですか？",
+  "qrSettings.import.confirm": "現在の設定 {summary} を上書きします。\n端末固有設定 (deviceId 等) は維持されます。よろしいですか？",
   "qrSettings.imported.alert": "設定を取り込みました。",
   "qrSettings.parse.failed": "受信した設定の形式が認識できませんでした。",
   "qrSettings.versionMismatch": "バージョン不一致 (wire={a}, expected={b})",
   "qrSettings.invalid": "不正な設定形式",
-
   "main.sortByRoom.confirm": "部屋番号順に並び替えますか？",
   "main.recvMemo.close.confirm": "受信メモを閉じます。表示中の内容は消去されます。よろしいですか？",
   "main.clearAllInput.confirm": "全患者の入力を消去します。よろしいですか？",
-
   "qr.scanner.unavailable": "このブラウザはカメラを利用できません。代わりにテキストを貼り付けてください。",
   "qr.scanner.open.failed": "スキャナを開けませんでした。",
   "qr.recv.parse.failed": "受信データの解析に失敗しました: {message}",
@@ -167,7 +142,6 @@
   "qr.import.empty.shared": "取込対象のエントリがありません。",
   "qr.import.empty.home": "取込内容が空でした。",
   "tag.exists": "そのタグは既に存在します。",
-
   "settings.tagGroup.rename.prompt": "グループ名",
   "settings.tagGroup.rename.failed": "名前が空、または重複しています",
   "settings.tagGroup.add.prompt": "新しいグループの名前を入力",
@@ -175,21 +149,14 @@
   "settings.tagGroup.delete.confirm": "グループ「{name}」を削除します。含まれていたタグは未分類に戻ります。よろしいですか？",
   "settings.tag.delete.confirm": "タグ「{name}」を削除します。よろしいですか？\n（このタグが付いている患者のタグも一緒に外れます）",
   "settings.tag.name.duplicate": "同じ名前のタグが既にあります",
-
   "settings.title.tags": "タグ",
   "settings.title.tagGroups": "タググループ",
   "settings.title.clearTargets": "クリア対象",
-  "settings.title.admin": "管理機能",
-  "settings.title.adminTerminal": "管理端末",
-  "settings.title.rosterPassphrase": "合言葉",
   "settings.help.tagsGroupsHidden": "（グループ機能 OFF 中はフラット表示のみ）",
   "settings.deleteFormat.aria": "削除",
   "settings.editFormat.aria": "編集",
   "settings.addFormat.title": "フォーマット追加",
   "settings.addFormat.aria": "フォーマット追加",
-
-  "admin.passphrase.prompt.import": "名簿コピーを取り込みます。送信側と同じ合言葉を入力してください：",
-
   "qr.empty.contentless": "（表示する内容がありません）",
   "qr.empty.noTargets": "（対象の患者がいません）",
   "qr.empty.noSettings": "（設定が空です）",
@@ -201,7 +168,6 @@
   "qr.prev": "前",
   "qr.next": "次",
   "qr.scan": "カメラで QR を読む",
-
   "formatGroup.section.title": "フォーマットグループ",
   "formatGroup.add": "グループ追加",
   "formatGroup.empty": "未登録。右上の + から追加してください。",
@@ -223,7 +189,6 @@
   "formatGroup.edit.namePlaceholder": "例: 発熱対応",
   "formatGroup.edit.formatsLabel": "含めるフォーマット",
   "formatGroup.edit.noFormats": "まずフォーマットを 1 つ以上登録してください。",
-
   "qrFormat.title": "フォーマット QR",
   "qrFormat.share.title": "このフォーマットを QR で共有",
   "qrFormat.empty": "（フォーマット未指定）",
@@ -244,13 +209,11 @@
   "qr.recv.duplicate": "重複: {got}/{total} 受信済",
   "qr.recv.complete": "全 {total} ページ受信完了",
   "qr.recv.progress": "{got}/{total} 受信",
-
   "qr.scan.head": "QR スキャン",
   "qr.scan.hint.stream": "QR を順に読み取ってください",
   "qr.scan.hint.once": "QR コードを枠内に映してください",
   "qr.scan.starting": "カメラを起動中...",
   "qr.scan.startFailed": "カメラを起動できませんでした: {message}",
-
   "home.qrImport.reflected.full": "{roster} 件の名簿と {tags} 件のタグを反映しました。",
   "home.qrImport.reflected.rosterOnly": "{roster} 件の名簿を反映しました。",
   "home.qrImport.appended.count": "{n} 件を末尾に追加しました。",
@@ -260,25 +223,6 @@
   "shared.qrImport.noMatch": "未マッチ: {n} 件",
   "shared.qrImport.multiMatch": "複数マッチで保留: {n} 件",
   "shared.qrImport.leftoverHeader": "【未反映分】",
-
-  "admin.preview.placeholder": "（パスフレーズを入力してください）",
-  "admin.status.passphraseRequired": "⚠ 設定で合言葉を入力してください。",
-  "admin.status.diff.window": "直近30日の差分: {count}件のコミット",
-  "admin.status.error": "エラー: {message}",
-  "admin.status.canceled": "取込をキャンセルしました",
-  "admin.status.localMissing": "エラー: ローカルに名簿がありません。先にコピーを取込んでください。",
-  "admin.confirm.copyImport": "名簿コピーを取込みます\n- 患者: {patients} 名\n- タグ: {tags} 件\n\n現在のローカル名簿は新しい名簿で置換されます（SOAP・メモ・共有はpid一致で保持）。よろしいですか？",
-  "admin.status.copyDone": "コピー取込完了。",
-  "admin.status.diffDone": "差分取込完了（適用 {applied} 件）",
-  "admin.status.unknownKind": "未知のペイロード種別: {kind}",
-  "admin.error.notFound": "名簿QRが見つかりません",
-  "admin.error.missingPages": "ページが不足: {missing} / {total}",
-  "admin.error.decryptFailed": "復号失敗",
-  "admin.error.parseFailed": "ペイロード解析失敗",
-  "admin.error.idMismatch": "別の名簿のQRです（ID不一致）。フルダンプから取込んでください。",
-  "admin.status.alreadyLatest": "既に最新です",
-  "admin.error.missingCommits": "欠落しているコミットがあります（{days}日以上の更新差。フルダンプで再取込してください）",
-
   "tag.placeholder": "タグ名",
   "tag.statusGroup.name": "色",
   "tagStatus.none": "白",
@@ -286,7 +230,6 @@
   "tagStatus.green": "緑",
   "tagStatus.gray": "灰",
   "tagStatus.blue": "青",
-
   "io.title": "データ管理",
   "io.db.title": "データ管理",
   "io.json.heading": "JSON",
@@ -303,54 +246,37 @@
   "header.shared": "共有",
   "header.settings": "設定",
   "header.menu": "メニュー",
-
   "memo.recv.label": "受信メモ",
   "memo.paste.close": "閉じる",
   "shared.recv.label": "受信メモ",
   "shared.paste.close": "閉じる",
   "shared.paste.hint": "他端末で読み取ったテキストをここに貼り付けて確認できます",
   "shared.paste.scan": "カメラで QR を読む",
-  "admin.roster.label": "名簿",
-  "admin.diff.qr": "差分QR",
-  "admin.copy": "コピー",
-  "admin.qr.multiHint": "複数QRの場合は順番に読み取ってください。",
-  "admin.passphrase.hint": "名簿のコピー時のみ使用します。受信側はコピーの取込時に同じ合言葉を入力する必要があります。日々の差分QRは合言葉不要で同じ名簿の端末間で自動的にやり取りされます。",
-  "admin.passphrase.codeLabel": "認証コード",
-
   "docs.demo.label": "試してみる:",
   "docs.demo.edit": "編集 (部屋・名前・タグ)",
   "docs.demo.sortRoom": "部屋番号順に並べ替え",
   "docs.demo.reset": "デモをリセット",
   "docs.iframe.title": "説明書",
-
-  "overview.printHead": "{title} — 総覧",
-
   "home.edit.tooltip": "ステータス色を変更",
   "home.sortRoom.tooltip": "部屋番号順に並び替え",
   "home.help.tooltip": "ホーム画面の説明",
   "home.qr.show": "ホームQR表示",
-
   "memo.edit.tooltip": "編集",
   "memo.sortRoom.tooltip": "部屋番号順に並び替え",
   "memo.help.tooltip": "メモ画面の説明",
   "memo.qr.show": "メモQR表示",
-
   "shared.edit.tooltip": "編集",
   "shared.sortRoom.tooltip": "部屋番号順に並び替え",
-  "shared.admin.tooltip": "管理",
   "shared.help.tooltip": "共有画面の説明",
   "shared.qr.show": "QR表示",
-
   "settings.help.tooltip": "設定の説明",
   "settings.qr.show": "設定QR表示",
-
   "qr.prev.tooltip": "前",
   "qr.next.tooltip": "次",
   "qr.scan.tooltip": "カメラで QR を読む",
   "qr.clearInput.tooltip": "入力をクリア",
   "qr.apply.tooltip": "取込",
   "qr.import.tooltip": "取込",
-
   "move.title": "他のワークスペースへ移動",
   "move.hint": "移動先のワークスペースを選んでください。元のワークスペースには「(移)」マークで履歴が残ります。",
   "move.confirm": "「{patient}」を「{dest}」へ移動します。元のワークスペースには移動済マークで残ります。よろしいですか？",
@@ -358,7 +284,6 @@
   "move.failed": "移動に失敗しました",
   "move.banner": "{dest} へ転棟済 ({date})",
   "move.namePrefix": "(移)",
-
   "io.ws.list.empty": "登録されたワークスペースはありません",
   "io.ws.untitled": "(無題)",
   "io.ws.create.placeholder": "例: 病棟A",
@@ -369,16 +294,12 @@
   "io.ws.delete.failed": "削除に失敗しました",
   "io.ws.switch.failed": "ワークスペース切替に失敗しました",
   "io.ws.create.failed": "ワークスペース作成に失敗しました",
-
   "pwa.init.title": "テスト用データが残っています",
   "pwa.init.body": "ブラウザでのテストデータが端末に残っています。\n削除してアプリを始めますか？それとも続きから使いますか？",
   "pwa.init.clear": "削除して開始",
   "pwa.init.keep": "続きから使う",
-
   "web.warning.banner": "⚠ Web 版です。実データの入力は PWA (ホーム画面に追加) からどうぞ",
-
   "disclaimer.title": "これは個人メモです",
   "disclaimer.body": "本アプリは医師個人の業務支援メモであり、正式な医療記録ではありません。\n正式な診療記録は電子カルテにご記載ください。\n\n入力不可:\n・フルネーム / 患者 ID / 生年月日 / 住所 / 連絡先 / 画像\n\n表示は月 1 回程度です。",
   "disclaimer.ack": "確認しました"
 }
-

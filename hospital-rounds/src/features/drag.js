@@ -1,8 +1,8 @@
 "use strict";
 
 import { appState, settings, makeDefaultPatient, scheduleSave, isPatientEmpty } from "../store.js";
-import { isNonAdminTerminal } from "./admin.js";
 import { recordOp } from "./roster.js";
+import { openMovePatientModal } from "./move-patient.js";
 import { formatPatientLabel } from "./room.js";
 import { t } from "../i18n.js";
 
@@ -220,8 +220,6 @@ export function onPatientDrop(fromIdx, toIdx) {
 let targetActionIdx = -1;
 
 export function openActionMenu(idx) {
-  // Non-admin terminal: hide add/delete operations
-  if (isNonAdminTerminal()) return;
   targetActionIdx = idx;
   const p = appState.patients[idx];
   const title = document.getElementById("actionMenuTitle");
@@ -280,6 +278,8 @@ export function initActionMenu() {
   const add5Btn = document.getElementById("actionAdd5Btn");
   const deleteBtn = document.getElementById("actionDeleteBtn");
   const delete5Btn = document.getElementById("actionDelete5Btn");
+  const move1Btn = document.getElementById("actionMove1Btn");
+  const move5Btn = document.getElementById("actionMove5Btn");
 
   if (cancelBtn) cancelBtn.addEventListener("click", closeActionMenu);
 
@@ -319,6 +319,27 @@ export function initActionMenu() {
       if (!confirm(t("patient.delete.bulk.confirm", { n: indices.length }))) { closeActionMenu(); return; }
     }
     deletePatientsByIndices(indices);
+    closeActionMenu();
+  });
+
+  // 移動 ×1 / ×5: 長押し位置から N 件を他ワークスペースへ転送。
+  // 空患者はスキップ (= 「実データを持つ患者だけ」を移す)。
+  // 0 件になったら何もせずメニューを閉じる。
+  if (move1Btn) move1Btn.addEventListener("click", () => {
+    const indices = deletionSliceIndices(1).filter(i => !isPatientEmpty(appState.patients[i]));
+    if (indices.length === 0) { closeActionMenu(); return; }
+    openMovePatientModal(indices, () => {
+      if (_onDataChange) _onDataChange();
+    });
+    closeActionMenu();
+  });
+
+  if (move5Btn) move5Btn.addEventListener("click", () => {
+    const indices = deletionSliceIndices(5).filter(i => !isPatientEmpty(appState.patients[i]));
+    if (indices.length === 0) { closeActionMenu(); return; }
+    openMovePatientModal(indices, () => {
+      if (_onDataChange) _onDataChange();
+    });
     closeActionMenu();
   });
 }

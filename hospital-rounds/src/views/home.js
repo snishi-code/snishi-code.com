@@ -5,7 +5,6 @@ import { STATUS } from "../constants.js";
 import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
 import { makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
 import { formatPatientLabel, isRoomSortActive } from "../features/room.js";
-import { isNonAdminTerminal } from "../features/admin.js";
 import { bindTapOrLongPress, nextStatusInCycle, statusOnLongPress } from "./detail.js";
 
 let _editMode = false;
@@ -44,7 +43,7 @@ function renderHomeTagFilter(onChange) {
 function renderHomeSortBtn() {
   const btn = document.getElementById("homeRoomSortBtn");
   if (!btn) return;
-  btn.style.display = isNonAdminTerminal() ? "none" : "";
+  btn.style.display = "";
   btn.classList.toggle("editActive", isRoomSortActive());
 }
 

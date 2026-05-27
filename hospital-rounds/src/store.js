@@ -6,8 +6,7 @@ import {
   FORMAT_ITEM_KINDS, DEFAULT_ITEM_KIND,
   DEFAULT_LABEL_SEP_TEXT, DEFAULT_LABEL_SEP_OTHER,
   DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS,
-  DEFAULT_ADMIN_ENABLED, DEFAULT_ADMIN_TERMINAL,
-  DEFAULT_ROSTER_PASSPHRASE, DEFAULT_TAG_GROUPING_ENABLED,
+  DEFAULT_TAG_GROUPING_ENABLED,
   clone,
 } from "./constants.js";
 import { projectBundle, parseBundle, getSection, SECTION } from "./bundle.js";
@@ -53,9 +52,6 @@ export function defaultSettings() {
     formatGroups: [],
     clearTargets: clone(DEFAULT_CLEAR_TARGETS),
     tags: clone(DEFAULT_TAGS),
-    adminEnabled: DEFAULT_ADMIN_ENABLED,
-    adminTerminal: DEFAULT_ADMIN_TERMINAL,
-    rosterPassphrase: DEFAULT_ROSTER_PASSPHRASE,
     deviceId: "",
     tagGroupingEnabled: DEFAULT_TAG_GROUPING_ENABLED,
     tagGroups: [],
@@ -141,9 +137,6 @@ function normalizeSettings(raw) {
   if (Array.isArray(raw.tags)) {
     out.tags = raw.tags.filter(d => typeof d === "string").map(d => String(d));
   }
-  if (typeof raw.adminEnabled === "boolean") out.adminEnabled = raw.adminEnabled;
-  if (typeof raw.adminTerminal === "boolean") out.adminTerminal = raw.adminTerminal;
-  if (typeof raw.rosterPassphrase === "string") out.rosterPassphrase = raw.rosterPassphrase;
   if (typeof raw.deviceId === "string") out.deviceId = raw.deviceId;
   if (typeof raw.tagGroupingEnabled === "boolean") out.tagGroupingEnabled = raw.tagGroupingEnabled;
   if (Array.isArray(raw.tagGroups)) {

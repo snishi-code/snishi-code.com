@@ -1566,59 +1566,6 @@
       color: var(--text);
     }
 
-    /* Overview table */
-    .overviewTableWrap {
-      margin-top: 12px;
-      overflow: auto;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: #fff;
-      box-shadow: var(--shadow);
-    }
-
-    .overviewTbl {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 11px;
-    }
-
-    .overviewTbl th,
-    .overviewTbl td {
-      border-bottom: 1px solid var(--line);
-      vertical-align: top;
-      padding: 6px 8px;
-      text-align: left;
-    }
-
-    .overviewTbl th {
-      background: #fafafa;
-      font-weight: 900;
-    }
-
-    .overviewTbl tbody tr:last-child td {
-      border-bottom: none;
-    }
-
-    .overviewPrintHead {
-      display: none;
-    }
-
-    .ovNum {
-      width: 64px;
-      text-align: left;
-      word-break: break-word;
-    }
-
-    .ovMemo {
-      width: 140px;
-    }
-
-    .ovQr {
-      word-break: break-word;
-      white-space: pre-wrap;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    }
-
     @media print {
       header {
         display: none !important
@@ -1644,10 +1591,6 @@
 
       .view {
         display: none !important
-      }
-
-      #overviewView.view.active {
-        display: block !important
       }
 
       #memoView.view.active {
@@ -1678,29 +1621,6 @@
       #memoView .memoRow,
       #sharedView .memoRow {
         break-inside: avoid
-      }
-
-      .overviewPrintHead {
-        display: block !important;
-        font-size: 14px;
-        font-weight: 900;
-        margin: 0 0 10px;
-        color: #111
-      }
-
-      .overviewTableWrap {
-        border: none !important;
-        box-shadow: none !important;
-        margin-top: 0 !important
-      }
-
-      .overviewTbl {
-        font-size: 9px !important
-      }
-
-      .overviewTbl td,
-      .overviewTbl th {
-        padding: 4px 6px !important
       }
     }
 
@@ -2722,6 +2642,10 @@
       gap: 12px;
       margin-bottom: 10px;
     }
+    /* v7.0+: 移動 ×1 / ×5 を加えて 3 列に */
+    .popupMenu.actionMenu .actionGrid.actionGrid3col {
+      grid-template-columns: auto auto auto;
+    }
 
     .popupMenu.actionMenu .actionGridBtn {
       width: 68px;
@@ -2767,6 +2691,19 @@
 
     .popupMenu.actionMenu .actionGridBtn.del:hover {
       background: #fee2e2;
+    }
+
+    /* 移動 (transfer) ボタン: 青系。+ や − の add/del と区別するため矢印アイコン */
+    .popupMenu.actionMenu .actionGridBtn.move {
+      border-color: var(--blue-border);
+      background: var(--blue-light);
+      color: var(--blue);
+    }
+    .popupMenu.actionMenu .actionGridBtn.move:hover {
+      background: var(--blue-border);
+    }
+    .popupMenu.actionMenu .actionGridBtn .actionGridIcon {
+      flex-shrink: 0;
     }
 
     .popupMenu.actionMenu .actionMenuClose {

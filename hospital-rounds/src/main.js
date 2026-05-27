@@ -18,7 +18,6 @@ import { renderHome, updateCountChip, setHomeEditMode } from "./views/home.js";
 import { renderDetail, renderQrIfNeeded, initDetailEvents, initStatusButtons, initQrNavButtons } from "./views/detail.js";
 import { renderMemoScreen, setMemoEditMode, getMemoEditMode } from "./views/memo.js";
 import { renderSharedScreen, setSharedEditMode, getSharedEditMode } from "./views/shared-list.js";
-import { renderOverviewScreen } from "./views/overview.js";
 import { renderSettings, initSettingsView } from "./views/settings-view.js";
 
 import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./features/navigation.js";
@@ -34,12 +33,9 @@ import { initImportExport } from "./features/import-export.js";
 import { initSharedQr, refreshSharedQrIfActive, initMemoQr, refreshMemoQrIfActive } from "./features/qr-shared.js";
 import { initHomeQr, refreshHomeQrIfActive } from "./features/qr-home.js";
 import { initSettingsQr, refreshSettingsQrIfActive, setOnSettingsApplied } from "./features/qr-settings.js";
-import { createPrintFlow } from "./features/print.js";
 import { createEditToggle } from "./features/edit-toggle.js";
 import { sortPatientsByRoom, invalidateSortSnapshot } from "./features/room.js";
-import { initAdminUI, refreshAdminAvailability, setAdminAppliedHandler } from "./features/admin-ui.js";
 import { scanQR, isScannerSupported } from "./features/qr-scan.js";
-import { isAdminTerminal, isNonAdminTerminal, isAdminEnabled, findIncompleteAdminPatients, clearIncompleteAdminPatients } from "./features/admin.js";
 import { flushCommit, compactHistory } from "./features/roster.js";
 import { initDocsDemo, renderDocsDemo, resetDocsDemo } from "./docs/docs-demo.js";
 import { initNoAutofill } from "./features/no-autofill.js";
@@ -85,16 +81,11 @@ function doRenderDetail() {
   renderDetail(syncDetailMemoDisplay);
 }
 
-// 編集モード関連のボタン表示制御は createEditToggle が `.editActive` を
-// 当ててくれるので、ここでは「非管理端末では非表示」だけハンドル。
-function updateMemoEditBtnVisibility() {
-  const btn = document.getElementById("memoEditBtn");
-  if (btn) btn.style.display = isNonAdminTerminal() ? "none" : "";
-}
-function updateSharedEditBtnVisibility() {
-  const btn = document.getElementById("sharedEditBtn");
-  if (btn) btn.style.display = isNonAdminTerminal() ? "none" : "";
-}
+// 管理機能撤去後、編集モード関連の表示制御は createEditToggle の `.editActive`
+// クラスに任せる。これらの関数は no-op だが互換性のため残す (callers を残し
+// たまま将来何かの表示制御を入れたくなった時のフック)。
+function updateMemoEditBtnVisibility() { /* no-op (admin removed) */ }
+function updateSharedEditBtnVisibility() { /* no-op (admin removed) */ }
 
 function navigateToPatient(i) {
   // 共通の編集トグルが showView で自動 exit するので、ここでは個別 reset 不要
@@ -130,7 +121,6 @@ setDataChangeHandler(() => {
 // ============================
 
 function refreshPatientUI() {
-  refreshAdminAvailability();
   const viewId = document.querySelector(".view.active")?.id;
   if (viewId === "memoView") doRenderMemo();
   else if (viewId === "sharedView") doRenderShared();
@@ -168,29 +158,15 @@ window.addEventListener("popstate", (e) => {
   else if (v === "detail") doRenderDetail();
 });
 
-function validateAdminTerminal() {
-  if (!isAdminTerminal()) return true;
-  const missing = findIncompleteAdminPatients();
-  if (!missing.length) return true;
-  const sample = missing.slice(0, 8).join(", ") + (missing.length > 8 ? ", ..." : "");
-  const ok = confirm(t("adminTerminal.incompletePatients.confirm", { sample }));
-  if (!ok) return false;
-  clearIncompleteAdminPatients();
-  return true;
-}
-
 function navToMemo() {
-  if (!validateAdminTerminal()) return;
   doRenderMemo();
   showView("memo");
 }
 function navToShared() {
-  if (!validateAdminTerminal()) return;
   doRenderShared();
   showView("shared");
 }
 function navToHome() {
-  if (!validateAdminTerminal()) return;
   saveSettings();
   doRenderHome();
   showView("home");
@@ -269,43 +245,6 @@ createEditToggle({
 });
 
 // ============================
-// Print buttons
-// ============================
-
-const overviewBtn = document.getElementById("overviewBtn");
-if (overviewBtn) overviewBtn.addEventListener("click", () => {
-  renderOverviewScreen();
-  showView("overview");
-});
-
-// 印刷フローはターゲットごとに createPrintFlow のインスタンスを作る。
-// prepare で印刷向けに整え（メモ/共有は最後の入力位置で打ち切り、その他は
-// 単に再描画）、restore で通常表示に戻す。新しい印刷対象を足したいときは
-// このリストに 1 つ instance を増やすだけ。
-const memoPrintFlow = createPrintFlow({
-  viewName: "memo",
-  prepare: () => doRenderMemo({ limit: lastMemoNo() || appState.patients.length }),
-  restore: () => doRenderMemo(),
-});
-const sharedPrintFlow = createPrintFlow({
-  viewName: "shared",
-  prepare: () => doRenderShared({ limit: lastSharedNo() || appState.patients.length }),
-  restore: () => doRenderShared(),
-});
-const overviewPrintFlow = createPrintFlow({
-  viewName: "overview",
-  prepare: () => renderOverviewScreen(),
-});
-const settingsPrintFlow = createPrintFlow({
-  viewName: "settings",
-});
-
-document.getElementById("memoPrintBtn")?.addEventListener("click", memoPrintFlow.print);
-document.getElementById("sharedPrintBtn")?.addEventListener("click", sharedPrintFlow.print);
-document.getElementById("overviewPrintBtn")?.addEventListener("click", overviewPrintFlow.print);
-document.getElementById("settingsPrintBtn")?.addEventListener("click", settingsPrintFlow.print);
-
-// ============================
 // Import / Export
 // ============================
 
@@ -313,7 +252,6 @@ initImportExport({
   renderHome: doRenderHome,
   renderDetail: doRenderDetail,
   renderSettings,
-  renderOverviewScreen,
   renderMemoScreen: doRenderMemo,
   renderSharedScreen: doRenderShared,
   showView,
@@ -405,16 +343,6 @@ initHomeQr();
 initSettingsQr();
 // 設定QR受信後はビュー全体を再描画して反映を即時に見せる
 setOnSettingsApplied(() => refreshPatientUI());
-initAdminUI();
-setAdminAppliedHandler(() => {
-  doRenderHome();
-  doRenderDetail();
-  const v = document.querySelector(".view.active")?.id;
-  if (v === "memoView") doRenderMemo();
-  else if (v === "sharedView") doRenderShared();
-});
-
-
 function doSortByRoom() {
   if (!confirm(t("main.sortByRoom.confirm"))) return;
   const cur = appState.patients[selectedNo - 1];
@@ -547,8 +475,6 @@ function updateAppTitle(val) {
   // 端末固定 title。localStorage 経由で永続化、live state にも反映。
   updateDeviceTitle(val || t("app.title"));
   document.title = appState.title;
-  const printHead = document.querySelector(".overviewPrintHead");
-  if (printHead) printHead.textContent = appState.title + " — 総覧";
 }
 
 // 現在アクティブなワークスペースの label を非同期に取得 → ヘッダー入力欄へ反映
@@ -716,10 +642,6 @@ if (headerMenuOverlay) headerMenuOverlay.addEventListener("click", (e) => {
   if (e.target === headerMenuOverlay) closeHeaderMenu();
 });
 
-document.getElementById("menuPrintBtn")?.addEventListener("click", () => {
-  closeHeaderMenu();
-  overviewPrintFlow.print();
-});
 // DB アイコンは settingsDbBtn の ID のままハンバーガー内に置いてあり、
 // import-export.js が click を拾って chooser を開く。ここではメニュー close だけ追加。
 document.getElementById("settingsDbBtn")?.addEventListener("click", closeHeaderMenu);

@@ -39,15 +39,14 @@ export async function listOtherWorkspaces() {
     .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 }
 
-// 指定 ws の bundle に 1 患者を末尾追加して保存 (active か非 active かを問わない)。
-// 戻り値: 追加後の bundle の patients.length (= 新患者の表示上の position+1)
-async function appendPatientToWorkspace(destId, patient) {
+// 指定 ws の bundle に複数患者を末尾追加して保存 (active か非 active かを問わない)。
+// 戻り値: 追加後の bundle の patients.length (= 末尾患者の表示上の position+1)
+async function appendPatientsToWorkspace(destId, patients) {
   const bundle = await loadBundle(destId);
   if (!bundle) throw new Error(`workspace not found: ${destId}`);
-  // patients セクションが空 or 無いケースも素直に array 化
   const current = getSection(bundle, SECTION.PATIENTS);
   const next = Array.isArray(current) ? current.slice() : [];
-  next.push(patient);
+  for (const p of patients) next.push(p);
   bundle.sections = bundle.sections || {};
   bundle.sections.patients = next;
   // saveBundle は label を省略すれば既存 label を温存する
@@ -55,42 +54,70 @@ async function appendPatientToWorkspace(destId, patient) {
   return next.length;
 }
 
-// 移動操作の本体。
-//   srcPatientIdx: 元 ws の患者 index (0-based)
-//   destId / destLabel: 移動先 workspace の id + 表示用 label
-export async function movePatient(srcPatientIdx, destId, destLabel) {
-  const src = appState.patients[srcPatientIdx];
-  if (!src) throw new Error("patient not found");
-  if (destId === getActiveWorkspaceId()) {
-    throw new Error("cannot move within the same workspace");
-  }
+// 1 患者用の thin wrapper (互換維持)
+async function appendPatientToWorkspace(destId, patient) {
+  return appendPatientsToWorkspace(destId, [patient]);
+}
 
-  // 1) 移動先用のコピー作成。pid は新発番 (移動先で患者識別子が衝突しないように)。
-  //    transferredAt / transferredTo は付けない (移動先では「新規追加された患者」扱い)。
-  //    status は BLUE (新着マーク)。updatedAt は now。
-  const copy = {
+// 移動先用に「コピー版」を作る (pid 新発番、status BLUE、transferred マーカー無し)
+function buildDestCopy(src) {
+  return {
     ...src,
     pid: newPatientId(),
     status: STATUS.BLUE,
     updatedAt: Date.now(),
     transferredAt: 0,
     transferredTo: "",
-    // tags / a / p は配列/オブジェクトなので shallow copy だと参照共有してしまう
     tags: Array.isArray(src.tags) ? src.tags.slice() : [],
     a: { text: String(src.a?.text ?? "") },
     p: { text: String(src.p?.text ?? "") },
   };
+}
 
-  // 2) 移動先 ws へ append + save。失敗したら元 ws を一切触らず例外を caller に投げる
-  await appendPatientToWorkspace(destId, copy);
+// 元 ws の patient に「他 ws へ移動した」マーカーを立てる (物理削除はしない)
+function markPatientTransferred(p, destLabel) {
+  p.transferredAt = Date.now();
+  p.transferredTo = String(destLabel || "");
+  p.status = STATUS.GRAY;
+}
 
-  // 3) 元 ws のレコードにマーカーを立てる (物理削除はしない = データ温存)
-  src.transferredAt = Date.now();
-  src.transferredTo = String(destLabel || "");
-  src.status = STATUS.GRAY;
-  markUpdated(srcPatientIdx + 1);
+// 移動操作の本体 (1 患者用)。
+//   srcPatientIdx: 元 ws の患者 index (0-based)
+//   destId / destLabel: 移動先 workspace の id + 表示用 label
+export async function movePatient(srcPatientIdx, destId, destLabel) {
+  return movePatients([srcPatientIdx], destId, destLabel);
+}
+
+// 複数患者を一括移動する。失敗時は元 ws を触らず例外を投げる (atomicity)。
+//   srcPatientIndices: 移動対象の patient.index (0-based) 配列。空 idx (= 範囲外
+//   や空患者) は内部でスキップ。
+export async function movePatients(srcPatientIndices, destId, destLabel) {
+  if (destId === getActiveWorkspaceId()) {
+    throw new Error("cannot move within the same workspace");
+  }
+  // 1) 有効な patient だけを抽出
+  const valid = [];
+  for (const idx of srcPatientIndices) {
+    const p = appState.patients[idx];
+    if (!p) continue;
+    valid.push({ idx, src: p });
+  }
+  if (!valid.length) return 0;
+
+  // 2) 移動先用コピーを一括作成
+  const copies = valid.map(({ src }) => buildDestCopy(src));
+
+  // 3) 移動先 ws へまとめて append + save (失敗したら例外を caller に)
+  await appendPatientsToWorkspace(destId, copies);
+
+  // 4) 元 ws の各患者にマーカーを立てる
+  for (const { idx, src } of valid) {
+    markPatientTransferred(src, destLabel);
+    markUpdated(idx + 1);
+  }
   // 移動の完全性のためここは即時保存 (debounce しない)
   await saveNow();
+  return valid.length;
 }
 
 // 表示用ヘルパ
@@ -113,14 +140,16 @@ export function decorateTransferredName(name, p) {
 // ============================
 
 let _onMoveDoneCb = null;
+let _targetIndices = [];   // 移動対象の patient index 配列。複数 = ホーム長押し「移動 ×5」
 
-// 患者画面の「移動」ボタン → ピッカーを開く。完了時に onMoveDone() を呼ぶ
-// (caller 側で renderHome / renderDetail を再描画する想定)。
-export function openMovePatientModal(patientIdx, onMoveDone) {
+// ピッカーを開く (1 患者 / 複数患者 兼用)。完了時に onMoveDone() を呼ぶ
+//   patientIndices: 数値 (1 患者) or 配列 (複数患者)
+export function openMovePatientModal(patientIndices, onMoveDone) {
   const overlay = document.getElementById("movePatientOverlay");
   if (!overlay) return;
   _onMoveDoneCb = onMoveDone || null;
-  renderMovePatientList(patientIdx);
+  _targetIndices = Array.isArray(patientIndices) ? patientIndices.slice() : [patientIndices];
+  renderMovePatientList();
   overlay.classList.add("active");
 }
 
@@ -128,9 +157,10 @@ function closeMovePatientModal() {
   const overlay = document.getElementById("movePatientOverlay");
   if (overlay) overlay.classList.remove("active");
   _onMoveDoneCb = null;
+  _targetIndices = [];
 }
 
-async function renderMovePatientList(patientIdx) {
+async function renderMovePatientList() {
   const host = document.getElementById("movePatientList");
   if (!host) return;
   host.textContent = "";
@@ -158,11 +188,20 @@ async function renderMovePatientList(patientIdx) {
     row.appendChild(main);
     row.addEventListener("click", async () => {
       const destName = ws.label || ws.title || t("io.ws.untitled");
-      const srcPatient = appState.patients[patientIdx];
-      const patientLabel = (srcPatient?.name || srcPatient?.room || `#${patientIdx + 1}`);
-      if (!confirm(t("move.confirm", { patient: patientLabel, dest: destName }))) return;
+      const indices = _targetIndices.slice();
+      const isBulk = indices.length > 1;
+      // confirm: 単一なら患者ラベル, 複数なら件数表記
+      let confirmed;
+      if (isBulk) {
+        confirmed = confirm(t("move.confirm.bulk", { count: indices.length, dest: destName }));
+      } else {
+        const srcPatient = appState.patients[indices[0]];
+        const patientLabel = (srcPatient?.name || srcPatient?.room || `#${indices[0] + 1}`);
+        confirmed = confirm(t("move.confirm", { patient: patientLabel, dest: destName }));
+      }
+      if (!confirmed) return;
       try {
-        await movePatient(patientIdx, ws.id, destName);
+        await movePatients(indices, ws.id, destName);
         closeMovePatientModal();
         if (_onMoveDoneCb) _onMoveDoneCb();
       } catch (err) {

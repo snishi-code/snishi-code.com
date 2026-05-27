@@ -55,9 +55,6 @@
   "tagGroupAssign": {},
   "tagGroupingEnabled": false,
 
-  "adminEnabled": false,
-  "adminTerminal": false,
-  "rosterPassphrase": "",
   "deviceId": "",
 
   "_app": {

@@ -105,15 +105,10 @@ function appendNewPatients(importedPatients) {
   return count;
 }
 
-// 受信した settings を反映。管理機能関連 (adminEnabled / adminTerminal /
-// rosterPassphrase) は現端末の状態を維持し、取り込まない。
+// 受信した settings を反映。
 // 永続化は呼出側 (importFromBundle) の saveNow に集約。
 function applyImportedSettings(sSettings) {
-  const merged = { ...sSettings };
-  merged.adminEnabled = settings.adminEnabled;
-  merged.adminTerminal = settings.adminTerminal;
-  merged.rosterPassphrase = settings.rosterPassphrase;
-  setSettings(merged);
+  setSettings({ ...sSettings });
 }
 
 function importedAppStateFromBundle(bundle) {
@@ -139,12 +134,10 @@ function refreshTitleUI() {
   const appTitleInput = document.getElementById("appTitleInput");
   if (appTitleInput) appTitleInput.value = appState.title;
   document.title = appState.title;
-  const printHead = document.querySelector(".overviewPrintHead");
-  if (printHead) printHead.textContent = appState.title + " — 総覧";
 }
 
 export function initImportExport(callbacks) {
-  const { renderHome, renderDetail, renderSettings, renderOverviewScreen, renderMemoScreen, renderSharedScreen, refreshHeaderWsLabel } = callbacks;
+  const { renderHome, renderDetail, renderSettings, renderMemoScreen, renderSharedScreen, refreshHeaderWsLabel } = callbacks;
 
   const settingsImportFile = document.getElementById("settingsImportFile");
   const settingsDbBtn = document.getElementById("settingsDbBtn");
@@ -155,12 +148,10 @@ export function initImportExport(callbacks) {
     renderHome();
     const settingsView = document.getElementById("settingsView");
     const detailView = document.getElementById("detailView");
-    const overviewView = document.getElementById("overviewView");
     const memoView = document.getElementById("memoView");
     const sharedView = document.getElementById("sharedView");
     if (settingsView && settingsView.classList.contains("active")) renderSettings();
     if (detailView && detailView.classList.contains("active")) renderDetail();
-    if (overviewView && overviewView.classList.contains("active")) renderOverviewScreen();
     if (memoView && memoView.classList.contains("active")) renderMemoScreen();
     if (sharedView && sharedView.classList.contains("active")) renderSharedScreen();
   }

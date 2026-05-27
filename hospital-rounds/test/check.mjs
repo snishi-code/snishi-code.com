@@ -393,8 +393,9 @@ const rosterMod = await import(rosterUrl);
 
 await test("compactHistory folds old commits into baseSnapshot", async () => {
   const store = await freshStore();
-  // admin を有効にして rosterState が記録される状態に
-  store.settings.adminEnabled = true;
+  // v7+ では FEATURE_ROSTER_OPS=false で recordOp が no-op だが、
+  // ensureRosterState は admin ガートなしで rosterState を作る (= Git 基盤として
+  // 単独利用可能)。本テストは roster.js の compactHistory() 動作の単体検査。
   rosterMod.ensureRosterState();
 
   const now = Date.now();
@@ -421,7 +422,6 @@ await test("compactHistory folds old commits into baseSnapshot", async () => {
 
 await test("compactHistory is idempotent when no old commits", async () => {
   const store = await freshStore();
-  store.settings.adminEnabled = true;
   rosterMod.ensureRosterState();
 
   const now = Date.now();
@@ -484,33 +484,6 @@ await test("t() returns key on missing entry", async () => {
   const { t } = await import("../src/i18n.js");
   const out = t("totally.unknown.key.xyz");
   assert.equal(out, "totally.unknown.key.xyz");
-});
-
-// ============================
-// 9b) passphrase strength: 12 文字未満は短すぎる扱い、文字種多様性でスコア加算
-// ============================
-section("passphrase strength");
-
-await test("computePassphraseStrength: < 12 chars is tooShort (score 0)", async () => {
-  const m = await import("../src/features/passphrase-strength.js");
-  assert.equal(m.PASSPHRASE_MIN_LEN, 12);
-  assert.deepEqual(m.computePassphraseStrength(""), { score: 0, level: "empty" });
-  assert.equal(m.computePassphraseStrength("short").level, "tooShort");
-  assert.equal(m.computePassphraseStrength("abcdefghijk").level, "tooShort"); // 11 chars
-});
-
-await test("computePassphraseStrength: 12+ chars gets at least weak", async () => {
-  const m = await import("../src/features/passphrase-strength.js");
-  const r = m.computePassphraseStrength("abcdefghijkl");
-  assert.ok(r.score >= 1);
-  assert.ok(r.level !== "tooShort" && r.level !== "empty");
-});
-
-await test("computePassphraseStrength: char-class diversity raises score", async () => {
-  const m = await import("../src/features/passphrase-strength.js");
-  const weak = m.computePassphraseStrength("aaaaaaaaaaaa"); // 12 lowers only
-  const strong = m.computePassphraseStrength("Abcdefgh1234!@");  // 14 with mix
-  assert.ok(strong.score > weak.score);
 });
 
 // ============================

@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 6.10.0
+現在のバージョン: 7.0.0
 
 ## バージョニング方針
 
@@ -14,6 +14,13 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **7.0.0** (**breaking**): 機能整理 + 患者移動を home メニューに統合
+  - **印刷機能を完全削除**: `features/print.js` / `views/overview.js` / `createPrintFlow` / 各 view の Print ボタン / ハンバーガーの印刷ボタン / `.overviewPrintHead` / `.overviewTbl*` CSS / `overview.printHead` i18n を撤去。将来必要になった時は再設計予定 (今の電子カルテ普及状況では優先度低)
+  - **管理機能を完全削除 (Git 基盤の roster.js は温存)**: `features/admin.js` / `admin-ui.js` / `passphrase-strength.js` を削除。`adminPanelWrap` HTML / 設定画面の管理セクション / `isAdmin*` 呼び出し全て撤去。`settings.adminEnabled` / `adminTerminal` / `rosterPassphrase` を defaultSettings / normalizeSettings から外し、関連 i18n キー 40 個 + `validateAdminTerminal` 関数を削除。**`roster.js` は温存** (Git-like commit history 基盤は将来の sync 機能で再利用)。`recordOp` のゲートを `if (!settings.adminEnabled)` から `if (!FEATURE_ROSTER_OPS)` (現在 false) に変更してドメインから admin を完全切り離し
+  - **患者移動を home 長押しメニューに統合**: action menu を 2×2 → 3×2 に拡張、移動 ×1 / 移動 ×5 を追加 (青系、矢印アイコン)。`move-patient.js#movePatients(indices, destId, label)` で複数患者一括対応 (atomicity: 移動先 save 成功後に元 ws をマーク、失敗時は全くロールバック)。`openMovePatientModal` は単数/複数兼用、空患者は自動スキップ。患者画面ヘッダーの `detailMovePatientBtn` を撤去 (操作場所が「ホーム長押し」に統一)
+  - **i18n**: `patientButton.action.move{1,5}.{title,aria}` / `move.confirm.bulk` 追加
+  - **LOC 削減**: JS 9,649 → **8,912 行** (ネット **-737 行**)。ビルド 619 KB → **590 KB**
+  - **テスト**: 45 → 42 件 (passphrase strength 3 件削除、roster 2 件は admin gate なしに改修して維持)
 - **6.10.0**: フォーマット入力 UI のシンプル化 + グループトグルの視認性向上
   - **数字系フォーマットの備考欄を撤去**: `buildNumberRow` / `buildFractionRow` から memo input を削除。反映後に textarea で直接編集する想定。`applyFormatInput` の number / fraction 分岐から memo 連結を除去。`body.mixed` 4 列 grid は維持しつつ、memo 列は空 placeholder (`formatInputMemoPlaceholder`) で埋めて行間整合を保つ。date は memo を温存 (Labo/CT prefill 用)
   - **グループフォーマット トグルの刷新**: 旧 アイコンのみの `detailFormatGroupBtn` → テキスト + アイコン + chevron の `formatGroupToggleBtn` に。通常時は「通常」、active 時はグループ名 (例「発熱対応」) + 青ハイライトで適用状態が一目で分かる。`refreshFormatGroupToggle()` を `renderDetail` から呼んで患者切替時も即時更新

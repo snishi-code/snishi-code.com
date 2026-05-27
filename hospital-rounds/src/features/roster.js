@@ -5,9 +5,14 @@
 // Does NOT track clinical data (SOAP, memo, shared, vitals, status).
 //
 // The roster state (rosterId / baseSnapshot / commits / head) lives in its
-// own module-level binding (store.js: rosterState). It is created lazily —
-// devices that never enable the admin/sync features keep it null and never
-// emit roster fields in their exports.
+// own module-level binding (store.js: rosterState). It is created lazily.
+//
+// v7.0.0 で admin (管理機能) UI を撤去したが、Git 基盤としての本モジュール
+// は将来の同期機能のために温存する。アクティブに ops を記録するかどうかは
+// 下の FEATURE_ROSTER_OPS フラグで制御。現在は false (= dormant)。
+// 将来 sync 機能を再実装する時は、このフラグを設定駆動 / UI 駆動に変えて
+// true にすると、既存の recordOp 配線がそのまま動作再開する。
+const FEATURE_ROSTER_OPS = false;
 
 import {
   appState, settings, rosterState, setRosterState,
@@ -88,10 +93,9 @@ const FLUSH_MS = 1500;
 
 export function recordOp(op) {
   if (!op || !op.type) return;
-  // The commit log is part of the admin/sync overlay. With admin disabled the
-  // bundle stays free of roster fields — single-device users never accrue
-  // this metadata.
-  if (!settings.adminEnabled) return;
+  // FEATURE_ROSTER_OPS が false の間は no-op (admin/sync 未導入時)。
+  // bundle.commits[] は空のままで、単独端末ユーザーは余計な metadata を負わない。
+  if (!FEATURE_ROSTER_OPS) return;
   _pendingOps.push(op);
   if (_flushTimer) clearTimeout(_flushTimer);
   _flushTimer = setTimeout(flushCommit, FLUSH_MS);

@@ -11,7 +11,6 @@ import { makePatientTagPicker, getPatientTags, setPatientTags } from "../feature
 import { makeRoomInput, formatPatientLabel } from "../features/room.js";
 import { isPatientTransferred } from "../features/move-patient.js";
 import { t } from "../i18n.js";
-import { isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
 import { scanQR, isScannerSupported } from "../features/qr-scan.js";
 import { buildTimestampHeader } from "../features/qr-protocol.js";
@@ -280,12 +279,7 @@ export function renderDetail(syncDetailMemoDisplay) {
   // 編集モード用の name input は隠れた状態で値だけ保持
   if (detailTitle) {
     detailTitle.value = String(p?.name ?? "");
-    // Non-admin terminal: cannot edit existing names; can fill empty
-    if (isNonAdminTerminal() && p?.name) {
-      detailTitle.readOnly = true;
-    } else {
-      detailTitle.readOnly = false;
-    }
+    detailTitle.readOnly = false;
   }
   if (syncDetailMemoDisplay) syncDetailMemoDisplay();
   setSelectedStatusButtons(p.status);
@@ -293,13 +287,11 @@ export function renderDetail(syncDetailMemoDisplay) {
   // 患者切替時は常に表示モードに戻す
   setDetailEditing(false);
 
-  const nonAdmin = isNonAdminTerminal();
   const detailRoomSlot = document.getElementById("detailRoomSlot");
   if (detailRoomSlot) {
     detailRoomSlot.textContent = "";
     const roomInp = makeRoomInput(selectedNo - 1);
     roomInp.classList.add("detailRoomInput");
-    if (nonAdmin) roomInp.readOnly = true;
     detailRoomSlot.appendChild(roomInp);
   }
 
@@ -307,10 +299,6 @@ export function renderDetail(syncDetailMemoDisplay) {
   if (detailDoctorSlot) {
     detailDoctorSlot.textContent = "";
     const picker = makePatientTagPicker(selectedNo - 1, () => renderInlineTags());
-    if (nonAdmin) {
-      const trigger = picker.querySelector(".tagPickerTrigger");
-      if (trigger) { trigger.disabled = true; trigger.style.cursor = "default"; trigger.style.background = "#f9fafb"; }
-    }
     detailDoctorSlot.appendChild(picker);
   }
 

@@ -192,9 +192,6 @@
           </button>
         </div>
         <div class="detailTopActions">
-          <button class="iconBtn" id="sharedAdminBtn" type="button" data-i18n-title="shared.admin.tooltip" data-i18n-aria="shared.admin.tooltip" title="管理" aria-label="管理" style="display:none;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
-          </button>
           <button class="iconBtn helpLinkBtn" data-help-page="04_メモ・共有" type="button" title="共有画面の説明" aria-label="共有画面の説明">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </button>
@@ -220,70 +217,6 @@
             </button>
           </div>
           <textarea id="sharedPasteArea" style="min-height: 160px;"></textarea>
-        </div>
-      </div>
-
-      <div class="card qrWrap" id="adminPanelWrap">
-        <div class="cardHead">
-          <div class="label" data-i18n="admin.roster.label">名簿</div>
-          <div class="segRow" style="gap:6px;">
-            <button class="iconBtn" id="adminModeDiffBtn" type="button" title="差分QR" aria-label="差分QR">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18"/><path d="M12 3v18"/></svg>
-            </button>
-            <button class="iconBtn" id="adminModeFullBtn" type="button" title="コピー" aria-label="コピー">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            </button>
-            <button class="iconBtn selected" id="adminModePasteBtn" type="button" data-i18n-title="qr.import.tooltip" data-i18n-aria="qr.import.tooltip" title="取込" aria-label="取込">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <div id="adminPanelQrBody">
-          <div class="cardBody">
-            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
-              <span class="qrHint" id="adminQrPageMeta"></span>
-              <span class="qrHint" id="adminQrStatus" style="margin-left:auto;"></span>
-            </div>
-            <div class="qrHint">
-              <div class="mono" id="adminQrTextPreview" style="word-break:break-all;white-space:pre-wrap;font-size:11px;"></div>
-            </div>
-          </div>
-          <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border-top:1px solid var(--line);background:#fafafa;flex-wrap:wrap">
-            <div class="qrHint" data-i18n="admin.qr.multiHint">複数QRの場合は順番に読み取ってください。</div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <button class="secondary" id="adminQrPrevBtn" type="button" data-i18n-title="qr.prev.tooltip" data-i18n-aria="qr.prev.tooltip" title="前" aria-label="前">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-              </button>
-              <button class="secondary" id="adminQrNextBtn" type="button" data-i18n-title="qr.next.tooltip" data-i18n-aria="qr.next.tooltip" title="次" aria-label="次">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-              </button>
-            </div>
-          </div>
-          <canvas id="adminQrCanvas" width="800" height="800"></canvas>
-        </div>
-
-        <div id="adminPanelPasteBody" style="display:none;">
-          <div class="cardBody">
-            <div class="qrHint" style="margin-bottom:8px;">
-              カメラで読み取った各QRのテキストを順不同で貼り付け、最後に「取込」をタップしてください。
-            </div>
-            <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-              <button class="iconBtn" id="adminImportScanBtn" type="button" data-i18n-title="qr.scan.tooltip" data-i18n-aria="qr.scan.tooltip" title="カメラで QR を読む" aria-label="カメラで QR を読む">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-              </button>
-            </div>
-            <textarea id="adminImportArea" style="min-height:160px;font-size:12px;" placeholder="==ADMIN 1/N==&#10;..."></textarea>
-            <div id="adminImportStatus" class="qrHint" style="margin-top:6px;"></div>
-            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-              <button class="iconBtn" id="adminImportApplyBtn" type="button" data-i18n-title="qr.apply.tooltip" data-i18n-aria="qr.apply.tooltip" title="取込" aria-label="取込">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              </button>
-              <button class="iconBtn" id="adminImportClearBtn" type="button" data-i18n-title="qr.clearInput.tooltip" data-i18n-aria="qr.clearInput.tooltip" title="入力をクリア" aria-label="入力をクリア">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -326,15 +259,6 @@
         <div class="grid docsDemoGrid" id="docsDemoGrid"></div>
       </div>
       <iframe id="docsIframe" title="説明書" src=""></iframe>
-    </section>
-
-    <!-- Overview view (ハンバーガーの印刷から一時的に切替して印刷するためのテンプレート) -->
-    <section class="view" id="overviewView" aria-label="総覧">
-      <!-- overviewPrintHead は印刷時のみ表示。本文は main.js で title 入力欄から動的に更新される -->
-      <div class="overviewPrintHead" aria-hidden="true">回診 — 総覧</div>
-      <div class="overviewTableWrap">
-        <table class="overviewTbl" id="overviewTable"></table>
-      </div>
     </section>
 
     <!-- Settings view -->
@@ -467,28 +391,6 @@
         </div>
       </div>
 
-      <div class="card" id="adminCard">
-        <div class="cardHead">
-          <div class="label" title="管理機能" aria-label="管理機能" style="display:flex;align-items:center;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
-          </div>
-          <button class="iconBtn helpLinkBtn" data-help-page="07_管理機能（ベータ）" type="button" title="管理機能の説明" aria-label="管理機能の説明" style="margin-left:auto;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          </button>
-          <button class="iconBtn" id="adminEnableBtn" type="button" title="有効/無効切替" aria-label="有効/無効切替">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="adminToggleIcon"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/></svg>
-          </button>
-        </div>
-        <div class="cardBody" id="adminBody">
-          <div id="rosterPassphraseWrap" style="display:none;">
-            <label style="display:block;margin-bottom:4px;" data-i18n="settings.title.rosterPassphrase">合言葉</label>
-            <input type="password" id="rosterPassphraseInput" class="settingsInp" autocomplete="off" data-i18n-placeholder="admin.passphrase.hint.minlen" placeholder="12 文字以上。英数字・記号や日本語を混ぜると強くなります。" />
-            <div class="passStrengthRow" id="passphraseStrengthMeter"></div>
-            <div class="qrHint" style="margin-top:6px;" data-i18n="admin.passphrase.hint">名簿のコピー時のみ使用します。受信側はコピーの取込時に同じ合言葉を入力する必要があります。日々の差分QRは合言葉不要で同じ名簿の端末間で自動的にやり取りされます。</div>
-            <div class="qrHint" style="margin-top:6px;"><span data-i18n="admin.passphrase.codeLabel">認証コード</span>: <span class="mono" id="rosterIdLabel" style="font-size:11px;">—</span></div>
-          </div>
-        </div>
-      </div>
       </div>
     </section>
 
@@ -516,10 +418,8 @@
           <div id="detailTransferredBannerHost"></div>
         </div>
         <div class="detailTopActions">
-          <!-- 他のワークスペースへ患者を移動 (lucide: move-right-3) -->
-          <button class="iconBtn" id="detailMovePatientBtn" type="button" data-i18n-title="move.title" data-i18n-aria="move.title" title="他のワークスペースへ移動" aria-label="他のワークスペースへ移動">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h13"/><path d="m13 6 6 6-6 6"/><path d="M21 4v16"/></svg>
-          </button>
+          <!-- v7.0+: 患者移動ボタンは home 画面の長押しメニューに統合 (こちらからは撤去)。
+               フォーマットグループ トグルが先頭に来る -->
           <!-- フォーマットグループ トグル: 通常時は薄グレー、active 時は青ハイライト。
                文字でグループ名を表示するので「適用中かどうか」が一目で分かる -->
           <button class="formatGroupToggleBtn" id="detailFormatGroupBtn" type="button" data-i18n-title="formatGroup.toggle.title" data-i18n-aria="formatGroup.toggle.title" title="フォーマットグループを切替" aria-label="フォーマットグループを切替">
@@ -632,9 +532,6 @@
 
     <div class="popupMenuOverlay" id="headerMenuOverlay">
       <div class="popupMenu menuIcons">
-        <button class="iconBtn" id="menuPrintBtn" type="button" title="印刷" aria-label="印刷">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-        </button>
         <button class="iconBtn" id="settingsDbBtn" type="button" data-i18n-title="io.db.title" data-i18n-aria="io.db.title" title="データ管理" aria-label="データ管理">
           <!-- lucide: database (DB cylinder) -->
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6"/></svg>
@@ -651,21 +548,30 @@
     <div class="popupMenuOverlay" id="actionMenuOverlay">
       <div class="popupMenu actionMenu">
         <div class="popupTitle" id="actionMenuTitle">患者の操作</div>
-        <div class="actionGrid">
-          <button class="actionGridBtn add" id="actionAdd1Btn" type="button" title="1人追加（下へ）" aria-label="1人追加（下へ）">
+        <!-- 3 列 2 行: [+1] [−1] [→1] / [+5] [−5] [→5] -->
+        <div class="actionGrid actionGrid3col">
+          <button class="actionGridBtn add" id="actionAdd1Btn" type="button" data-i18n-title="patientButton.action.add1.title" data-i18n-aria="patientButton.action.add1.aria" title="1人追加（下へ）" aria-label="1人追加（下へ）">
             <span class="actionGridSign">+</span><span class="actionGridNum">1</span>
           </button>
-          <button class="actionGridBtn del" id="actionDeleteBtn" type="button" title="1人削除" aria-label="1人削除">
+          <button class="actionGridBtn del" id="actionDeleteBtn" type="button" data-i18n-title="patientButton.action.delete1.title" data-i18n-aria="patientButton.action.delete1.aria" title="1人削除" aria-label="1人削除">
             <span class="actionGridSign">−</span><span class="actionGridNum">1</span>
           </button>
-          <button class="actionGridBtn add" id="actionAdd5Btn" type="button" title="5人追加（下へ）" aria-label="5人追加（下へ）">
+          <button class="actionGridBtn move" id="actionMove1Btn" type="button" data-i18n-title="patientButton.action.move1.title" data-i18n-aria="patientButton.action.move1.aria" title="1人を他ワークスペースへ移動" aria-label="1人を他ワークスペースへ移動">
+            <svg class="actionGridIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h13"/><path d="m13 6 6 6-6 6"/><path d="M21 4v16"/></svg>
+            <span class="actionGridNum">1</span>
+          </button>
+          <button class="actionGridBtn add" id="actionAdd5Btn" type="button" data-i18n-title="patientButton.action.add5.title" data-i18n-aria="patientButton.action.add5.aria" title="5人追加（下へ）" aria-label="5人追加（下へ）">
             <span class="actionGridSign">+</span><span class="actionGridNum">5</span>
           </button>
-          <button class="actionGridBtn del" id="actionDelete5Btn" type="button" title="5人削除（下へ）" aria-label="5人削除（下へ）">
+          <button class="actionGridBtn del" id="actionDelete5Btn" type="button" data-i18n-title="patientButton.action.delete5.title" data-i18n-aria="patientButton.action.delete5.aria" title="5人削除（下へ）" aria-label="5人削除（下へ）">
             <span class="actionGridSign">−</span><span class="actionGridNum">5</span>
           </button>
+          <button class="actionGridBtn move" id="actionMove5Btn" type="button" data-i18n-title="patientButton.action.move5.title" data-i18n-aria="patientButton.action.move5.aria" title="5人を他ワークスペースへ移動" aria-label="5人を他ワークスペースへ移動">
+            <svg class="actionGridIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h13"/><path d="m13 6 6 6-6 6"/><path d="M21 4v16"/></svg>
+            <span class="actionGridNum">5</span>
+          </button>
         </div>
-        <button class="actionMenuClose" id="actionCancelBtn" type="button" title="閉じる" aria-label="閉じる">
+        <button class="actionMenuClose" id="actionCancelBtn" type="button" data-i18n-title="patientButton.action.close.title" data-i18n-aria="patientButton.action.close.aria" title="閉じる" aria-label="閉じる">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>

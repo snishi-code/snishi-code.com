@@ -2,14 +2,12 @@
 
 import { settings, appState, rosterState, saveSettings } from "../store.js";
 import { DEFAULT_TAGS, clone } from "../constants.js";
-import { isAdminEnabled, isAdminTerminal, isNonAdminTerminal } from "../features/admin.js";
 import { recordOp } from "../features/roster.js";
 import { renameTagAt, deleteTagAt, moveTag, isTagGroupingEnabled, getUserGroups, getTagsInGroup, getUnassignedTags, addGroup, renameGroup, setGroupMode, deleteGroup, setTagGroup, getAllTags, getGroupForTag, makeAddTagWidget } from "../features/tags.js";
 import { GROUP_MODE_SINGLE, GROUP_MODE_MULTI } from "../constants.js";
 import { bindLongPressAndDrag } from "../features/drag.js";
 import { startNewFormat, startEditFormat, deleteFormatById } from "../features/formats.js";
 import { getAllFormatGroups, startNewFormatGroup, startEditFormatGroup, deleteFormatGroupById } from "../features/format-groups.js";
-import { renderPassphraseStrength, PASSPHRASE_MIN_LEN } from "../features/passphrase-strength.js";
 import { t } from "../i18n.js";
 
 const STATUS_SWATCHES = { statusYellow: "#f59e0b", statusGreen: "#14b8a6", statusGray: "#6b7280", statusBlue: "#2563eb" };
@@ -219,29 +217,6 @@ function renderToggleIcon(iconEl, on) {
   } else {
     iconEl.innerHTML = `<rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor"/>`;
   }
-}
-
-function renderAdminExtras() {
-  const wrap = document.getElementById("rosterPassphraseWrap");
-  // 合言葉入力欄は管理端末のときだけ表示
-  if (wrap) wrap.style.display = (settings.adminEnabled && settings.adminTerminal) ? "" : "none";
-  const passInp = document.getElementById("rosterPassphraseInput");
-  if (passInp) passInp.value = String(settings.rosterPassphrase || "");
-  const meter = document.getElementById("passphraseStrengthMeter");
-  if (meter) renderPassphraseStrength(meter, settings.rosterPassphrase || "");
-  const idLabel = document.getElementById("rosterIdLabel");
-  if (idLabel) idLabel.textContent = rosterState?.rosterId ? rosterState.rosterId.slice(0, 18) : "—";
-}
-
-function renderAdminToggles() {
-  const card = document.getElementById("adminCard");
-  const body = document.getElementById("adminBody");
-  const adminIcon = document.getElementById("adminToggleIcon");
-  if (!card) return;
-  const on = !!settings.adminEnabled;
-  card.classList.toggle("disabled", !on);
-  renderToggleIcon(adminIcon, on);
-  if (body) body.style.display = on ? "" : "none";
 }
 
 function renderTagGroupingToggleIcon() {
@@ -534,8 +509,6 @@ function renderTagsList() {
 
 export function renderSettings() {
   renderClearTargets();
-  renderAdminToggles();
-  renderAdminExtras();
   renderTagGroupingToggleIcon();
   renderTagsList();
   renderTagGroups();
@@ -578,53 +551,6 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
       });
     });
   }
-
-  const adminEnableBtn = document.getElementById("adminEnableBtn");
-  if (adminEnableBtn) adminEnableBtn.addEventListener("click", () => {
-    if (settings.adminEnabled) {
-      // 被管理端末は脱出不可（管理端末から名簿を受け取った時点で固定）。
-      // 単に管理機能を切りたいなら、管理機能オフの端末から名簿を取り直すこと。
-      if (isNonAdminTerminal()) {
-        alert(t("admin.toggle.locked"));
-        return;
-      }
-      if (!confirm(t("admin.toggle.confirm.off"))) return;
-      settings.adminEnabled = false;
-      settings.adminTerminal = false;
-    } else {
-      // トグルをオン → この端末が管理端末に。
-      if (!confirm(t("admin.toggle.confirm.on"))) return;
-      settings.adminEnabled = true;
-      settings.adminTerminal = true;
-      if (!settings.rosterPassphrase) {
-        // 12 文字未満なら再入力を促す。キャンセルは何もせず終了。
-        while (true) {
-          const phrase = prompt(t("admin.passphrase.prompt"));
-          if (phrase === null) break;
-          const trimmed = phrase.trim();
-          if ([...trimmed].length < PASSPHRASE_MIN_LEN) {
-            alert(t("admin.passphrase.tooShort", { len: [...trimmed].length }));
-            continue;
-          }
-          settings.rosterPassphrase = trimmed;
-          break;
-        }
-      }
-    }
-    saveSettings();
-    renderAdminToggles();
-    renderAdminExtras();
-    renderTagsList();
-    if (_renderPatientUIFn) _renderPatientUIFn();
-  });
-
-  const rosterPassphraseInput = document.getElementById("rosterPassphraseInput");
-  if (rosterPassphraseInput) rosterPassphraseInput.addEventListener("input", () => {
-    settings.rosterPassphrase = String(rosterPassphraseInput.value ?? "");
-    const meter = document.getElementById("passphraseStrengthMeter");
-    if (meter) renderPassphraseStrength(meter, settings.rosterPassphrase);
-    saveSettings();
-  });
 
   if (addTagBtn) addTagBtn.addEventListener("click", () => {
     if (!Array.isArray(settings.tags)) settings.tags = [];
