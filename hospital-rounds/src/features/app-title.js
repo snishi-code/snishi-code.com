@@ -7,9 +7,11 @@
 //   普段は readonly。鉛筆 (createEditToggle) でだけ編集可能
 //   タップ (非編集時) → ホーム遷移
 //
-// - ワークスペース名は「アクティブ ws の label」(IDB の bundles テーブル) を
-//   表示するだけ。v7.6+ で rename は設定画面に移行したため、ヘッダー上では
-//   常時 readonly。タップで WS picker を開く (features/ws-picker.js)
+// - ワークスペース名は「アクティブ ws の label」(IDB の bundles テーブル):
+//   - 普段は readonly。タップで WS picker を開く (features/ws-picker.js)
+//   - 鉛筆 (createEditToggle) で editable に切替 → blur/Enter で renameBundle
+//   v7.6.0 で「常時 readonly + 設定画面 rename」にしたが、v7.6.1 で「ヘッダー
+//   でも鉛筆経由で rename 可」を復活させた。設定画面の rename と二系統並立
 //
 // 公開 API:
 //   initAppTitle({ titleToggleSetter, navToHome })
@@ -24,7 +26,7 @@
 // ============================
 
 import { appState, updateDeviceTitle, scheduleSave } from "../store.js";
-import { listBundles, getActiveWorkspaceId } from "../storage.js";
+import { listBundles, getActiveWorkspaceId, renameBundle } from "../storage.js";
 import { t } from "../i18n.js";
 
 // field-sizing 未対応ブラウザ向けの size 属性同期。
@@ -86,12 +88,34 @@ export function initAppTitle({ getTitleToggle, navToHome }) {
   }
 
   if (appWsLabelInput) {
-    // v7.6+: WS 名の rename は設定画面の「ワークスペース管理」セクションで行う。
-    // ヘッダー側の WS 名表示は「タップ → WS picker (切替/新規作成)」のトリガー
-    // 専用に降格。常時 readonly で、editable にはしない。
     refreshAppWsLabel();
     appWsLabelInput.readOnly = true;
     appWsLabelInput.placeholder = t("header.ws.placeholder");
-    // タップ時の click 動作は features/ws-picker.js の initWsPicker() が配線する
+    appWsLabelInput.addEventListener("input", () => syncInputSize(appWsLabelInput));
+    // 編集モード時の blur/Enter で renameBundle を発火。
+    // (タップ時の WS picker 起動は features/ws-picker.js が配線、readonly チェックで競合回避)
+    const commitWsLabel = async () => {
+      // 編集モードに入っていない (readonly) 時の blur は無視 (picker タップ後など)
+      if (appWsLabelInput.readOnly) return;
+      const newLabel = String(appWsLabelInput.value || "").trim();
+      const activeId = getActiveWorkspaceId();
+      if (!newLabel) {
+        refreshAppWsLabel();
+        return;
+      }
+      try {
+        await renameBundle(activeId, newLabel);
+      } catch (e) {
+        console.error("ws rename failed:", e);
+        refreshAppWsLabel();
+      }
+    };
+    appWsLabelInput.addEventListener("blur", commitWsLabel);
+    appWsLabelInput.addEventListener("keydown", (e) => {
+      if (getTitleToggle()?.isEditing() && e.key === "Enter") {
+        e.preventDefault();
+        getTitleToggle().exit();
+      }
+    });
   }
 }

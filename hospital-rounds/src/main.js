@@ -379,8 +379,9 @@ setOnWorkspaceChanged(() => {
 // Boot 11: タイトル + WS 名 (header)
 // ============================
 // タイトル: 普段は readonly。タップ → ホーム遷移、鉛筆で編集可。
-// WS 名:   常時 readonly。タップで WS picker を開く (切替/新規作成)。
-//          rename / delete は設定画面の「ワークスペース管理」セクションで行う。
+// WS 名:   普段は readonly でタップ → WS picker (切替/新規作成)。
+//          鉛筆で editable に切替 → blur/Enter で renameBundle 発火。
+//          rename は設定画面でも可能 (こちらは複数 WS を続けて編集する用途)。
 let titleToggle = null;
 initAppTitle({
   getTitleToggle: () => titleToggle,
@@ -391,11 +392,15 @@ titleToggle = createEditToggle({
   container: document.querySelector(".appTitleRow"),
   onEnter: () => {
     const a = document.getElementById("appTitleInput");
+    const w = document.getElementById("appWsLabelInput");
     if (a) { a.readOnly = false; a.focus(); a.select(); }
+    if (w) w.readOnly = false;
   },
   onExit: () => {
     const a = document.getElementById("appTitleInput");
+    const w = document.getElementById("appWsLabelInput");
     if (a) { a.readOnly = true; a.blur(); }
+    if (w) { w.readOnly = true; w.blur(); }
   },
 });
 initWsPicker();

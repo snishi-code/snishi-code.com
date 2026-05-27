@@ -393,10 +393,14 @@
            ので、デフォルト値で常時 ON で動く。将来 admin 機能で expose する想定。 -->
 
       <!-- ワークスペース管理 (v7.6+: rename / delete / JSON I/O は設定画面に集約)。
-           切替・新規作成はヘッダーの WS 名タップで開く WS picker のほうが手早い。 -->
+           切替・新規作成はヘッダーの WS 名タップで開く WS picker のほうが手早い。
+           cardHead のラベルは他カード (タグ・クリア対象 等) と同じくアイコンで統一。 -->
       <div class="card">
         <div class="cardHead">
-          <div class="label" data-i18n="settings.title.workspaces">ワークスペース管理</div>
+          <div class="label" data-i18n-title="settings.title.workspaces" data-i18n-aria="settings.title.workspaces" title="ワークスペース管理" aria-label="ワークスペース管理" style="display:flex;align-items:center;">
+            <!-- lucide: database (DB cylinder) -->
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6"/></svg>
+          </div>
         </div>
         <div class="cardBody">
           <div class="movePatientHint" data-i18n="settings.workspace.hint"></div>
