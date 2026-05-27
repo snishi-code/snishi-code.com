@@ -253,6 +253,11 @@
   "io.json.export": "JSON 保存",
   "io.json.import.aria": "JSON ファイルから取込",
   "io.json.export.aria": "JSON ファイルに保存",
+  "header.title.tooltip": "ホームに戻る",
+  "header.ws.tooltip": "ワークスペース名",
+  "header.ws.placeholder": "ワークスペース名",
+  "header.edit.tooltip": "タイトル / ワークスペース名を編集",
+
   "move.title": "他のワークスペースへ移動",
   "move.hint": "移動先のワークスペースを選んでください。元のワークスペースには「(移)」マークで履歴が残ります。",
   "move.confirm": "「{patient}」を「{dest}」へ移動します。元のワークスペースには移動済マークで残ります。よろしいですか？",

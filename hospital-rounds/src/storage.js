@@ -42,11 +42,17 @@ const LEGACY_BUNDLE_KEY = "rounds_v2_soap_ryoyo_ward_bundle_v1";
 const LEGACY_STATE_KEY = "rounds_v2_soap_ryoyo_ward";
 const LEGACY_SETTINGS_KEY = "rounds_v2_soap_ryoyo_ward_settings_v1";
 
+// Device-wide app title (localStorage). v6.5+ で workspace ごとの title から
+// 端末固定の title に変更 (workspace 切替で reset されないように)。
+// 旧 workspace の meta.title は migration 元として 1 回だけ参照する。
+const DEVICE_TITLE_KEY = "hospital_rounds_device_app_title";
+
 export const STORAGE_KEYS = Object.freeze({
   db: DB_NAME,
   store: STORE_NAME,
   defaultWorkspace: DEFAULT_WORKSPACE_ID,
   activeKey: ACTIVE_KEY,
+  deviceTitle: DEVICE_TITLE_KEY,
   legacyBundle: LEGACY_BUNDLE_KEY,
   legacyState: LEGACY_STATE_KEY,
   legacySettings: LEGACY_SETTINGS_KEY,
@@ -65,6 +71,31 @@ export function setActiveWorkspaceId(id) {
   if (typeof localStorage === "undefined") return;
   if (!id || typeof id !== "string") return;
   localStorage.setItem(ACTIVE_KEY, id);
+}
+
+// ============================
+// Device-wide app title (localStorage)
+// ============================
+
+// 端末固定のタイトル。未設定なら "" を返す (caller 側でデフォルト文言を充てる)
+export function getDeviceAppTitle() {
+  if (typeof localStorage === "undefined") return "";
+  return localStorage.getItem(DEVICE_TITLE_KEY) || "";
+}
+
+export function setDeviceAppTitle(title) {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(DEVICE_TITLE_KEY, String(title || ""));
+}
+
+// migration 用: localStorage に未設定なら旧 workspace の meta.title から
+// 1 回だけコピーして移行する。空 / 既に設定済みなら何もしない。
+export function migrateLegacyTitleIfNeeded(fallbackFromWorkspace) {
+  if (typeof localStorage === "undefined") return;
+  if (localStorage.getItem(DEVICE_TITLE_KEY) != null) return;
+  const t = String(fallbackFromWorkspace || "").trim();
+  if (!t) return;
+  localStorage.setItem(DEVICE_TITLE_KEY, t);
 }
 
 // ============================

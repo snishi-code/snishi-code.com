@@ -16,6 +16,7 @@ import {
   saveBundle as storageSave,
   createWorkspaceRecord,
   setActiveWorkspaceId,
+  getDeviceAppTitle, setDeviceAppTitle, migrateLegacyTitleIfNeeded,
 } from "./storage.js";
 
 // ============================
@@ -422,10 +423,18 @@ function applyBundleToLive(bundle) {
   // 患者マイグレーション前に旧 oRules を退避 (label/normalText の正引きに使う)
   rememberMigrationContext(sSettings || {});
 
+  // 旧 workspace の meta.title から端末固定 title へ 1 回だけマイグレート。
+  // 既に localStorage に title があるなら何もしない (= workspace 切替で上書きしない)。
+  const legacyMetaTitle = (sMeta && typeof sMeta.title === "string") ? sMeta.title : "";
+  migrateLegacyTitleIfNeeded(legacyMetaTitle);
+  const deviceTitle = getDeviceAppTitle();
+
   settings = normalizeSettings(sSettings || {});
   appState = {
     v: 3,
-    title: (sMeta && typeof sMeta.title === "string") ? sMeta.title : "回診",
+    // title はもはや per-workspace ではなく端末固定。device title が未設定なら
+    // 「回診」をデフォルト (i18n の app.title はここでは循環避けのためベタ書き)。
+    title: deviceTitle || "回診",
     patients: normalizePatientArray(Array.isArray(sPatients) ? sPatients : null),
   };
   _migrationORulesContext = null;
@@ -435,6 +444,13 @@ function applyBundleToLive(bundle) {
     commits: sHistory ? sHistory.commits : [],
     head: sHistory ? sHistory.head : null,
   });
+}
+
+// device-wide title を書き換え & live state へ反映。caller は UI を再描画する責務。
+export function updateDeviceTitle(title) {
+  const t = String(title || "");
+  appState.title = t || "回診";
+  setDeviceAppTitle(t);
 }
 
 // Async hydration. main.js must `await initStore()` before rendering anything

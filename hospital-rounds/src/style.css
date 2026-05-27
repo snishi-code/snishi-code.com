@@ -264,6 +264,25 @@
       cursor: pointer;
     }
 
+    /* ワークスペース名は title より一段控えめ (medium weight + muted) */
+    .appWsLabelInput {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--muted, #475569);
+      max-width: 160px;
+    }
+    .appWsLabelInput[readonly] {
+      cursor: default;
+    }
+
+    /* title / ws name 間の "/" セパレータ */
+    .appTitleWsSeparator {
+      color: var(--muted, #94a3b8);
+      font-weight: 400;
+      font-size: 14px;
+      user-select: none;
+    }
+
     .appTitle .sub {
       font-size: 12px;
       color: var(--muted)

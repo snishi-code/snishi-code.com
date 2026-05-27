@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 6.4.0
+現在のバージョン: 6.5.0
 
 ## バージョニング方針
 
@@ -14,6 +14,13 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **6.5.0**: タイトル端末固定化 + ヘッダーに WS 名表示 + 画面更新バグ修正
+  - **タイトル端末固定化**: 旧 `appState.title` (= per-workspace の `bundle.sections.meta.title`) を localStorage `hospital_rounds_device_app_title` に移行。workspace 切替や新規作成で title が「回診」に reset される不具合を解消。`storage.js#{getDeviceAppTitle,setDeviceAppTitle,migrateLegacyTitleIfNeeded}` を追加。初回起動時のみ旧 meta.title を localStorage へ 1 回マイグレート
+  - **ヘッダーに WS 名表示**: `appWsLabelInput` をタイトル input の右に追加 (`/` セパレータ付き)。鉛筆編集モードで両方とも編集可能、Enter / blur で確定 (title は `updateDeviceTitle`、ws name は `renameBundle`)。DB モーダルから rename した時にもヘッダー表示が更新される (`refreshHeaderWsLabel` callback)
+  - **画面更新バグ修正**:
+    - workspace 切替時に `setSelectedNo(1)` を再描画より前にリセット (旧: 前 ws の slot 51 を新 ws で開こうとして空患者が描画されるバグ)
+    - フォーマット反映時のタグ merge を `appendToPanel` より前に移動 (旧: 再描画が先に走り inline タグ表示が一拍遅れていた)
+  - **i18n**: `header.{title.tooltip,ws.tooltip,ws.placeholder,edit.tooltip}` 追加
 - **6.4.0**: 患者の他ワークスペース移動機能 (案 3: 元データ無傷 + マーカー方式)
   - **データモデル**: `patient.transferredAt: number` (0 = 未移動 / 移動時刻 ms) + `patient.transferredTo: string` (移動先 ws の label) を追加。元の name / room は触らない。`isPatientEmpty` は transferredAt が立っていたら false (履歴として残す)
   - **`features/move-patient.js`**: 新規モジュール。`listOtherWorkspaces` / `appendPatientToWorkspace` / `movePatient` / `openMovePatientModal` / `initMovePatient` を export

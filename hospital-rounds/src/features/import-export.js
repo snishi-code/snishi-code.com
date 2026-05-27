@@ -147,7 +147,7 @@ function refreshTitleUI() {
 }
 
 export function initImportExport(callbacks) {
-  const { renderHome, renderDetail, renderSettings, renderOverviewScreen, renderMemoScreen, renderSharedScreen } = callbacks;
+  const { renderHome, renderDetail, renderSettings, renderOverviewScreen, renderMemoScreen, renderSharedScreen, refreshHeaderWsLabel } = callbacks;
 
   const settingsImportFile = document.getElementById("settingsImportFile");
   const settingsDbBtn = document.getElementById("settingsDbBtn");
@@ -407,6 +407,8 @@ export function initImportExport(callbacks) {
         try {
           await renameBundle(r.id, next);
           r.label = next;
+          // active workspace を改名した時のみヘッダーの ws 名表示を更新
+          if (r.id === getActiveWorkspaceId() && refreshHeaderWsLabel) refreshHeaderWsLabel();
         } catch (err) {
           console.error("workspace rename failed:", err);
           alert(t("io.ws.rename.failed"));

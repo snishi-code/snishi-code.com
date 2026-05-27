@@ -434,9 +434,11 @@ function applyFormatInput() {
     }
   }
   const out = parts.join(format.joiner || ", ");
-  appendToPanel(panel, out);
-  // タグ merge (format.tags を患者タグに追加。重複は無視、外す処理は無し)
+  // タグ merge を appendToPanel より前に実行する。appendToPanel が _onTextChanged
+  // (= 詳細画面の再描画) を発火するので、その時点で tags も新しい状態になっている
+  // ようにしておく (= inline タグ表示が即時更新される)。
   applyFormatTags(format);
+  appendToPanel(panel, out);
   closeFormatInputModal();
 }
 

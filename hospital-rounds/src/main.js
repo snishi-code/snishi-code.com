@@ -3,7 +3,7 @@
 import "./style.css";
 
 import { STATUS } from "./constants.js";
-import { STORAGE_KEYS } from "./storage.js";
+import { STORAGE_KEYS, listBundles, getActiveWorkspaceId, renameBundle } from "./storage.js";
 import {
   appState, settings, selectedNo,
   setAppState, setRosterState, setSelectedNo,
@@ -11,6 +11,7 @@ import {
   normalizeLoaded, ensurePatientsHaveAllOKeys,
   setMarkUpdatedHandler, requestStoragePersistence,
   initStore, flushSavePending, setOnWorkspaceChanged,
+  updateDeviceTitle,
 } from "./store.js";
 
 import { renderHome, updateCountChip, setHomeEditMode } from "./views/home.js";
@@ -314,6 +315,8 @@ initImportExport({
   renderMemoScreen: doRenderMemo,
   renderSharedScreen: doRenderShared,
   showView,
+  // DB モーダルから active ws の rename が走ったらヘッダーの ws 名表示も更新
+  refreshHeaderWsLabel: refreshAppWsLabel,
 });
 
 // ============================
@@ -487,10 +490,25 @@ if (clearAllBtn) {
 // ============================
 
 function updateAppTitle(val) {
-  appState.title = val || t("app.title");
+  // 端末固定 title。localStorage 経由で永続化、live state にも反映。
+  updateDeviceTitle(val || t("app.title"));
   document.title = appState.title;
   const printHead = document.querySelector(".overviewPrintHead");
   if (printHead) printHead.textContent = appState.title + " — 総覧";
+}
+
+// 現在アクティブなワークスペースの label を非同期に取得 → ヘッダー入力欄へ反映
+async function refreshAppWsLabel() {
+  const inp = document.getElementById("appWsLabelInput");
+  if (!inp) return;
+  try {
+    const activeId = getActiveWorkspaceId();
+    const all = await listBundles();
+    const me = all.find(r => r.id === activeId);
+    inp.value = me ? (me.label || t("io.ws.untitled")) : "";
+  } catch (e) {
+    console.warn("refreshAppWsLabel failed:", e);
+  }
 }
 
 // ============================
@@ -520,44 +538,81 @@ document.addEventListener("visibilitychange", () => {
 // Workspace 切替時に画面全体を再描画する。store 側で live state は既に
 // 入れ替わっているので、ここでは render を走らせるだけ。
 setOnWorkspaceChanged(() => {
-  refreshPatientUI();
-  // ホーム選択もリセット (前のワークスペースの患者 index を引きずらないように)
+  // 患者 index を前 ws から引きずらないように、再描画前に必ずリセット (詳細画面に
+  // 出ていた場合、旧 ws の slot 51 を新 ws で開こうとして空患者が描画されるバグ対策)
   setSelectedNo(1);
-  // タイトル / app タイトル入力欄も新しい workspace のものに同期
+  refreshPatientUI();
+  // タイトル (端末固定なので変化しない) の表示同期 + ws label を更新
   const appTitleInput = document.getElementById("appTitleInput");
   if (appTitleInput) appTitleInput.value = appState.title;
   document.title = appState.title;
+  refreshAppWsLabel();
 });
 
-// タイトル入力欄: 共通の編集トグルで管理。普段は readonly でタップ＝ホーム遷移。
-// 鉛筆タップで編集モード、外側クリック・ビュー遷移・Enter で確定。
+// タイトル / ワークスペース名 入力欄: 共通の編集トグルで管理。
+//   - 普段は readonly。タイトル input をタップ → ホーム遷移
+//   - 鉛筆タップで両方とも編集可、外側クリック・Enter で確定
+//   - タイトルは端末固定 (updateAppTitle 経由で localStorage に保存)
+//   - ws name は renameBundle で IDB の label を更新 (現アクティブ ws の label)
 const appTitleInput = document.getElementById("appTitleInput");
+const appWsLabelInput = document.getElementById("appWsLabelInput");
 const headerEditTitleBtn = document.getElementById("headerEditTitleBtn");
 const appTitleRow = document.querySelector(".appTitleRow");
 let titleToggle = null;
 
 // field-sizing 未対応ブラウザ向けの size 属性同期。
-function syncAppTitleSize() {
-  if (!appTitleInput) return;
-  const len = (appTitleInput.value || "").length || 1;
-  appTitleInput.size = Math.max(2, Math.min(20, len));
+function syncInputSize(inp) {
+  if (!inp) return;
+  const len = (inp.value || "").length || 1;
+  inp.size = Math.max(2, Math.min(20, len));
 }
 
 if (appTitleInput) {
   appTitleInput.value = appState.title;
   updateAppTitle(appState.title);
-  syncAppTitleSize();
+  syncInputSize(appTitleInput);
   appTitleInput.addEventListener("input", (e) => {
     updateAppTitle(e.target.value);
-    syncAppTitleSize();
+    syncInputSize(appTitleInput);
+    // title は localStorage に保存済 (updateDeviceTitle 内)。
+    // bundle 側の meta.title も整合させるため debounce save も発火しておく
     scheduleSave();
   });
-  // readonly 中のクリックはホーム遷移として扱う
   appTitleInput.addEventListener("click", () => {
     if (!titleToggle?.isEditing()) navToHome();
   });
-  // 編集中の Enter で確定
   appTitleInput.addEventListener("keydown", (e) => {
+    if (titleToggle?.isEditing() && e.key === "Enter") {
+      e.preventDefault();
+      titleToggle.exit();
+    }
+  });
+}
+
+if (appWsLabelInput) {
+  // 初期値は async fetch で埋まる
+  refreshAppWsLabel();
+  appWsLabelInput.placeholder = t("header.ws.placeholder");
+  appWsLabelInput.addEventListener("input", () => syncInputSize(appWsLabelInput));
+  // 編集確定時 (blur or Enter) に renameBundle を呼ぶ。input 中はまだ保存しない
+  // (タイプ途中の中間状態が IDB に頻繁に書かれるのを避ける)
+  const commitWsLabel = async () => {
+    const newLabel = String(appWsLabelInput.value || "").trim();
+    const activeId = getActiveWorkspaceId();
+    if (!newLabel) {
+      // 空入力は無視して直前の値に戻す
+      refreshAppWsLabel();
+      return;
+    }
+    try {
+      await renameBundle(activeId, newLabel);
+    } catch (e) {
+      console.error("ws rename failed:", e);
+      refreshAppWsLabel();
+    }
+  };
+  appWsLabelInput.addEventListener("blur", commitWsLabel);
+  appWsLabelInput.addEventListener("keydown", (e) => {
     if (titleToggle?.isEditing() && e.key === "Enter") {
       e.preventDefault();
       titleToggle.exit();
@@ -569,15 +624,22 @@ titleToggle = createEditToggle({
   triggerBtn: headerEditTitleBtn,
   container: appTitleRow,
   onEnter: () => {
-    if (!appTitleInput) return;
-    appTitleInput.readOnly = false;
-    appTitleInput.focus();
-    appTitleInput.select();
+    if (appTitleInput) {
+      appTitleInput.readOnly = false;
+      appTitleInput.focus();
+      appTitleInput.select();
+    }
+    if (appWsLabelInput) appWsLabelInput.readOnly = false;
   },
   onExit: () => {
-    if (!appTitleInput) return;
-    appTitleInput.readOnly = true;
-    appTitleInput.blur();
+    if (appTitleInput) {
+      appTitleInput.readOnly = true;
+      appTitleInput.blur();
+    }
+    if (appWsLabelInput) {
+      appWsLabelInput.readOnly = true;
+      appWsLabelInput.blur();
+    }
   },
 });
 
