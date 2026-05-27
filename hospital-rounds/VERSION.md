@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 6.8.0
+現在のバージョン: 6.9.0
 
 ## バージョニング方針
 
@@ -14,6 +14,12 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **6.9.0**: アーキテクチャ整理 (forward compat + 移植性の store adapter 化)
+  - **forward compatibility**: `normalizePatientArray` と `normalizeSettings` を「未知フィールド温存型」に変更。new バージョンで追加されたフィールドを old バージョンが読み戻し → 再保存しても未知フィールドが失われない。`{ ...rawIfObject, ...validatedKnownFields }` パターン
+  - **qr-format.js を store-agnostic 化**: `setFormatStoreAdapter({getExistingFormats, getKnownTags, addFormat})` で外部から read/write を注入。`settings` / `saveSettings` / `getAllTags` への直接 import を撤去。これにより他アプリへの移植 / Preact 化時の差し替えが容易に
+  - **formats.js の save/delete を adapter 化**: `setFormatStoreAdapter({saveFormat, deleteFormat})` を追加。`saveFormatEdit` と `deleteFormatById` は adapter 経由で書き込む。adapter 未注入時は store 直接 mutate の fallback あり (単独 testing 用)
+  - **main.js**: 上記 2 つの adapter に store の実体を結線。「hospital-rounds アプリ内で動かす時の adapter」が明示的に
+  - **テスト**: forward compat の挙動を 2 件追加 (patient / settings 両方で未知フィールド温存)。43 → 45 件
 - **6.8.0**: コードクリーンナップ (規約遵守 + レガシー撤去)
   - **レガシー後方互換コード撤去** (CLAUDE.md「データ互換性の方針」に従いパイロット前は最新版のみ対応): `LEGACY_O_RULES` / `migrateLegacyOandVitalsToText` / `_migrationORulesContext` / `rememberMigrationContext` / `ensurePatientsHaveAllOKeys` を撤去。`normalizeSettings` から旧 `defaults.{s,a,p}` / `doctors` / `adminImportOnly` / `oRules` の取り込みを削除。`normalizeFormat` から旧 `format.type` フォールバックを削除。`normalizePatientArray` から旧 `doctor` / `vitals` / `o` の流し込みを削除。`storage.js` から localStorage legacy fallback (`LEGACY_BUNDLE_KEY` 等) と `migrateLegacyTitleIfNeeded` を削除。`bundle.js` から `legacyToBundle` (旧 `{appState, settings}` 形式) を削除。`defaults.json` から `_migration_legacy_o_rules` を削除。これに合わせて test 側の legacy fixture / legacy migration テストも撤去 (53 → 43 件、品質低下なし)。**ネット -236 JS LOC**
   - **H2: タッチターゲット 44x44**: `.iconBtn` に `min-width/min-height: 44px` を設定 (CLAUDE.md 規約徹底)。リスト行の compact iconBtn (`.ioDbRowEdit` / `.ioDbRowDel` / `.ioJsonIconBtn` / `.formatEditQrBtn`) は `min-width: 0 !important; min-height: 0` で個別オーバーライド

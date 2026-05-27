@@ -11,12 +11,14 @@
 //   - ID: 常に新発番 (修正版の上書きを避ける)
 //   - 同名: 末尾に "(2)", "(3)"... と自動付与で常に追加成功
 //   - tags: 受信側に未登録のタグは無視 (タグ辞書を勝手に増やさない)
+//
+// 移植性のため、store への直接書き込みは行わず、`setFormatStoreAdapter`
+// で渡された adapter を経由する。これにより qr-format.js は store の構造を
+// 知らずに動く (他アプリへの移植や Preact 化時の差し替えが容易)。
 // ============================
 
-import { settings, saveSettings } from "../store.js";
 import { FORMAT_PANELS, FORMAT_ITEM_KINDS, DEFAULT_ITEM_KIND, DEFAULT_LABEL_SEP_TEXT, DEFAULT_LABEL_SEP_OTHER } from "../constants.js";
 import { createQrFlow } from "./qr-flow.js";
-import { getAllTags } from "./tags.js";
 import { t } from "../i18n.js";
 
 const WIRE_V = 1;
@@ -24,6 +26,21 @@ const WIRE_V = 1;
 // 共有対象。null なら encodePayload が空ペイロードを返す (= 何も表示しない)
 let _formatToShare = null;
 export function setFormatToShare(format) { _formatToShare = format || null; }
+
+// store adapter: 受信フォーマット適用時の read/write を外から注入する。
+//   getExistingFormats(): 現存フォーマット配列 (read-only) を返す。同名チェックに使う
+//   getKnownTags():        登録済タグ名の配列。未登録タグの除外に使う
+//   addFormat(newFmt):     新フォーマットを永続化する。store / IDB への書き込みは
+//                          adapter の責務 (本モジュールは触らない)
+// adapter 未注入時は no-op フォールバック (テスト時 / 移植先未配線時の安全装置)
+let _adapter = {
+  getExistingFormats: () => [],
+  getKnownTags: () => [],
+  addFormat: () => { console.warn("[qr-format] addFormat called without adapter"); },
+};
+export function setFormatStoreAdapter(adapter) {
+  _adapter = { ..._adapter, ...(adapter || {}) };
+}
 
 function newFmtId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return "fmt_" + crypto.randomUUID();
@@ -69,7 +86,7 @@ function applyReceivedFormat(safe, ctrl) {
     alert(t("qrFormat.parse.failed"));
     return;
   }
-  const all = Array.isArray(settings.formats) ? settings.formats : [];
+  const all = _adapter.getExistingFormats() || [];
 
   // 同名 → 自動 rename
   const baseName = String(safe.name || t("qrFormat.untitled")).trim();
@@ -82,7 +99,7 @@ function applyReceivedFormat(safe, ctrl) {
   }
 
   // 未登録タグを除外
-  const knownTags = new Set(getAllTags());
+  const knownTags = new Set(_adapter.getKnownTags() || []);
   const safeTags = (Array.isArray(safe.tags) ? safe.tags : []).filter(t => knownTags.has(t));
   const droppedTags = (Array.isArray(safe.tags) ? safe.tags : []).filter(t => !knownTags.has(t));
 
@@ -120,9 +137,8 @@ function applyReceivedFormat(safe, ctrl) {
     }),
   };
 
-  if (!Array.isArray(settings.formats)) settings.formats = [];
-  settings.formats.push(newFmt);
-  saveSettings();
+  // 保存は adapter に委譲。store の実態を qr-format.js は知らない
+  _adapter.addFormat(newFmt);
   ctrl.close();
   if (_onAppliedHandler) _onAppliedHandler(newFmt);
   alert(t("qrFormat.imported.alert", { name: finalName }));

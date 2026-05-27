@@ -45,6 +45,53 @@ function newFmtId() {
   return "fmt_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 }
 
+// ============================
+// store adapter (移植性: 永続化を外から注入)
+//
+// formats.js は patient 画面の入力モーダル / 編集モーダルを担当する。
+// データ層 (settings.formats へのアクセス) は adapter 経由にして、別アプリ
+// への移植や Preact 化時の差し替えを容易にする。
+//
+// adapter API:
+//   saveFormat(format, { isNew }): フォーマットを永続化。新規/更新どちらも
+//   deleteFormat(id):              フォーマットを削除
+// adapter 未注入時は store の settings.formats を直接 mutate (現状互換)。
+// ============================
+let _formatStoreAdapter = null;
+export function setFormatStoreAdapter(adapter) {
+  _formatStoreAdapter = adapter && typeof adapter === "object" ? adapter : null;
+}
+
+function adapterSaveFormat(target, isNew) {
+  if (_formatStoreAdapter && typeof _formatStoreAdapter.saveFormat === "function") {
+    _formatStoreAdapter.saveFormat(target, { isNew });
+    return;
+  }
+  // フォールバック: adapter 未配線でも単独 testing 時に動くよう、settings を直接更新
+  if (!Array.isArray(settings.formats)) settings.formats = [];
+  if (isNew) {
+    settings.formats.push(target);
+  } else {
+    const idx = settings.formats.findIndex(f => f.id === target.id);
+    if (idx >= 0) settings.formats[idx] = target;
+    else settings.formats.push(target);
+  }
+  saveSettings();
+}
+
+function adapterDeleteFormat(id) {
+  if (_formatStoreAdapter && typeof _formatStoreAdapter.deleteFormat === "function") {
+    _formatStoreAdapter.deleteFormat(id);
+    return;
+  }
+  // フォールバック
+  if (!Array.isArray(settings.formats)) return;
+  const idx = settings.formats.findIndex(f => f.id === id);
+  if (idx < 0) return;
+  settings.formats.splice(idx, 1);
+  saveSettings();
+}
+
 // 新しい item オブジェクトを kind に応じたフィールドで生成
 function makeNewItem(kind) {
   const k = FORMAT_ITEM_KINDS.includes(kind) ? kind : DEFAULT_ITEM_KIND;
@@ -737,21 +784,15 @@ function saveFormatEdit() {
     });
 
   // 同一パネル内に isDefault は 1 つだけ。他はクリア
+  // (注: isDefault の排他制御は読み取り側 (settings.formats) で行う。adapter 経由でも
+  //  settings 自体は共有されているため、この場での mutation は移植先でも安全)
   if (target.isDefault) {
     for (const f of all) {
       if (f.id !== target.id && f.panel === target.panel) f.isDefault = false;
     }
   }
 
-  if (_currentEdit.isNew) {
-    if (!Array.isArray(settings.formats)) settings.formats = [];
-    settings.formats.push(target);
-  } else {
-    const idx = all.findIndex(f => f.id === target.id);
-    if (idx >= 0) settings.formats[idx] = target;
-    else settings.formats.push(target);
-  }
-  saveSettings();
+  adapterSaveFormat(target, _currentEdit.isNew);
   const cb = _currentEdit.onSaved;
   const savedTarget = target;
   closeFormatEditModal();
@@ -784,11 +825,7 @@ export function startEditFormat(format, onSaved) {
 }
 
 export function deleteFormatById(id) {
-  if (!Array.isArray(settings.formats)) return;
-  const idx = settings.formats.findIndex(f => f.id === id);
-  if (idx < 0) return;
-  settings.formats.splice(idx, 1);
-  saveSettings();
+  adapterDeleteFormat(id);
 }
 
 // ============================

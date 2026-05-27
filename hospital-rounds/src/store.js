@@ -112,6 +112,12 @@ function normalizeFormat(raw) {
 function normalizeSettings(raw) {
   const out = defaultSettings();
   if (!raw || typeof raw !== "object") return out;
+  // 未知フィールド温存 (forward compatibility): 旧バージョンが新版で追加された
+  // フィールドを読んだ時に消失しないように、out に無いキーは raw からそのまま持ち越す。
+  // 既知フィールドは下で validation + デフォルト補完されて上書きされる。
+  for (const k of Object.keys(raw)) {
+    if (!(k in out)) out[k] = raw[k];
+  }
   // formats: 新規登録された設定。空または欠落ならデフォルトを採用。
   if (Array.isArray(raw.formats)) {
     const cleaned = raw.formats.map(normalizeFormat).filter(Boolean);
@@ -235,7 +241,14 @@ function normalizePatientArray(arr) {
   for (let i = 0; i < len; i++) {
     const r = arr ? arr[i] : null;
     const d = makeDefaultPatient();
+    // 未知フィールド温存 (forward compatibility): 旧バージョンが新版で追加された
+    // フィールドを読み戻し → 再保存する経路で、未知フィールドが消失しないようにする。
+    // r をまず spread し、その後 known フィールドを validation 付きで上書きする。
+    // (未知フィールドの妥当性は保証しないので、誤フィールドや混入データもそのまま
+    //  保持されることに留意。パイロット前は許容範囲)
+    const base = (r && typeof r === "object") ? { ...r } : {};
     out[i] = {
+      ...base,
       pid: (r && typeof r.pid === "string" && r.pid) ? r.pid : d.pid,
       status: (r && typeof r.status === "string" && VALID_STATUSES.includes(r.status)) ? r.status : d.status,
       name: (r && typeof r.name === "string") ? r.name : d.name,

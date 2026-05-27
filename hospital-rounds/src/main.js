@@ -24,9 +24,10 @@ import { renderSettings, initSettingsView } from "./views/settings-view.js";
 import { showView, syncDetailMemoDisplay, lastMemoNo, lastSharedNo } from "./features/navigation.js";
 import { DOCS_BUNDLE } from "./docs-bundle.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
-import { initFormats, setOnTextChanged as setOnFormatTextChanged } from "./features/formats.js";
+import { initFormats, setOnTextChanged as setOnFormatTextChanged, setFormatStoreAdapter } from "./features/formats.js";
 import { initMovePatient } from "./features/move-patient.js";
-import { initQrFormat, closeQrFormatOverlay, setOnFormatApplied } from "./features/qr-format.js";
+import { initQrFormat, closeQrFormatOverlay, setOnFormatApplied, setFormatStoreAdapter as setQrFormatStoreAdapter } from "./features/qr-format.js";
+import { getAllTags as _getAllTagsForQr } from "./features/tags.js";
 import { initFormatGroups } from "./features/format-groups.js";
 import { t, applyI18n } from "./i18n.js";
 import { initImportExport } from "./features/import-export.js";
@@ -331,6 +332,40 @@ initNoAutofill();
 // ============================
 
 initActionMenu();
+
+// formats.js / qr-format.js は移植性のため store を直接触らず adapter 経由で書き込む。
+// ここで store の実体に紐付ける ("hospital-rounds 内で動かす時の adapter")
+setFormatStoreAdapter({
+  saveFormat: (target, { isNew }) => {
+    if (!Array.isArray(settings.formats)) settings.formats = [];
+    if (isNew) {
+      settings.formats.push(target);
+    } else {
+      const idx = settings.formats.findIndex(f => f.id === target.id);
+      if (idx >= 0) settings.formats[idx] = target;
+      else settings.formats.push(target);
+    }
+    saveSettings();
+  },
+  deleteFormat: (id) => {
+    if (!Array.isArray(settings.formats)) return;
+    const idx = settings.formats.findIndex(f => f.id === id);
+    if (idx < 0) return;
+    settings.formats.splice(idx, 1);
+    saveSettings();
+  },
+});
+
+setQrFormatStoreAdapter({
+  getExistingFormats: () => Array.isArray(settings.formats) ? settings.formats : [],
+  getKnownTags: () => _getAllTagsForQr(),
+  addFormat: (newFmt) => {
+    if (!Array.isArray(settings.formats)) settings.formats = [];
+    settings.formats.push(newFmt);
+    saveSettings();
+  },
+});
+
 initFormats();
 setOnFormatTextChanged(() => {
   doRenderDetail();

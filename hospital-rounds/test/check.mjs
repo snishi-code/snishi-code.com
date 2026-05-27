@@ -258,6 +258,54 @@ await test("status NONE + oFree text is NOT empty", async () => {
   assert.equal(store.isPatientEmpty(p), false);
 });
 
+await test("forward compat: unknown patient fields are preserved through normalize", async () => {
+  // 将来追加されるかもしれないフィールド (例: priority) を仕込んだ bundle を
+  // 読み込み、normalize 後も残っていることを確認 (現在の最新版が読んだ未知
+  // フィールドが drop されると、再保存時にデータ消失する)
+  const bundle = {
+    format: BUNDLE_FORMAT,
+    schema: 1,
+    sections: {
+      meta: { title: "回診" },
+      settings: {},
+      patients: [{
+        pid: "p_fwd",
+        status: "none",
+        name: "山田",
+        room: "101",
+        priority: "high",         // 未知フィールド (将来想定)
+        customFlags: { x: 1 },    // 未知フィールド (object)
+      }],
+    },
+  };
+  const store = await freshStore({ bundle });
+  const found = store.appState.patients.find(p => p.pid === "p_fwd");
+  assert.ok(found, "patient hydrated");
+  assert.equal(found.priority, "high", "unknown string field preserved");
+  assert.deepEqual(found.customFlags, { x: 1 }, "unknown object field preserved");
+  // 既知フィールドの validation は引き続き効くこと
+  assert.equal(found.name, "山田");
+  assert.equal(found.status, "none");
+});
+
+await test("forward compat: unknown settings fields are preserved", async () => {
+  const bundle = {
+    format: BUNDLE_FORMAT,
+    schema: 1,
+    sections: {
+      meta: { title: "回診" },
+      settings: {
+        futureFeature: { enabled: true },  // 未知フィールド
+        anotherFutureKey: [1, 2, 3],
+      },
+      patients: [],
+    },
+  };
+  const store = await freshStore({ bundle });
+  assert.deepEqual(store.settings.futureFeature, { enabled: true });
+  assert.deepEqual(store.settings.anotherFutureKey, [1, 2, 3]);
+});
+
 await test("status NONE + transferredAt set is NOT empty (移動済マーカー)", async () => {
   const store = await freshStore();
   const p = store.makeDefaultPatient();
