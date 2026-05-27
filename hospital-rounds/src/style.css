@@ -878,49 +878,61 @@
       padding: 4px 0;
     }
 
-    /* mixed (= 異なる kind が混在 / または全 number/fraction/date): 各行を flex で並べる。
-       label を一定幅 (64px) に揃えて縦に整える。値・memo は残り幅を分け合う。 */
+    /* mixed (= 異なる kind が混在 / または全 number/fraction/date): 4 列 grid で
+       行間を縦揃え (label / value / unit / memo)。fraction は value セルの中で
+       numer/slash/denom を flex で並べる (formatInputFracGroup でラップ)。
+       date は unit セルが空 span だが grid 列の整合性のために省略しない。
+       value セルは minmax で幅を制限し、memo が残り幅を持つ。 */
+    .formatInputBody.mixed {
+      display: grid;
+      grid-template-columns: max-content minmax(96px, 120px) max-content minmax(80px, 1fr);
+      column-gap: 8px;
+      row-gap: 8px;
+      align-items: center;
+    }
     .formatInputBody.mixed .formatInputRow {
+      display: contents;
+    }
+
+    /* fraction: value セル内で [numer] / [denom] を等幅に並べる */
+    .formatInputFracGroup {
       display: flex;
       align-items: center;
-      gap: 6px;
-      margin-bottom: 8px;
+      gap: 4px;
       min-width: 0;
     }
-    .formatInputBody.mixed .formatInputLabel {
-      flex: 0 0 64px;
-    }
-    .formatInputBody.mixed .formatInputRow .formatInputValue {
-      flex: 0 1 96px;
+    .formatInputFracGroup .formatInputValue {
+      flex: 1 1 0;
       width: auto;
-    }
-    .formatInputBody.mixed .formatInputRow .formatInputMemo {
-      flex: 1 1 80px;
-      width: auto;
-    }
-    /* fraction: 数値2つを "/" で結合。numer / denom は等幅で同サイズ */
-    .formatInputBody.mixed .formatInputRow.fraction .formatInputFracNumer,
-    .formatInputBody.mixed .formatInputRow.fraction .formatInputFracDenom {
-      flex: 0 1 56px;
+      min-width: 0;
     }
     .formatInputFracSlash {
       flex: 0 0 auto;
       font-weight: 700;
       color: var(--muted, #6b7280);
     }
-    /* date: native picker は幅が広くなりがちなので 1 行で */
-    .formatInputBody.mixed .formatInputRow.date .formatInputDate {
-      flex: 0 1 140px;
+
+    /* 狭幅 (~480px 未満) では value 列を縮めて触りやすく */
+    @media (max-width: 480px) {
+      .formatInputBody.mixed {
+        grid-template-columns: max-content minmax(72px, 1fr) max-content minmax(80px, 1.2fr);
+        column-gap: 6px;
+      }
     }
 
-    /* text 型: 従来の flex (1 行 = label + textarea + 規定文ボタン) */
+    /* text 型: label + textarea + 小さなチェックアイコン (右端固定) */
     .formatInputBody.text .formatInputRow {
       display: flex;
       align-items: center;
       gap: 6px;
       margin-bottom: 8px;
-      flex-wrap: wrap;
       min-width: 0;
+    }
+    .formatInputBody.text .formatInputText {
+      flex: 1 1 0;
+      width: auto;
+      min-width: 0;
+      flex-basis: auto;  /* mixed に持っていかれた 100% を解除 */
     }
 
     .formatInputLabel {
@@ -948,8 +960,6 @@
     }
 
     .formatInputText {
-      width: 100%;
-      flex-basis: 100%;
       resize: vertical;
       min-height: 32px;
     }
@@ -970,19 +980,21 @@
       box-sizing: border-box;
     }
 
+    /* 規定文ボタン: 小さなチェックアイコンに変更 (旧 v6.0.0 同様、行内右端) */
     .formatInputNormalBtn {
       flex: 0 0 auto;
-      width: auto;
-      min-height: 32px;
-      padding: 4px 10px;
-      margin: 0;
+      width: 32px !important;
+      height: 32px;
+      padding: 0 !important;
+      margin: 0 !important;
       border: 1px solid var(--status-green-bd, #16a34a);
       background: var(--status-green-bg, #dcfce7);
       color: var(--status-green-text, #166534);
       border-radius: 6px;
-      font-size: 13px;
-      font-weight: 700;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .formatInputNormalBtn:disabled {

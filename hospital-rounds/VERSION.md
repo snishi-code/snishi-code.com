@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 6.3.1
+現在のバージョン: 6.3.2
 
 ## バージョニング方針
 
@@ -14,6 +14,11 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **6.3.2**: フォーマット入力モーダルの仕上げ
+  - **iOS sticky inputMode 対策強化**: `setupNumericInput()` / `setupTextInput()` ヘルパを導入。IDL プロパティと HTML 属性 (`inputmode`) の両方を設定し、`pattern` / `autocomplete=off` / `autocapitalize=off` / `spellcheck=false` を付与、`focus` イベントで再アサート。fraction の数値入力でアルファベットキーボードが出るバグと、フィールド移動後にキーボード種別が残るバグを抑制
+  - **入力欄の縦揃え**: `body.mixed` を flex → CSS grid 4 列 (`label / value / unit / memo`) に変更。fraction の `numer / "/" / denom` は `formatInputFracGroup` でラップして value セルに収め、date は空 unit span を出して列を保つ。これで BP / P / SpO2 / RR / T などで unit と memo の先頭が縦に揃う
+  - **正常ボタンを小アイコン化**: `body.text` の `formatInputNormalBtn` を `flex-wrap` で 2 行に流れる大ボタンから、行内右端の 32×32 px チェックアイコン (緑) に戻す (旧 v6.0.0 と同等のサイズ感)
+  - `.formatInputText` の `flex-basis: 100%` を撤去 (これが折り返しの原因だった)
 - **6.3.1**: データ管理ポップアップの微調整
   - **横幅**: `.popupMenu.ioChooserMenu` を `min(92vw, 420px)` → `min(92vw, 360px)` に。レスポンシブのまま視覚的に締まる
   - **JSON 見出し**: 「JSON ファイル」→「JSON」 (`io.json.heading`)

@@ -178,6 +178,40 @@ function openFormatInputModal(format, panel) {
   }, 50);
 }
 
+// ============================
+// iOS Safari の inputMode 引きずり対策ヘルパ
+//
+// iOS は input のフォーカスを別の input に移動した時に、前の input の inputMode を
+// 引きずって誤った種類のキーボードを出すバグがある。対策:
+//   1) IDL プロパティ (.inputMode) と HTML 属性 (inputmode="...") の両方を設定
+//   2) pattern も付与 (数値系は数字キーボードを誘導)
+//   3) autocomplete / autocapitalize / spellcheck を off にして補完誤動作を防ぐ
+//   4) focus イベントで inputMode を再アサート (前の入力の影響を上書き)
+// ============================
+function setupNumericInput(inp, mode /* "decimal" | "numeric" */) {
+  inp.type = "text";
+  inp.inputMode = mode;
+  inp.setAttribute("inputmode", mode);
+  inp.setAttribute("pattern", mode === "numeric" ? "[0-9]*" : "[0-9.]*");
+  inp.autocomplete = "off";
+  inp.autocapitalize = "off";
+  inp.spellcheck = false;
+  inp.addEventListener("focus", () => {
+    inp.inputMode = mode;
+    inp.setAttribute("inputmode", mode);
+  });
+}
+
+function setupTextInput(inp) {
+  // textarea でも input でも同様。type は呼出元で設定済み想定。
+  inp.inputMode = "text";
+  inp.setAttribute("inputmode", "text");
+  inp.addEventListener("focus", () => {
+    inp.inputMode = "text";
+    inp.setAttribute("inputmode", "text");
+  });
+}
+
 function buildNumberRow(host, item) {
   const row = document.createElement("div");
   row.className = "formatInputRow number";
@@ -188,11 +222,11 @@ function buildNumberRow(host, item) {
   row.appendChild(label);
 
   const val = document.createElement("input");
-  val.type = "text";
-  val.inputMode = "decimal";
   val.className = "formatInputValue";
+  setupNumericInput(val, "decimal");
   row.appendChild(val);
 
+  // unit セルは常に出す (空 unit でも grid 列を揃える)
   const unit = document.createElement("span");
   unit.className = "formatInputUnit";
   unit.textContent = item.unit || "";
@@ -200,10 +234,9 @@ function buildNumberRow(host, item) {
 
   const memo = document.createElement("input");
   memo.type = "text";
-  // iOS Safari の inputMode 引きずり対策 (decimal の直後は text を明示)
-  memo.inputMode = "text";
   memo.className = "formatInputMemo";
   memo.placeholder = t("format.placeholder.memo");
+  setupTextInput(memo);
   row.appendChild(memo);
 
   host.appendChild(row);
@@ -219,22 +252,27 @@ function buildFractionRow(host, item) {
   label.textContent = item.label;
   row.appendChild(label);
 
+  // grid で「value セル」を 1 つに見せるため、numer / slash / denom を 1 つの
+  // div でラップする (display: contents は input には使えないので明示 wrap)。
+  const fracGroup = document.createElement("div");
+  fracGroup.className = "formatInputFracGroup";
+
   const numer = document.createElement("input");
-  numer.type = "text";
-  numer.inputMode = "decimal";
   numer.className = "formatInputValue formatInputFracNumer";
-  row.appendChild(numer);
+  setupNumericInput(numer, "decimal");
+  fracGroup.appendChild(numer);
 
   const slash = document.createElement("span");
   slash.className = "formatInputFracSlash";
   slash.textContent = "/";
-  row.appendChild(slash);
+  fracGroup.appendChild(slash);
 
   const denom = document.createElement("input");
-  denom.type = "text";
-  denom.inputMode = "decimal";
   denom.className = "formatInputValue formatInputFracDenom";
-  row.appendChild(denom);
+  setupNumericInput(denom, "decimal");
+  fracGroup.appendChild(denom);
+
+  row.appendChild(fracGroup);
 
   const unit = document.createElement("span");
   unit.className = "formatInputUnit";
@@ -243,9 +281,9 @@ function buildFractionRow(host, item) {
 
   const memo = document.createElement("input");
   memo.type = "text";
-  memo.inputMode = "text";
   memo.className = "formatInputMemo";
   memo.placeholder = t("format.placeholder.memo");
+  setupTextInput(memo);
   row.appendChild(memo);
 
   host.appendChild(row);
@@ -261,17 +299,24 @@ function buildDateRow(host, item) {
   label.textContent = item.label;
   row.appendChild(label);
 
-  // Q4: native <input type="date"> を使い、出力時に年を捨てて MM/DD だけ書く
+  // native <input type="date"> を使い、出力時に年を捨てて MM/DD だけ書く。
+  // type=date は inputMode に依存しない (OS のカレンダー UI が出る) ので setup 不要。
   const val = document.createElement("input");
   val.type = "date";
   val.className = "formatInputValue formatInputDate";
   row.appendChild(val);
 
+  // unit は date には無いが、grid 列を揃えるため空 span を出す
+  const unit = document.createElement("span");
+  unit.className = "formatInputUnit";
+  unit.textContent = "";
+  row.appendChild(unit);
+
   const memo = document.createElement("input");
   memo.type = "text";
-  memo.inputMode = "text";
   memo.className = "formatInputMemo";
   memo.placeholder = t("format.placeholder.dateMemo");
+  setupTextInput(memo);
   // normal は date item では「memo の prefill」として扱う (Labo / CT など)
   if (item.normal) memo.value = String(item.normal);
   row.appendChild(memo);
@@ -291,15 +336,18 @@ function buildTextRow(host, item) {
 
   const val = document.createElement("textarea");
   val.className = "formatInputValue formatInputText";
-  val.inputMode = "text";
   val.rows = 1;
+  setupTextInput(val);
   row.appendChild(val);
 
+  // 正常文がある場合に勧める小さなチェックアイコンボタン (旧 v6.0.0 同様、行内右端)
   const normalBtn = document.createElement("button");
   normalBtn.type = "button";
   normalBtn.className = "formatInputNormalBtn";
-  normalBtn.textContent = t("common.normal");
   normalBtn.title = item.normal ? t("format.normal.tooltip.has", { value: item.normal }) : t("format.normal.tooltip.empty");
+  normalBtn.setAttribute("aria-label", t("common.normal"));
+  // チェックマーク SVG (lucide: check)
+  normalBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
   if (!item.normal) normalBtn.disabled = true;
   normalBtn.addEventListener("click", () => {
     val.value = item.normal || "";
