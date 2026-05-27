@@ -15,10 +15,6 @@ export const STATUS = {
   BLUE: "blue",
 };
 
-// 旧 O 構造体の正常文。マイグレーション時にのみ参照する (旧 patient.o[key].normal=true
-// を文字列化するための表)。新コードは settings.formats に置換済み。
-export const LEGACY_O_RULES = APP_DEFAULTS._migration_legacy_o_rules;
-
 // 新フォーマット概念。アプリ起動時にユーザーが空なら以下が並ぶ。
 // type: "numeric" | "text"
 // panel: "S" | "O" | "A" | "P"  (内部フィールド。UI では SOAP セクション帰属で自動推定)
@@ -29,9 +25,7 @@ export const LEGACY_O_RULES = APP_DEFAULTS._migration_legacy_o_rules;
 export const DEFAULT_FORMATS = APP_DEFAULTS.formats;
 
 export const FORMAT_PANELS = Object.freeze(["S", "O", "A", "P"]);
-// 旧データ移行時のみ参照 (format.type === "numeric"/"text")。新規データには書き出さない。
-export const FORMAT_TYPES = Object.freeze(["numeric", "text"]);
-// 新モデル: item ごとに kind を持つ
+// item ごとに kind を持つ
 //   text     : label + 規定文 (normal) + textarea 入力。labelSep は既定で「：」
 //   number   : label + 単位 (unit) + 数値入力 + memo。labelSep は既定で " "
 //   fraction : label + 単位 (unit) + 数値2つを "/" で結合 (例 BP 120/53)

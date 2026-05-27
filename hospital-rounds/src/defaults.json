@@ -63,16 +63,5 @@
   "_app": {
     "patientCount": 50,
     "rosterDiffWindowDays": 30
-  },
-
-  "_migration_legacy_o_rules_removal_condition": "v3.0.0 で patient.o[key].{normal,note} 構造体を撤去した際の oFree 流し込みマイグレーション用テーブル。読み込み時 1 回のみ参照される (store.js: migrateLegacyOandVitalsToText)。v2 系で保存された bundle を一度も読まない端末が全員 v3 にマイグレーション済みであることを確認できたら (= 旧データが世の中から消えたら) このテーブルと関連コード (LEGACY_O_RULES export, migrateLegacyOandVitalsToText, _migrationORulesContext) を削除可能。実用上は最後の v2 バックアップを読み込むケースを考えると永続的に残しておく方が安全だが、コード簡素化のため将来的にカットする選択肢はある。目安: v3.0.0 リリースから 1 年経過 + ユーザー全員が v3 以降を一度起動済みの状態。",
-
-  "_migration_legacy_o_rules": [
-    { "key": "general",     "label": "General", "normalText": "良好" },
-    { "key": "lung",        "label": "肺音",    "normalText": "明らかなラ音なし" },
-    { "key": "bowel",       "label": "腸音",    "normalText": "正常" },
-    { "key": "abdomen",     "label": "腹部",    "normalText": "平坦軟、圧痛なし" },
-    { "key": "meal",        "label": "食事",    "normalText": "摂取良好" },
-    { "key": "elimination", "label": "排泄",    "normalText": "尿・便ともに特記なし" }
-  ]
+  }
 }

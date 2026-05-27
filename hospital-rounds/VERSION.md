@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 6.7.0
+現在のバージョン: 6.8.0
 
 ## バージョニング方針
 
@@ -14,6 +14,13 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **6.8.0**: コードクリーンナップ (規約遵守 + レガシー撤去)
+  - **レガシー後方互換コード撤去** (CLAUDE.md「データ互換性の方針」に従いパイロット前は最新版のみ対応): `LEGACY_O_RULES` / `migrateLegacyOandVitalsToText` / `_migrationORulesContext` / `rememberMigrationContext` / `ensurePatientsHaveAllOKeys` を撤去。`normalizeSettings` から旧 `defaults.{s,a,p}` / `doctors` / `adminImportOnly` / `oRules` の取り込みを削除。`normalizeFormat` から旧 `format.type` フォールバックを削除。`normalizePatientArray` から旧 `doctor` / `vitals` / `o` の流し込みを削除。`storage.js` から localStorage legacy fallback (`LEGACY_BUNDLE_KEY` 等) と `migrateLegacyTitleIfNeeded` を削除。`bundle.js` から `legacyToBundle` (旧 `{appState, settings}` 形式) を削除。`defaults.json` から `_migration_legacy_o_rules` を削除。これに合わせて test 側の legacy fixture / legacy migration テストも撤去 (53 → 43 件、品質低下なし)。**ネット -236 JS LOC**
+  - **H2: タッチターゲット 44x44**: `.iconBtn` に `min-width/min-height: 44px` を設定 (CLAUDE.md 規約徹底)。リスト行の compact iconBtn (`.ioDbRowEdit` / `.ioDbRowDel` / `.ioJsonIconBtn` / `.formatEditQrBtn`) は `min-width: 0 !important; min-height: 0` で個別オーバーライド
+  - **H1 + M3: HTML 日本語ベタ書きの i18n 化**: 8 個の `<div class="label">`/`.qrHint` 等に `data-i18n` を付与。ヘッダー / view header / QR ナビ / docs demo / admin の主要 35 個の `iconBtn` に `data-i18n-title` / `data-i18n-aria` を一括付与
+  - **M5: CSS 色変数の整理**: `:root` に `--blue` / `--blue-light` / `--blue-border` を追加。`#2563eb` / `#eff6ff` / `#bfdbfe` / `#1e3a8a` の直書き 12+ 箇所を全部 `var(--...)` に置換 (フォールバック付き `var(--xxx, #yyy)` を除く)
+  - **M4: import-export saveSettings 整理**: `unionImportedTags` / `applyImportedSettings` の中の `saveSettings()` 呼び出しを撤去し、呼び出し側 (`importFromBundle`) の `saveNow()` に集約。race の温床を解消
+  - **CLAUDE.md 更新**: 「データ互換性の方針」セクション追加 (パイロット前は最新版のみ対応)、44x44 タッチターゲット規約を強調 (compact 例外パターン明示)
 - **6.7.0**: フォーマットグループ + 患者画面ヘルプボタン追加
   - **データモデル**: `settings.formatGroups = [{id, name, formatIds: []}]` 追加。`patient.activeFormatGroupId` (空文字 = 通常モード) を追加
   - **挙動**: 患者画面のヘッダー「束」アイコン (`detailFormatGroupBtn`) → 単選択ピッカー → 選んだグループが `patient.activeFormatGroupId` に保存される。active なグループがあると、各パネルの strip の pin チップが「グループに含まれるフォーマットを panel フィルタした集合」に置き換わる (= お気に入りの動的切替)。グループモード中はチップが薄青色で視覚的に区別

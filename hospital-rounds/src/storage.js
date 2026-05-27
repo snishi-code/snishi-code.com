@@ -37,14 +37,7 @@ export const DEFAULT_WORKSPACE_LABEL = "メイン";
 //   - 別タブが workspace 切替したとき storage event で気付ける
 const ACTIVE_KEY = "hospital_rounds_active_workspace_id";
 
-// Legacy localStorage keys (pre-IDB). Read-only migration source.
-const LEGACY_BUNDLE_KEY = "rounds_v2_soap_ryoyo_ward_bundle_v1";
-const LEGACY_STATE_KEY = "rounds_v2_soap_ryoyo_ward";
-const LEGACY_SETTINGS_KEY = "rounds_v2_soap_ryoyo_ward_settings_v1";
-
-// Device-wide app title (localStorage). v6.5+ で workspace ごとの title から
-// 端末固定の title に変更 (workspace 切替で reset されないように)。
-// 旧 workspace の meta.title は migration 元として 1 回だけ参照する。
+// Device-wide app title (localStorage)。workspace 切替で reset されない。
 const DEVICE_TITLE_KEY = "hospital_rounds_device_app_title";
 
 export const STORAGE_KEYS = Object.freeze({
@@ -53,9 +46,6 @@ export const STORAGE_KEYS = Object.freeze({
   defaultWorkspace: DEFAULT_WORKSPACE_ID,
   activeKey: ACTIVE_KEY,
   deviceTitle: DEVICE_TITLE_KEY,
-  legacyBundle: LEGACY_BUNDLE_KEY,
-  legacyState: LEGACY_STATE_KEY,
-  legacySettings: LEGACY_SETTINGS_KEY,
 });
 
 // ============================
@@ -86,16 +76,6 @@ export function getDeviceAppTitle() {
 export function setDeviceAppTitle(title) {
   if (typeof localStorage === "undefined") return;
   localStorage.setItem(DEVICE_TITLE_KEY, String(title || ""));
-}
-
-// migration 用: localStorage に未設定なら旧 workspace の meta.title から
-// 1 回だけコピーして移行する。空 / 既に設定済みなら何もしない。
-export function migrateLegacyTitleIfNeeded(fallbackFromWorkspace) {
-  if (typeof localStorage === "undefined") return;
-  if (localStorage.getItem(DEVICE_TITLE_KEY) != null) return;
-  const t = String(fallbackFromWorkspace || "").trim();
-  if (!t) return;
-  localStorage.setItem(DEVICE_TITLE_KEY, t);
 }
 
 // ============================
@@ -154,42 +134,11 @@ function idbTxDone(tx) {
 }
 
 // ============================
-// Legacy localStorage fallback (read-once on first hydrate)
-// ============================
-
-function readLegacyFromLocalStorage() {
-  if (typeof localStorage === "undefined") return null;
-  try {
-    const s = localStorage.getItem(LEGACY_BUNDLE_KEY);
-    if (s) {
-      const parsed = JSON.parse(s);
-      if (parsed && parsed.format === BUNDLE_FORMAT) return parsed;
-    }
-  } catch (e) {
-    console.warn("legacy bundle load failed:", e);
-  }
-  try {
-    const stateRaw = localStorage.getItem(LEGACY_STATE_KEY);
-    const settingsRaw = localStorage.getItem(LEGACY_SETTINGS_KEY);
-    if (stateRaw || settingsRaw) {
-      return {
-        appState: stateRaw ? JSON.parse(stateRaw) : null,
-        settings: settingsRaw ? JSON.parse(settingsRaw) : null,
-      };
-    }
-  } catch (e) {
-    console.warn("legacy state/settings load failed:", e);
-  }
-  return null;
-}
-
-// ============================
 // Public API
 // ============================
 
 export async function loadBundle(id) {
   const targetId = id || getActiveWorkspaceId();
-  // 1) IDB 優先
   try {
     const db = await openDb();
     if (db) {
@@ -202,14 +151,6 @@ export async function loadBundle(id) {
     }
   } catch (e) {
     console.warn("idb load failed:", e);
-  }
-  // 2) アクティブが "default" の時のみ legacy fallback (v4 以前の起動時)
-  if (targetId === DEFAULT_WORKSPACE_ID) {
-    const legacy = readLegacyFromLocalStorage();
-    if (legacy) {
-      try { return parseBundle(legacy); }
-      catch (e) { console.warn("legacy parse failed:", e); }
-    }
   }
   return null;
 }

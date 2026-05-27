@@ -130,26 +130,16 @@ export function projectBundle({
 
 // ============================
 // Parse: raw -> bundle
-// Accepts the new bundle format and the legacy { appState, settings } /
-// bare-appState shapes that earlier versions emitted.
 // ============================
 
 export function parseBundle(raw) {
   if (!raw || typeof raw !== "object") {
     throw new Error("invalid bundle: not an object");
   }
-  if (raw.format === BUNDLE_FORMAT && raw.sections && typeof raw.sections === "object") {
-    return normalizeBundle(raw);
+  if (raw.format !== BUNDLE_FORMAT || !raw.sections || typeof raw.sections !== "object") {
+    throw new Error("unknown file format");
   }
-  // Legacy { appState, settings }
-  if (raw.appState && typeof raw.appState === "object") {
-    return legacyToBundle(raw.appState, (raw.settings && typeof raw.settings === "object") ? raw.settings : null);
-  }
-  // Bare appState (earliest versions)
-  if (Array.isArray(raw.patients) || raw.v === 2 || raw.v === 3) {
-    return legacyToBundle(raw, null);
-  }
-  throw new Error("unknown file format");
+  return normalizeBundle(raw);
 }
 
 function normalizeBundle(b) {
@@ -163,32 +153,6 @@ function normalizeBundle(b) {
       : { deviceId: "", label: "" },
     rosterId: typeof b.rosterId === "string" ? b.rosterId : "",
     sections: { ...b.sections },
-  };
-}
-
-function legacyToBundle(legacyAppState, legacySettings) {
-  const sections = {};
-  if (legacyAppState.title) sections.meta = { title: String(legacyAppState.title) };
-  if (legacySettings && typeof legacySettings === "object") sections.settings = legacySettings;
-  if (Array.isArray(legacyAppState.patients)) sections.patients = legacyAppState.patients;
-  const hasHistory = legacyAppState.baseSnapshot
-    || (Array.isArray(legacyAppState.commits) && legacyAppState.commits.length)
-    || legacyAppState.head;
-  if (hasHistory) {
-    sections.history = {
-      baseSnapshot: legacyAppState.baseSnapshot || null,
-      commits: Array.isArray(legacyAppState.commits) ? legacyAppState.commits : [],
-      head: typeof legacyAppState.head === "string" ? legacyAppState.head : null,
-    };
-  }
-  return {
-    format: BUNDLE_FORMAT,
-    schema: BUNDLE_SCHEMA,
-    appVersion: "",
-    exportedAt: "",
-    owner: { deviceId: String(legacySettings?.deviceId || ""), label: "" },
-    rosterId: String(legacyAppState.rosterId || ""),
-    sections,
   };
 }
 

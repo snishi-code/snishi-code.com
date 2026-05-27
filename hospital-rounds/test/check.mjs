@@ -47,29 +47,16 @@ const {
 
 // store.js を「同じインスタンスで再初期化」するヘルパ。
 // - opts.bundle: 直接渡せば storage を経由せず initStore がそれを採用
-// - opts.legacy: localStorage に legacy bundle を仕込んでから initStore する
-//   (storage.js の localStorage fallback 経路を検査するため)
 //
 // 注意: 以前は import URL に query string を付けてキャッシュバスティングしていたが、
 // store.js と roster.js が別 module instance になると `rosterState` が共有されず
 // テスト失敗するため、同じインスタンスを共有して _resetInitForTests で
 // 内部状態だけリセットする方式に変更。
 let _storeMod = null;
-async function freshStore({ bundle = null, legacy = null } = {}) {
+async function freshStore({ bundle = null } = {}) {
   if (!_storeMod) _storeMod = await import(storeUrl);
   _storeMod._resetInitForTests();
   localStorage.clear();
-  if (legacy) {
-    if (legacy.bundle) {
-      localStorage.setItem("rounds_v2_soap_ryoyo_ward_bundle_v1", JSON.stringify(legacy.bundle));
-    }
-    if (legacy.appState) {
-      localStorage.setItem("rounds_v2_soap_ryoyo_ward", JSON.stringify(legacy.appState));
-    }
-    if (legacy.settings) {
-      localStorage.setItem("rounds_v2_soap_ryoyo_ward_settings_v1", JSON.stringify(legacy.settings));
-    }
-  }
   await _storeMod.initStore(bundle ? { bundle } : undefined);
   return _storeMod;
 }
@@ -191,32 +178,22 @@ for (const [name, raw] of Object.entries(fixtures)) {
   await test(`${name} hydrates store.js`, async () => {
     const store = await freshStore({ bundle: raw });
 
-    // Title round-trips through normalizeLoaded
-    const expectedTitle = raw.format === BUNDLE_FORMAT
-      ? raw.sections?.meta?.title
-      : raw.appState?.title;
-    if (expectedTitle) {
-      assert.equal(store.appState.title, expectedTitle);
-    }
+    // v6.5+ では title は端末固定 (localStorage) なので bundle.meta.title からは
+    // 読まない。localStorage が空のテスト環境ではフォールバック "回診" になる。
+    assert.equal(store.appState.title, "回診");
 
     // history section in fixture → rosterState non-null
-    const hasHistory = raw.format === BUNDLE_FORMAT
-      ? !!raw.sections?.history
-      : !!(raw.appState?.baseSnapshot || (raw.appState?.commits || []).length);
+    const hasHistory = !!raw.sections?.history;
     if (hasHistory) {
       assert.ok(store.rosterState, "rosterState should be hydrated when fixture has history");
     }
 
     // Patients are normalized to objects with all expected fields
-    const samplePid = raw.format === BUNDLE_FORMAT
-      ? raw.sections?.patients?.[0]?.pid
-      : raw.appState?.patients?.[0]?.pid;
+    const samplePid = raw.sections?.patients?.[0]?.pid;
     if (samplePid) {
       const found = store.appState.patients.find(p => p.pid === samplePid);
       assert.ok(found, `patient ${samplePid} present after hydration`);
       assert.equal(typeof found.oFree, "string", "patient has oFree string");
-      assert.equal(found.vitals, undefined, "legacy vitals removed after migration");
-      assert.equal(found.o, undefined, "legacy o removed after migration");
     }
   });
 }
@@ -318,114 +295,6 @@ await test("status BLUE with empty fields is NOT empty", async () => {
 });
 
 // ============================
-// 6) 旧 vitals / o 構造体マイグレーション → oFree
-// ============================
-section("legacy migration (vitals + o → oFree)");
-
-await test("legacy vitals are folded into oFree text", async () => {
-  const legacyBundle = {
-    format: BUNDLE_FORMAT,
-    schema: 1,
-    sections: {
-      meta: { title: "回診" },
-      settings: {},
-      patients: [{
-        pid: "p_test_vit",
-        status: "none",
-        name: "",
-        room: "",
-        tags: [],
-        s: "",
-        memo: "",
-        shared: "",
-        vitals: { spo2: "95", spo2_memo: "O2 2L", bp_sys: "128", bp_dia: "76", pr: "72", rr: "18", bt: "36.8" },
-        o: {},
-        oFree: "",
-        a: { text: "" },
-        p: { text: "" },
-      }],
-    },
-  };
-  const store = await freshStore({ bundle: legacyBundle });
-  const found = store.appState.patients.find(p => p.pid === "p_test_vit");
-  assert.ok(found, "patient hydrated");
-  assert.equal(found.vitals, undefined, "vitals stripped");
-  assert.ok(found.oFree.includes("SpO2 95"), "SpO2 in oFree");
-  assert.ok(found.oFree.includes("O2 2L"), "SpO2 memo in oFree");
-  assert.ok(found.oFree.includes("BP 128/76"), "BP in oFree");
-  assert.ok(found.oFree.includes("T 36.8") || found.oFree.includes("BT 36.8"), "BT in oFree");
-});
-
-await test("legacy o structured findings fold into oFree with labels", async () => {
-  const legacyBundle = {
-    format: BUNDLE_FORMAT,
-    schema: 1,
-    sections: {
-      meta: { title: "回診" },
-      settings: {
-        oRules: [
-          { key: "lung", label: "肺音", normalText: "明らかなラ音なし" },
-          { key: "abdomen", label: "腹部", normalText: "平坦軟" },
-        ],
-      },
-      patients: [{
-        pid: "p_test_o",
-        status: "none",
-        name: "",
-        room: "",
-        tags: [],
-        s: "",
-        memo: "",
-        shared: "",
-        o: {
-          lung: { normal: true, note: "" },
-          abdomen: { normal: false, note: "圧痛あり" },
-        },
-        oFree: "",
-        a: { text: "" },
-        p: { text: "" },
-      }],
-    },
-  };
-  const store = await freshStore({ bundle: legacyBundle });
-  const found = store.appState.patients.find(p => p.pid === "p_test_o");
-  assert.ok(found, "patient hydrated");
-  assert.equal(found.o, undefined, "structured o stripped");
-  assert.ok(found.oFree.includes("肺音：明らかなラ音なし"), "lung normal text injected");
-  assert.ok(found.oFree.includes("腹部：圧痛あり"), "abdomen note injected");
-});
-
-await test("existing oFree is preserved when vitals/o also present", async () => {
-  const legacyBundle = {
-    format: BUNDLE_FORMAT,
-    schema: 1,
-    sections: {
-      meta: { title: "回診" },
-      settings: {},
-      patients: [{
-        pid: "p_test_both",
-        status: "none",
-        name: "",
-        room: "",
-        tags: [],
-        s: "",
-        memo: "",
-        shared: "",
-        vitals: { spo2: "98" },
-        o: {},
-        oFree: "既存メモ",
-        a: { text: "" },
-        p: { text: "" },
-      }],
-    },
-  };
-  const store = await freshStore({ bundle: legacyBundle });
-  const found = store.appState.patients.find(p => p.pid === "p_test_both");
-  assert.ok(found.oFree.includes("既存メモ"), "existing oFree preserved");
-  assert.ok(found.oFree.includes("SpO2 98"), "migrated SpO2 appended");
-});
-
-// ============================
 // 7) フォーマット (formats[]) 設計サニティ
 // ============================
 section("formats");
@@ -452,111 +321,10 @@ await test("default formats include バイタル (number/fraction items) and 身
   assert.equal(phys.labelSep, "：");
 });
 
-await test("legacy format.type migrates to per-item kind", async () => {
-  // 旧 type:"numeric" / type:"text" な format を読み込み → 全 item が適切な kind を持つこと
-  const legacyBundle = {
-    format: BUNDLE_FORMAT,
-    schema: 1,
-    sections: {
-      meta: { title: "回診" },
-      settings: {
-        formats: [
-          {
-            id: "old-num",
-            name: "旧バイタル",
-            panel: "O",
-            type: "numeric",
-            joiner: ", ",
-            pinned: false,
-            items: [
-              { label: "BP", unit: "mmHg" },
-              { label: "P",  unit: "bpm" },
-            ],
-          },
-          {
-            id: "old-txt",
-            name: "旧所見",
-            panel: "O",
-            type: "text",
-            joiner: "\n",
-            pinned: false,
-            items: [
-              { label: "肺", normal: "ラ音なし" },
-            ],
-          },
-        ],
-      },
-      patients: [],
-    },
-  };
-  const store = await freshStore({ bundle: legacyBundle });
-  const oldNum = store.settings.formats.find(f => f.name === "旧バイタル");
-  const oldTxt = store.settings.formats.find(f => f.name === "旧所見");
-  assert.ok(oldNum, "old numeric format migrated");
-  assert.ok(oldNum.items.every(it => it.kind === "number"), "old numeric items got kind=number");
-  assert.equal(oldNum.labelSep, " ", "old numeric got space labelSep by inference");
-  assert.ok(Array.isArray(oldNum.tags) && oldNum.tags.length === 0, "tags initialized");
-
-  assert.ok(oldTxt, "old text format migrated");
-  assert.ok(oldTxt.items.every(it => it.kind === "text"), "old text items got kind=text");
-  assert.equal(oldTxt.labelSep, "：", "old text got colon labelSep by inference");
-});
-
-await test("settings.defaults is removed from defaultSettings", async () => {
-  const store = await freshStore();
-  assert.equal(store.settings.defaults, undefined, "no defaults field");
-});
-
-await test("legacy settings.defaults.{a,p} migrate to isDefault text formats", async () => {
-  const legacyBundle = {
-    format: BUNDLE_FORMAT,
-    schema: 1,
-    sections: {
-      meta: { title: "回診" },
-      settings: {
-        defaults: { s: "", a: "著変なし", p: "現行加療継続" },
-      },
-      patients: [],
-    },
-  };
-  const store = await freshStore({ bundle: legacyBundle });
-  const fmts = store.settings.formats;
-  const aDef = fmts.find(f => f.panel === "A" && f.isDefault);
-  const pDef = fmts.find(f => f.panel === "P" && f.isDefault);
-  const sDef = fmts.find(f => f.panel === "S" && f.isDefault);
-  assert.ok(aDef, "A panel got an isDefault format");
-  assert.equal(aDef.items[0].kind, "text");
-  assert.equal(aDef.items[0].normal, "著変なし");
-  assert.ok(pDef, "P panel got an isDefault format");
-  assert.equal(pDef.items[0].kind, "text");
-  assert.equal(pDef.items[0].normal, "現行加療継続");
-  assert.equal(sDef, undefined, "empty S default did NOT create a format");
-});
-
 // ============================
-// 8) localStorage legacy fallback: 旧 v3 ユーザの初回起動 → IDB 無しでも
-// 既存 localStorage から bundle を拾えること
+// 8) storage.loadBundle のクリーンステート挙動
 // ============================
-section("localStorage legacy fallback (storage.js)");
-
-await test("storage.loadBundle picks up legacy localStorage bundle when IDB unavailable", async () => {
-  const storageUrl = pathToFileURL(join(srcDir, "storage.js")).href;
-  const storage = await import(storageUrl + `?t=${Math.random()}`);
-  localStorage.clear();
-  const legacyBundle = {
-    format: BUNDLE_FORMAT,
-    schema: 1,
-    sections: {
-      meta: { title: "持ち越し" },
-      settings: {},
-      patients: [],
-    },
-  };
-  localStorage.setItem("rounds_v2_soap_ryoyo_ward_bundle_v1", JSON.stringify(legacyBundle));
-  const loaded = await storage.loadBundle();
-  assert.ok(loaded, "loadBundle returned non-null");
-  assert.equal(loaded.sections.meta.title, "持ち越し");
-});
+section("storage cold start");
 
 await test("storage.loadBundle returns null on clean state", async () => {
   const storageUrl = pathToFileURL(join(srcDir, "storage.js")).href;

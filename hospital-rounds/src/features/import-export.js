@@ -4,7 +4,6 @@ import {
   appState, settings, rosterState,
   setAppState, setSettings, setRosterState,
   saveNow, saveSettings, normalizeLoaded, normalizeRosterMeta,
-  ensurePatientsHaveAllOKeys,
   switchWorkspace, createWorkspace,
 } from "../store.js";
 import { STATUS } from "../constants.js";
@@ -64,20 +63,18 @@ function isImportedPatientEmpty(p) {
 
 // 取込側の患者が参照しているタグ名のうち、現行 settings.tags に無いものを末尾に追加。
 // 名前ベースなので衝突リネームは不要 (同名タグは同タグとして扱う)。
+// 永続化は呼出側 (importFromBundle) の saveNow に集約 (race condition 回避)。
 function unionImportedTags(importedPatients) {
   if (!Array.isArray(settings.tags)) settings.tags = [];
   const currentSet = new Set(settings.tags);
-  let added = 0;
   for (const p of importedPatients) {
     if (!Array.isArray(p?.tags)) continue;
     for (const t of p.tags) {
       if (!t || currentSet.has(t)) continue;
       settings.tags.push(t);
       currentSet.add(t);
-      added++;
     }
   }
-  if (added > 0) saveSettings();
 }
 
 // 新規患者として末尾に追加 (status=BLUE で「新着」を可視化)。
@@ -110,13 +107,13 @@ function appendNewPatients(importedPatients) {
 
 // 受信した settings を反映。管理機能関連 (adminEnabled / adminTerminal /
 // rosterPassphrase) は現端末の状態を維持し、取り込まない。
+// 永続化は呼出側 (importFromBundle) の saveNow に集約。
 function applyImportedSettings(sSettings) {
   const merged = { ...sSettings };
   merged.adminEnabled = settings.adminEnabled;
   merged.adminTerminal = settings.adminTerminal;
   merged.rosterPassphrase = settings.rosterPassphrase;
   setSettings(merged);
-  saveSettings();
 }
 
 function importedAppStateFromBundle(bundle) {
@@ -211,8 +208,10 @@ export function initImportExport(callbacks) {
     const sSettings = getSection(bundle, SECTION.SETTINGS);
 
     if (!Array.isArray(sPatients)) {
-      if (sSettings) applyImportedSettings(sSettings);
-      ensurePatientsHaveAllOKeys();
+      if (sSettings) {
+        applyImportedSettings(sSettings);
+        saveNow();
+      }
       vibrate();
       rerenderCurrentView();
       return;
@@ -227,7 +226,6 @@ export function initImportExport(callbacks) {
       refreshTitleUI();
       if (sSettings) applyImportedSettings(sSettings);
       saveNow();
-      ensurePatientsHaveAllOKeys();
       vibrate();
       rerenderCurrentView();
       return;
@@ -243,7 +241,6 @@ export function initImportExport(callbacks) {
     }
     appendNewPatients(importedState.patients);
     saveNow();
-    ensurePatientsHaveAllOKeys();
     vibrate();
     rerenderCurrentView();
   }

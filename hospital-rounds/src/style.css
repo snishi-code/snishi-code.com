@@ -28,7 +28,13 @@
       --btnText: #ffffff;
       --btn2: #f3f4f6;
       --btn2Text: #111827;
-      --focus: #2563eb;
+      --focus: var(--blue);
+
+      /* 医療カテゴリ主色 (CLAUDE.md 規約: hospital-rounds は青系)。
+         shared.css の :root と整合させる。直接 hex で書かず常にこの変数経由で使う */
+      --blue: #2563eb;          /* blue-600 */
+      --blue-light: var(--blue-light);    /* blue-50 */
+      --blue-border: var(--blue-border);   /* blue-200 */
     }
 
     * {
@@ -84,7 +90,7 @@
       justify-content: center;
       width: 32px;
       height: 32px;
-      background: #2563eb;
+      background: var(--blue);
       color: #ffffff;
       border-radius: 50%;
       flex-shrink: 0;
@@ -128,9 +134,9 @@
     html[data-view="memo"]     #headerMemoBtn,
     html[data-view="shared"]   #headerSharedBtn,
     html[data-view="settings"] #headerSettingsBtn {
-      background: #eff6ff;
-      border-color: #bfdbfe;
-      color: #2563eb;
+      background: var(--blue-light);
+      border-color: var(--blue-border);
+      color: var(--blue);
     }
 
     /* ── QR スキャナ・オーバーレイ ── */
@@ -450,8 +456,8 @@
       text-align: left;
     }
     .docsDemoTagPopup .chip.selected {
-      background: #eff6ff;
-      border-color: #bfdbfe;
+      background: var(--blue-light);
+      border-color: var(--blue-border);
       color: #1e40af;
       font-weight: 700;
     }
@@ -478,8 +484,8 @@
       font-weight: 700;
     }
     .docsDemoTagPopup .modeBtn.selected {
-      background: #eff6ff;
-      border-color: #bfdbfe;
+      background: var(--blue-light);
+      border-color: var(--blue-border);
       color: #1e40af;
     }
     .docsDemoTagPopup .modeBtn.clear {
@@ -779,10 +785,10 @@
       color: #92400e;
     }
     .passStrengthRow[data-level="ok"] .passStrengthBar.filled {
-      background: #2563eb; /* blue-600 */
+      background: var(--blue);
     }
     .passStrengthRow[data-level="ok"] .passStrengthLabel {
-      color: #1e3a8a;
+      color: var(--status-blue-text);
     }
     .passStrengthRow[data-level="good"] .passStrengthBar.filled,
     .passStrengthRow[data-level="strong"] .passStrengthBar.filled {
@@ -1252,20 +1258,20 @@
     }
 
     .formatListRow.isDefault {
-      background: #eff6ff;
+      background: var(--blue-light);
     }
 
     .formatListRow.isDefault::before {
-      background: #2563eb;
+      background: var(--blue);
     }
 
     /* 両方ともセットされている場合: 背景を薄い混色、ストライプは上半分=青/下半分=緑 */
     .formatListRow.pinned.isDefault {
-      background: linear-gradient(to right, #ecfdf5 0%, #eff6ff 100%);
+      background: linear-gradient(to right, #ecfdf5 0%, var(--blue-light) 100%);
     }
 
     .formatListRow.pinned.isDefault::before {
-      background: linear-gradient(to bottom, #2563eb 0%, #2563eb 50%, #16a34a 50%, #16a34a 100%);
+      background: linear-gradient(to bottom, var(--blue) 0%, var(--blue) 50%, var(--status-green-bd) 50%, var(--status-green-bd) 100%);
     }
 
     .formatListName {
@@ -1862,8 +1868,8 @@
       display: inline-block;
       padding: 1px 6px;
       border-radius: 999px;
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
+      background: var(--blue-light);
+      border: 1px solid var(--blue-border);
       color: #1e40af;
       font-size: 11px;
       font-weight: 700;
@@ -1959,7 +1965,7 @@
     }
     .tagPickerModeBtn.selected {
       border-color: var(--focus);
-      background: #eff6ff;
+      background: var(--blue-light);
       color: var(--focus);
     }
     .tagPickerClearBtn {
@@ -1992,7 +1998,7 @@
       align-items: stretch;
       border: 1px solid var(--line);
       border-radius: 999px;
-      background: #eff6ff;
+      background: var(--blue-light);
       overflow: hidden;
       transition: border-color .15s;
     }
@@ -2064,7 +2070,7 @@
     }
     .tagPickerTrigger.hasSelected {
       border-color: rgba(37, 99, 235, 0.6);
-      background: #eff6ff;
+      background: var(--blue-light);
     }
 
     /* Tag group cards (settings) */
@@ -2137,6 +2143,11 @@
       font-size: 0;
       font-weight: normal;
       flex-shrink: 0;
+      /* タッチ操作の最小ターゲット 44x44 px (Apple HIG / WCAG 2.5.5)。
+         アイコン (16-22 px) は中央にレンダリングされ、見た目は不変。
+         個別に override したい iconBtn は、より具体的なセレクタで上書き */
+      min-width: 44px;
+      min-height: 44px;
     }
 
     .iconBtn:hover {
@@ -2146,9 +2157,9 @@
     }
 
     .iconBtn.editActive {
-      color: #2563eb;
-      background: #eff6ff;
-      border-color: #bfdbfe;
+      color: var(--blue);
+      background: var(--blue-light);
+      border-color: var(--blue-border);
     }
 
     .memoRow .memoNoBtn {
@@ -2178,7 +2189,7 @@
 
     .memoRow .memoNoBtn:hover {
       background: #e0f2fe;
-      border-color: #bfdbfe;
+      border-color: var(--blue-border);
       color: #1e40af;
     }
 
@@ -2406,6 +2417,8 @@
       flex: 0 0 auto;
       width: 36px !important;
       height: 36px;
+      min-width: 0 !important;
+      min-height: 0;
       padding: 6px !important;
       margin: 0 !important;
       border: 1px solid var(--line);
@@ -2471,6 +2484,8 @@
       flex: 0 0 auto;
       width: 36px !important;
       height: 36px;
+      min-width: 0 !important;
+      min-height: 0;
       padding: 6px !important;
       margin: 0 !important;
       border: 1px solid var(--line);
@@ -2573,6 +2588,8 @@
       flex: 0 0 auto;
       width: 32px !important;
       height: 32px;
+      min-width: 0 !important;
+      min-height: 0;
       padding: 4px !important;
       margin: 0 !important;
       border: 1px solid var(--line);
@@ -2593,6 +2610,8 @@
       flex: 0 0 auto;
       width: 32px !important;
       height: 32px;
+      min-width: 0 !important;
+      min-height: 0;
       padding: 4px !important;
       margin: 0 !important;
       border: 1px solid var(--status-red-bd, #dc2626);

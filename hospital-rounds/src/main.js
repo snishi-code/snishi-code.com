@@ -8,7 +8,7 @@ import {
   appState, settings, selectedNo,
   setAppState, setRosterState, setSelectedNo,
   saveNow, scheduleSave, saveSettings,
-  normalizeLoaded, ensurePatientsHaveAllOKeys,
+  normalizeLoaded,
   setMarkUpdatedHandler, requestStoragePersistence,
   initStore, flushSavePending, setOnWorkspaceChanged,
   updateDeviceTitle,
@@ -191,7 +191,6 @@ function navToShared() {
 function navToHome() {
   if (!validateAdminTerminal()) return;
   saveSettings();
-  ensurePatientsHaveAllOKeys();
   doRenderHome();
   showView("home");
 }

@@ -2,7 +2,7 @@
 
 import {
   DEFAULT_PATIENT_COUNT, STATUS,
-  DEFAULT_FORMATS, LEGACY_O_RULES, FORMAT_PANELS, FORMAT_TYPES,
+  DEFAULT_FORMATS, FORMAT_PANELS,
   FORMAT_ITEM_KINDS, DEFAULT_ITEM_KIND,
   DEFAULT_LABEL_SEP_TEXT, DEFAULT_LABEL_SEP_OTHER,
   DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS,
@@ -16,7 +16,7 @@ import {
   saveBundle as storageSave,
   createWorkspaceRecord,
   setActiveWorkspaceId,
-  getDeviceAppTitle, setDeviceAppTitle, migrateLegacyTitleIfNeeded,
+  getDeviceAppTitle, setDeviceAppTitle,
 } from "./storage.js";
 
 // ============================
@@ -63,23 +63,20 @@ export function defaultSettings() {
   };
 }
 
-// 新モデル: item は kind ごとに必要なフィールドだけ持つ。
+// item は kind ごとに必要なフィールドだけ持つ:
 //   text     : { label, kind:"text",     normal }
 //   number   : { label, kind:"number",   unit   }
 //   fraction : { label, kind:"fraction", unit   }
 //   date     : { label, kind:"date",     normal }   // normal = memo prefill
-// 旧モデルでは format 全体が type:"text"|"numeric" を持ち、item には kind が無かった。
-// fallbackKind は旧 format.type からの移行用ヒント。
-function normalizeFormatItem(item, fallbackKind) {
+function normalizeFormatItem(item) {
   if (!item || typeof item !== "object") return null;
   const label = String(item.label ?? "").trim();
+  const kind = (typeof item.kind === "string" && FORMAT_ITEM_KINDS.includes(item.kind))
+    ? item.kind : DEFAULT_ITEM_KIND;
   // text item は label が空でも正常文だけのケース (規定文「著変なし」など) を許容
-  const kindRaw = (typeof item.kind === "string" && FORMAT_ITEM_KINDS.includes(item.kind))
-    ? item.kind
-    : (fallbackKind || DEFAULT_ITEM_KIND);
-  if (!label && kindRaw !== "text") return null;
-  const out = { label, kind: kindRaw };
-  if (kindRaw === "number" || kindRaw === "fraction") {
+  if (!label && kind !== "text") return null;
+  const out = { label, kind };
+  if (kind === "number" || kind === "fraction") {
     out.unit = String(item.unit ?? "");
   } else {
     // text / date は normal を持つ
@@ -99,60 +96,26 @@ function normalizeFormat(raw) {
   const name = String(raw.name ?? "").trim();
   if (!name) return null;
   const panel = FORMAT_PANELS.includes(raw.panel) ? raw.panel : "O";
-  // 旧 format.type → 全 item の fallback kind に変換
-  const legacyType = FORMAT_TYPES.includes(raw.type) ? raw.type : null;
-  const fallbackKind = legacyType === "numeric" ? "number"
-                     : legacyType === "text"    ? "text"
-                     : DEFAULT_ITEM_KIND;
   const id = (typeof raw.id === "string" && raw.id) ? raw.id : newFormatId();
   const items = Array.isArray(raw.items)
-    ? raw.items.map(it => normalizeFormatItem(it, fallbackKind)).filter(Boolean)
+    ? raw.items.map(normalizeFormatItem).filter(Boolean)
     : [];
-  // joiner 既定値: 旧 type==="text" は "\n"、それ以外は ", "
-  const joiner = typeof raw.joiner === "string" ? raw.joiner : (legacyType === "text" ? "\n" : ", ");
+  const joiner = typeof raw.joiner === "string" ? raw.joiner : ", ";
   // labelSep: 明示指定優先、なければ items から推定
   const labelSep = typeof raw.labelSep === "string" ? raw.labelSep : inferLabelSepFromItems(items);
   const tags = Array.isArray(raw.tags)
     ? raw.tags.filter(t => typeof t === "string" && t.trim()).map(t => String(t))
     : [];
-  const pinned = !!raw.pinned;
-  const isDefault = !!raw.isDefault;
-  return { id, name, panel, joiner, labelSep, tags, pinned, isDefault, items };
+  return { id, name, panel, joiner, labelSep, tags, pinned: !!raw.pinned, isDefault: !!raw.isDefault, items };
 }
 
 function normalizeSettings(raw) {
   const out = defaultSettings();
   if (!raw || typeof raw !== "object") return out;
-  // 旧 oRules はマイグレーション時のみ参照する。新 settings には書き戻さない。
   // formats: 新規登録された設定。空または欠落ならデフォルトを採用。
   if (Array.isArray(raw.formats)) {
     const cleaned = raw.formats.map(normalizeFormat).filter(Boolean);
     if (cleaned.length) out.formats = cleaned;
-  }
-
-  // 旧 settings.defaults.{s,a,p} を text 型 isDefault フォーマットへ 1 回マイグレーション
-  // 旧キー: defaults.s = "" / defaults.a = "著変なし" / defaults.p = "現行加療継続" 等
-  if (raw.defaults && typeof raw.defaults === "object") {
-    const panelOf = { s: "S", a: "A", p: "P" };
-    for (const k of ["s", "a", "p"]) {
-      const txt = String(raw.defaults[k] ?? "").trim();
-      if (!txt) continue;
-      if (txt === "変わりありません" || txt === "（変わりありません）") continue; // 旧旧
-      const panel = panelOf[k];
-      const alreadyHasDefault = out.formats.some(f => f.panel === panel && f.isDefault);
-      if (alreadyHasDefault) continue;
-      out.formats.push({
-        id: newFormatId(),
-        name: "規定文",
-        panel,
-        joiner: "\n",
-        labelSep: DEFAULT_LABEL_SEP_TEXT,
-        tags: [],
-        pinned: false,
-        isDefault: true,
-        items: [{ label: "", kind: "text", normal: txt }],
-      });
-    }
   }
   if (raw.clearTargets && typeof raw.clearTargets === "object") {
     const ct = raw.clearTargets;
@@ -171,14 +134,9 @@ function normalizeSettings(raw) {
   }
   if (Array.isArray(raw.tags)) {
     out.tags = raw.tags.filter(d => typeof d === "string").map(d => String(d));
-  } else if (Array.isArray(raw.doctors)) {
-    out.tags = raw.doctors.filter(d => typeof d === "string").map(d => String(d));
   }
   if (typeof raw.adminEnabled === "boolean") out.adminEnabled = raw.adminEnabled;
   if (typeof raw.adminTerminal === "boolean") out.adminTerminal = raw.adminTerminal;
-  // 旧 adminImportOnly フラグは v2.4 で廃止。読み捨て (true なら adminTerminal を有効化して
-  // 編集可能な状態を維持し、ユーザー体験の後退を防ぐ。)
-  if (raw.adminImportOnly === true) out.adminTerminal = true;
   if (typeof raw.rosterPassphrase === "string") out.rosterPassphrase = raw.rosterPassphrase;
   if (typeof raw.deviceId === "string") out.deviceId = raw.deviceId;
   if (typeof raw.tagGroupingEnabled === "boolean") out.tagGroupingEnabled = raw.tagGroupingEnabled;
@@ -269,78 +227,7 @@ export function isPatientEmpty(p) {
   return true;
 }
 
-// ============================
-// 旧データ (v1: patient.o[key]={normal,note} + patient.vitals) → oFree テキスト化
-//
-// 旧 O 構造体 / バイタル構造体は v2 以降撤去。読込時に 1 回だけ寄せて oFree 末尾に
-// 結合する。oRulesFromBundle が渡されればそのラベル/正常文を優先、無ければ
-// LEGACY_O_RULES (既定) を使う。
-// ============================
-function migrateLegacyOandVitalsToText(r, oRulesFromBundle) {
-  const out = [];
-
-  // 1) Vitals → "BP 128/76mmHg, P 72, SpO2 95% (条件), RR 18, T 36.8℃" のような 1 行
-  if (r && r.vitals && typeof r.vitals === "object") {
-    const v = r.vitals;
-    const vParts = [];
-    if (v.spo2 || v.spo2_memo) {
-      let s = v.spo2 ? `SpO2 ${v.spo2}%` : `SpO2 ${v.spo2_memo}`;
-      if (v.spo2 && v.spo2_memo) s += ` (${v.spo2_memo})`;
-      vParts.push(s);
-    }
-    if (v.rr) vParts.push(`RR ${v.rr}`);
-    if (v.bp_sys || v.bp_dia) vParts.push(`BP ${v.bp_sys || ""}/${v.bp_dia || ""}mmHg`);
-    if (v.pr) vParts.push(`P ${v.pr}`);
-    if (v.bt) vParts.push(`BT ${v.bt}℃`);
-    if (vParts.length) out.push(vParts.join(", "));
-  }
-
-  // 2) Structured o → ラベルごとに 1 行
-  if (r && r.o && typeof r.o === "object") {
-    const rules = (Array.isArray(oRulesFromBundle) && oRulesFromBundle.length)
-      ? oRulesFromBundle
-      : LEGACY_O_RULES;
-    // バックワード互換: abd1/abd2 を旧データから一行にまとめる
-    const seen = new Set();
-    for (const rule of rules) {
-      const key = rule.key;
-      seen.add(key);
-      const item = r.o[key];
-      if (!item || typeof item !== "object") continue;
-      const note = String(item.note ?? "").trim();
-      if (note) out.push(`${rule.label}：${note}`);
-      else if (item.normal) out.push(`${rule.label}：${rule.normalText || ""}`);
-    }
-    // abd1/abd2 (旧キー) を腹部にまとめて出す
-    const abd1 = r.o.abd1, abd2 = r.o.abd2;
-    const extras = [];
-    if (abd1 && abd1.note && String(abd1.note).trim()) extras.push(String(abd1.note).trim());
-    if (abd2 && abd2.note && String(abd2.note).trim()) extras.push(String(abd2.note).trim());
-    if (extras.length) out.push(`腹部：${extras.join(" / ")}`);
-  }
-
-  return out.join("\n");
-}
-
-function migrateLegacyPatientToOFree(r, oRulesFromBundle) {
-  const migrated = migrateLegacyOandVitalsToText(r, oRulesFromBundle);
-  const existing = (r && typeof r.oFree === "string") ? r.oFree : "";
-  if (!migrated.trim()) return existing;
-  if (!existing.trim()) return migrated;
-  return migrated + "\n" + existing;
-}
-
-// パッチ: 旧バンドル読込時に settings.oRules も読み出して migration に渡せるよう保持
-let _migrationORulesContext = null;
-function rememberMigrationContext(rawSettings) {
-  _migrationORulesContext = (rawSettings && Array.isArray(rawSettings.oRules))
-    ? rawSettings.oRules.filter(r => r && typeof r === "object" && r.key && r.label).map(r => ({
-        key: String(r.key),
-        label: String(r.label),
-        normalText: String(r.normalText ?? ""),
-      }))
-    : null;
-}
+const VALID_STATUSES = [STATUS.NONE, STATUS.YELLOW, STATUS.GREEN, STATUS.GRAY, STATUS.BLUE];
 
 function normalizePatientArray(arr) {
   const len = (arr && arr.length) ? arr.length : DEFAULT_PATIENT_COUNT;
@@ -350,17 +237,16 @@ function normalizePatientArray(arr) {
     const d = makeDefaultPatient();
     out[i] = {
       pid: (r && typeof r.pid === "string" && r.pid) ? r.pid : d.pid,
-      status: (r && typeof r.status === "string" && [STATUS.NONE, STATUS.YELLOW, STATUS.GREEN, STATUS.GRAY, STATUS.BLUE].includes(r.status)) ? r.status : d.status,
+      status: (r && typeof r.status === "string" && VALID_STATUSES.includes(r.status)) ? r.status : d.status,
       name: (r && typeof r.name === "string") ? r.name : d.name,
-      room: (r && typeof r.room === "string") ? r.room : (r && typeof r.room === "number" ? String(r.room) : d.room),
+      room: (r && typeof r.room === "string") ? r.room : d.room,
       tags: (r && Array.isArray(r.tags))
         ? r.tags.filter(t => typeof t === "string" && t.trim()).map(t => String(t))
-        : (r && typeof r.doctor === "string" && r.doctor.trim()) ? [r.doctor.trim()] : [],
+        : [],
       s: (r && typeof r.s === "string") ? r.s : d.s,
       memo: (r && typeof r.memo === "string") ? r.memo : d.memo,
       shared: (r && typeof r.shared === "string") ? r.shared : d.shared,
-      // 旧 patient.vitals / patient.o を 1 回だけ oFree に流し込む
-      oFree: migrateLegacyPatientToOFree(r, _migrationORulesContext),
+      oFree: (r && typeof r.oFree === "string") ? r.oFree : d.oFree,
       a: { text: (r && r.a && typeof r.a.text === "string") ? r.a.text : d.a.text },
       p: { text: (r && r.p && typeof r.p.text === "string") ? r.p.text : d.p.text },
       updatedAt: (r && typeof r.updatedAt === "number") ? r.updatedAt : 0,
@@ -372,8 +258,8 @@ function normalizePatientArray(arr) {
   return out;
 }
 
-// Kept for backward compatibility with import-export.js. Trims roster fields:
-// caller is responsible for handling history/rosterId via normalizeRosterMeta.
+// import-export.js から呼ばれる。bundle 形式 / 配列 / { patients: [...] } の
+// いずれかを appState 形に正規化する薄いラッパ。
 export function normalizeLoaded(raw) {
   const arr = raw && raw.patients && Array.isArray(raw.patients) ? raw.patients : (Array.isArray(raw) ? raw : null);
   return {
@@ -382,10 +268,6 @@ export function normalizeLoaded(raw) {
     patients: normalizePatientArray(arr),
   };
 }
-
-// 後方互換のためのスタブ。旧 O 構造体を撤去したため何もしない。
-// 呼び出し側 (drag.js 等) は引き続き呼ぶがコストはほぼゼロ。
-export function ensurePatientsHaveAllOKeys() { /* no-op since v2 */ }
 
 // ============================
 // Roster meta normalization
@@ -414,10 +296,6 @@ export function normalizeRosterMeta(raw) {
 // ============================
 // Live bindings
 // (ES module live bindings — setters allow reassignment)
-//
-// settings must be declared first: normalizePatientArray → makeDefaultPatient
-// → makeEmptyOByRules reads settings.oRules, and these run during appState
-// initialization. Reordering would hit the Temporal Dead Zone.
 // ============================
 
 export let settings = defaultSettings();
@@ -438,27 +316,19 @@ function applyBundleToLive(bundle) {
   if (!bundle) return;
   const sSettings = getSection(bundle, SECTION.SETTINGS);
   const sPatients = getSection(bundle, SECTION.PATIENTS);
-  const sMeta = getSection(bundle, SECTION.META);
   const sHistory = getSection(bundle, SECTION.HISTORY);
 
-  // 患者マイグレーション前に旧 oRules を退避 (label/normalText の正引きに使う)
-  rememberMigrationContext(sSettings || {});
-
-  // 旧 workspace の meta.title から端末固定 title へ 1 回だけマイグレート。
-  // 既に localStorage に title があるなら何もしない (= workspace 切替で上書きしない)。
-  const legacyMetaTitle = (sMeta && typeof sMeta.title === "string") ? sMeta.title : "";
-  migrateLegacyTitleIfNeeded(legacyMetaTitle);
+  // title は端末固定 (localStorage)。bundle.sections.meta.title は出力時の
+  // 体裁のためだけに保持される (workspace 切替で title を上書きしない)。
   const deviceTitle = getDeviceAppTitle();
 
   settings = normalizeSettings(sSettings || {});
   appState = {
     v: 3,
-    // title はもはや per-workspace ではなく端末固定。device title が未設定なら
-    // 「回診」をデフォルト (i18n の app.title はここでは循環避けのためベタ書き)。
+    // device title が未設定 (= 初回起動) なら i18n 循環回避のためベタ書きで "回診"
     title: deviceTitle || "回診",
     patients: normalizePatientArray(Array.isArray(sPatients) ? sPatients : null),
   };
-  _migrationORulesContext = null;
   rosterState = normalizeRosterMeta({
     rosterId: bundle.rosterId,
     baseSnapshot: sHistory ? sHistory.baseSnapshot : null,

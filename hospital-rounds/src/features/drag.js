@@ -1,6 +1,6 @@
 "use strict";
 
-import { appState, settings, makeDefaultPatient, scheduleSave, ensurePatientsHaveAllOKeys, isPatientEmpty } from "../store.js";
+import { appState, settings, makeDefaultPatient, scheduleSave, isPatientEmpty } from "../store.js";
 import { isNonAdminTerminal } from "./admin.js";
 import { recordOp } from "./roster.js";
 import { formatPatientLabel } from "./room.js";
@@ -11,7 +11,6 @@ let _onDataChange = null;
 export function setDataChangeHandler(fn) { _onDataChange = fn; }
 
 export function finishDataChange() {
-  ensurePatientsHaveAllOKeys();
   scheduleSave();
   if (_onDataChange) _onDataChange();
 }
