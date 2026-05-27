@@ -1,9 +1,51 @@
 "use strict";
 
+// ============================================================================
+// Tags feature
+//
+// このファイルは「タグ」関連を 6 セクションで扱う。関数を追加するときは
+// 正しいセクションに置くこと。store / DOM への直接アクセスは §2〜§4 に
+// 閉じる方針 (§5〜§6 が UI 層)。
+//
+//   §1. CONSTANTS & ID GENERATION
+//        STATUS_TAG_DEFS / newGroupId / isStatusTag / getStatusFromTag
+//
+//   §2. MODEL: TAG LIST QUERIES
+//        getAllTags / getAllFilterEntries / getStatusTagDefs
+//
+//   §3. MODEL: TAG GROUPING
+//        グループ自体の CRUD (addGroup / renameGroup / setGroupMode /
+//        deleteGroup) + メンバー操作 (setTagGroup) + クエリ
+//        (getAllGroups / getUserGroups / getGroupById / getGroupForTag /
+//         getTagsInGroup / getUnassignedTags)
+//
+//   §4. MODEL: TAG LIST MUTATIONS & PATIENT TAGS
+//        タグ自体の CRUD (addNewTag / renameTagAt / deleteTagAt / moveTag)
+//        + 患者単位のアクセサ (getPatientTags / setPatientTags)
+//
+//   §5. MODEL: SHARED FILTER STATE
+//        getSharedTagFilter / setSharedTagFilter /
+//        getSharedFilterMode / setSharedFilterMode /
+//        patientMatchesSharedFilter (フィルタ適用判定)
+//
+//   §6. UI
+//        §6a. low-level helpers (closeOpenPopup / escapeHtml /
+//             buildChipsHtml / entriesToIndex / buildGroupSection)
+//        §6b. public widgets:
+//             - makeAddTagWidget (タグ追加 chip)
+//             - makeTagPicker (汎用ピッカー: filter / format / etc.)
+//             - makePatientTagPicker (患者画面の専用 picker)
+//             - makeSharedTagFilterPicker (shared/memo 画面のフィルタピッカー)
+// ============================================================================
+
 import { settings, appState, saveSettings, scheduleSave, markUpdated } from "../store.js";
 import { STATUS, STATUS_TAG_PREFIX, TAG_FILTER_MODE_AND, TAG_FILTER_MODE_OR, DEFAULT_TAG_FILTER_MODE, GROUP_MODE_SINGLE, GROUP_MODE_MULTI, STATUS_GROUP_ID } from "../constants.js";
 import { recordOp } from "./roster.js";
 import { t } from "../i18n.js";
+
+// ============================================================================
+// §1. CONSTANTS & ID GENERATION
+// ============================================================================
 
 function newGroupId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return "g_" + crypto.randomUUID().slice(0, 8);
@@ -34,9 +76,9 @@ export function getStatusFromTag(value) {
   return isStatusTag(value) ? value.slice(STATUS_TAG_PREFIX.length) : "";
 }
 
-// ============================
-// Public API
-// ============================
+// ============================================================================
+// §2. MODEL: TAG LIST QUERIES
+// ============================================================================
 
 // User-defined tags only (no virtual status tags)
 export function getAllTags() {
@@ -53,9 +95,9 @@ export function getAllFilterEntries() {
 
 export function getStatusTagDefs() { return STATUS_TAG_DEFS.slice(); }
 
-// ============================
-// Tag grouping
-// ============================
+// ============================================================================
+// §3. MODEL: TAG GROUPING
+// ============================================================================
 
 export function isTagGroupingEnabled() { return !!settings.tagGroupingEnabled; }
 
@@ -143,6 +185,10 @@ export function setTagGroup(tagName, groupId) {
   saveSettings();
 }
 
+// ============================================================================
+// §4. MODEL: TAG LIST MUTATIONS & PATIENT TAGS
+// ============================================================================
+
 export function getPatientTags(patientIndex) {
   const p = appState.patients[patientIndex];
   if (!p) return [];
@@ -218,9 +264,9 @@ export function setPatientTags(patientIndex, tags) {
   scheduleSave();
 }
 
-// ============================
-// Shared tag filter (cross-screen)
-// ============================
+// ============================================================================
+// §5. MODEL: SHARED FILTER STATE (cross-screen filter)
+// ============================================================================
 
 let _sharedTagFilter = []; // entries from getAllFilterEntries() values (incl. status tags)
 let _sharedFilterMode = DEFAULT_TAG_FILTER_MODE;
@@ -247,9 +293,10 @@ export function patientMatchesSharedFilter(p) {
   return _sharedTagFilter.every(t => have.has(t));
 }
 
-// ============================
-// Generic multi-select dropdown
-// ============================
+// ============================================================================
+// §6a. UI: low-level helpers
+// (popup open 状態管理 / chip HTML 生成 / group section レンダ)
+// ============================================================================
 
 let _openPopup = null;
 // When the user toggles a tag inside the popup we defer the screen re-render
@@ -300,10 +347,8 @@ function entriesToIndex(entries) {
   return m;
 }
 
-// ============================
-// Grouped picker (when tagGroupingEnabled)
-// ============================
-
+// buildGroupSection: tag グルーピング有効時に 1 グループ分の chip 列を作る
+// ヘルパー。makeTagPicker から複数呼ばれる。
 function buildGroupSection(group, entries, getSelected, setSelected, onChange, refreshTrigger, refreshPopup) {
   const sec = document.createElement("div");
   sec.className = "tagPickerSection";
@@ -356,7 +401,11 @@ function buildGroupSection(group, entries, getSelected, setSelected, onChange, r
 }
 
 // opts: { getSelected, setSelected, entries: [{value,label,color?}], onChange, fillWidth, withModeToggle, includeStatus, forPatient }
-// ============================
+
+// ============================================================================
+// §6b. UI: public widgets
+// ============================================================================
+
 // 「+ 新規タグ」ウィジェット（設定画面・各タグピッカー popup 共通）
 //
 // 既定: 小さい「+」ボタン (.tagSettingAdd と同じ見た目)
@@ -366,7 +415,6 @@ function buildGroupSection(group, entries, getSelected, setSelected, onChange, r
 //   - 空 commit や Escape はキャンセル扱いで「+」表示に戻る
 //   - 既存タグと同名なら alert で通知し、入力チップを閉じる
 // commit 成功時は onAdded(name) を呼ぶ（呼び元で popup や一覧を再描画）。
-// ============================
 export function makeAddTagWidget({ onAdded } = {}) {
   const wrap = document.createElement("span");
   let activeInput = null; // 多重 commit/再描画ガード
