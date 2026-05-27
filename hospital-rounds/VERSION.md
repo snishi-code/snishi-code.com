@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 7.6.1
+現在のバージョン: 7.7.0
 
 ## バージョニング方針
 
@@ -14,6 +14,42 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **7.7.0** (**breaking**): タグ・カテゴリ機能と roster.js (Git ops 履歴) を撤去
+  - **タグ・カテゴリ機能 (グループタグ) を撤去**:
+    - tags.js §3 (TAG GROUPING) 約 130 行 + buildGroupSection ヘルパー
+    - settings-view.js の renderTagGroups / renderTagGroupingToggleIcon /
+      openGroupMembershipPicker + tagGroupingEnableBtn 配線
+    - index.html の グループタグ機能 ON/OFF トグル + tagGroupsHost
+    - constants.js の DEFAULT_TAG_GROUPING_ENABLED / GROUP_MODE_SINGLE /
+      GROUP_MODE_MULTI / STATUS_GROUP_ID
+    - defaults.json の tagGroupingEnabled / tagGroups / tagGroupAssign
+    - qr-protocol.js の MODE_BY_INDEX / tagGroupToWire / tagGroupFromWire /
+      tagGroupAssignToWire / tagGroupAssignFromWire
+    - qr-settings.js の wire format から tge / tgs / tga (WIRE_V は 4 のまま、
+      旧版 QR は forward compat で読める)
+    - style/tags.css の .tagPickerSection* / .tagGroupCard* 等
+    - 28 個の i18n キー (`tag.group.*` / `settings.tagGroup.*` /
+      `qrSettings.summary.tagGroups` / `tag.statusGroup.name` /
+      `settings.title.tagGroups` / `settings.help.tagsGroupsHidden`)
+  - **roster.js (Git-like ops 履歴) を撤去** (admin 撤去以降 dormant):
+    - features/roster.js (325 行) を削除
+    - store.js の rosterState / setRosterState / normalizeRosterMeta
+    - bundle.js の history section handling + FULL_BACKUP_SECTIONS から
+      HISTORY を除外 + SECTION.HISTORY enum を撤去
+    - constants.js の ROSTER_DIFF_WINDOW_DAYS
+    - defaults.json の `_app.rosterDiffWindowDays`
+    - main.js の compactHistory / flushCommit 呼び出し
+    - 全 feature/view から recordOp 呼び出し (drag.js / room.js / tags.js /
+      detail.js / memo.js / shared-list.js / settings-view.js /
+      import-export.js / qr-home.js) 計 13 箇所
+    - 関連テスト 2 件 (compactHistory フォールド + 冪等性)
+  - **forward compat**: 旧 bundle に tagGroups / tagGroupAssign /
+    tagGroupingEnabled / rosterState 等のフィールドが残っていても、
+    `normalizeSettings` の未知フィールド温存ループで保持される。データ消失なし
+  - **再実装ガイド**: CLAUDE.md に「撤去された機能 (再実装したい時の参照点)」
+    セクションを追加。`git tag hospital-rounds-v7.6.1` を base に diff を取れ
+    ば参考実装が手に入る
+  - **結果**: ビルド 599 → **579 KB** (-20 KB)。テスト 57 → 53 件
 - **7.6.1**: WS 名のヘッダー編集を復活 + 設定画面のラベルを DB アイコン化
   - **タイトル編集モード時に WS 名も editable に**: 鉛筆をタップ → タイトル・WS 名
     の両方が編集可能。blur / Enter で renameBundle を発火。設定画面の rename と

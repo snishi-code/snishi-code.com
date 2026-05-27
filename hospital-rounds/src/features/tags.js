@@ -3,21 +3,16 @@
 // ============================================================================
 // Tags feature
 //
-// このファイルは「タグ」関連を 6 セクションで扱う。関数を追加するときは
-// 正しいセクションに置くこと。store / DOM への直接アクセスは §2〜§4 に
-// 閉じる方針 (§5〜§6 が UI 層)。
+// v7.7+: §3 (TAG GROUPING) は撤去。再実装するなら hospital-rounds-v7.6.1 を参照。
 //
-//   §1. CONSTANTS & ID GENERATION
-//        STATUS_TAG_DEFS / newGroupId / isStatusTag / getStatusFromTag
+// このファイルは「タグ」関連を 5 セクションで扱う。store / DOM への直接アクセス
+// は §2〜§4 に閉じる方針 (§5〜§6 が UI 層)。
+//
+//   §1. CONSTANTS
+//        STATUS_TAG_DEFS / isStatusTag / getStatusFromTag
 //
 //   §2. MODEL: TAG LIST QUERIES
 //        getAllTags / getAllFilterEntries / getStatusTagDefs
-//
-//   §3. MODEL: TAG GROUPING
-//        グループ自体の CRUD (addGroup / renameGroup / setGroupMode /
-//        deleteGroup) + メンバー操作 (setTagGroup) + クエリ
-//        (getAllGroups / getUserGroups / getGroupById / getGroupForTag /
-//         getTagsInGroup / getUnassignedTags)
 //
 //   §4. MODEL: TAG LIST MUTATIONS & PATIENT TAGS
 //        タグ自体の CRUD (addNewTag / renameTagAt / deleteTagAt / moveTag)
@@ -30,7 +25,7 @@
 //
 //   §6. UI
 //        §6a. low-level helpers (closeOpenPopup / escapeHtml /
-//             buildChipsHtml / entriesToIndex / buildGroupSection)
+//             buildChipsHtml / entriesToIndex)
 //        §6b. public widgets:
 //             - makeAddTagWidget (タグ追加 chip)
 //             - makeTagPicker (汎用ピッカー: filter / format / etc.)
@@ -39,18 +34,12 @@
 // ============================================================================
 
 import { settings, appState, saveSettings, scheduleSave, markUpdated } from "../store.js";
-import { STATUS, STATUS_TAG_PREFIX, TAG_FILTER_MODE_AND, TAG_FILTER_MODE_OR, DEFAULT_TAG_FILTER_MODE, GROUP_MODE_SINGLE, GROUP_MODE_MULTI, STATUS_GROUP_ID } from "../constants.js";
-import { recordOp } from "./roster.js";
+import { STATUS, STATUS_TAG_PREFIX, TAG_FILTER_MODE_AND, TAG_FILTER_MODE_OR, DEFAULT_TAG_FILTER_MODE } from "../constants.js";
 import { t } from "../i18n.js";
 
 // ============================================================================
-// §1. CONSTANTS & ID GENERATION
+// §1. CONSTANTS
 // ============================================================================
-
-function newGroupId() {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) return "g_" + crypto.randomUUID().slice(0, 8);
-  return "g_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-}
 
 const TAG_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
 
@@ -95,95 +84,10 @@ export function getAllFilterEntries() {
 
 export function getStatusTagDefs() { return STATUS_TAG_DEFS.slice(); }
 
-// ============================================================================
-// §3. MODEL: TAG GROUPING
-// ============================================================================
-
-export function isTagGroupingEnabled() { return !!settings.tagGroupingEnabled; }
-
-// Virtual group always present for status colors
-const STATUS_GROUP = { id: STATUS_GROUP_ID, get name() { return t("tag.statusGroup.name"); }, mode: GROUP_MODE_SINGLE, virtual: true };
-
-export function getAllGroups() {
-  const userGroups = Array.isArray(settings.tagGroups) ? settings.tagGroups.slice() : [];
-  return [STATUS_GROUP, ...userGroups];
-}
-
-export function getUserGroups() {
-  return Array.isArray(settings.tagGroups) ? settings.tagGroups.slice() : [];
-}
-
-export function getGroupById(groupId) {
-  if (groupId === STATUS_GROUP_ID) return STATUS_GROUP;
-  return getUserGroups().find(g => g.id === groupId) || null;
-}
-
-export function getGroupForTag(tagName) {
-  if (isStatusTag(tagName)) return STATUS_GROUP_ID;
-  if (!settings.tagGroupAssign) return "";
-  return settings.tagGroupAssign[tagName] || "";
-}
-
-export function getTagsInGroup(groupId) {
-  if (groupId === STATUS_GROUP_ID) {
-    return STATUS_TAG_DEFS.map(d => d.value);
-  }
-  if (!settings.tagGroupAssign) return [];
-  return getAllTags().filter(t => settings.tagGroupAssign[t] === groupId);
-}
-
-export function getUnassignedTags() {
-  if (!settings.tagGroupAssign) return getAllTags();
-  return getAllTags().filter(t => !settings.tagGroupAssign[t]);
-}
-
-export function addGroup(name) {
-  const nm = String(name || "").trim();
-  if (!nm) return null;
-  if (!Array.isArray(settings.tagGroups)) settings.tagGroups = [];
-  if (settings.tagGroups.some(g => g.name === nm)) return null;
-  const g = { id: newGroupId(), name: nm, mode: GROUP_MODE_MULTI };
-  settings.tagGroups.push(g);
-  saveSettings();
-  return g;
-}
-
-export function renameGroup(groupId, newName) {
-  const nm = String(newName || "").trim();
-  if (!nm) return false;
-  const g = getUserGroups().find(x => x.id === groupId);
-  if (!g) return false;
-  if (settings.tagGroups.some(x => x.id !== groupId && x.name === nm)) return false;
-  g.name = nm;
-  saveSettings();
-  return true;
-}
-
-export function setGroupMode(groupId, mode) {
-  const g = getUserGroups().find(x => x.id === groupId);
-  if (!g) return;
-  g.mode = (mode === GROUP_MODE_SINGLE) ? GROUP_MODE_SINGLE : GROUP_MODE_MULTI;
-  saveSettings();
-}
-
-export function deleteGroup(groupId) {
-  if (!Array.isArray(settings.tagGroups)) return;
-  settings.tagGroups = settings.tagGroups.filter(g => g.id !== groupId);
-  // Unassign tags that were in this group
-  if (settings.tagGroupAssign) {
-    for (const [t, gid] of Object.entries(settings.tagGroupAssign)) {
-      if (gid === groupId) delete settings.tagGroupAssign[t];
-    }
-  }
-  saveSettings();
-}
-
-export function setTagGroup(tagName, groupId) {
-  if (!settings.tagGroupAssign) settings.tagGroupAssign = {};
-  if (groupId) settings.tagGroupAssign[tagName] = groupId;
-  else delete settings.tagGroupAssign[tagName];
-  saveSettings();
-}
+// v7.7+: §3 TAG GROUPING (タグ・カテゴリ機能) 撤去。設定モデル上の
+// tagGroupingEnabled / tagGroups / tagGroupAssign は normalizeSettings の
+// forward compat (未知フィールド温存) で旧 bundle から拾えるが、UI は無し。
+// 再実装するなら git tag hospital-rounds-v7.6.1 を参照。
 
 // ============================================================================
 // §4. MODEL: TAG LIST MUTATIONS & PATIENT TAGS
@@ -204,7 +108,6 @@ export function addNewTag(name) {
   if (settings.tags.includes(t)) return false;
   settings.tags.push(t);
   saveSettings();
-  recordOp({ type: "tag.add", name: t });
   return true;
 }
 
@@ -224,7 +127,6 @@ export function renameTagAt(idx, newName) {
   }
   saveSettings();
   scheduleSave();
-  recordOp({ type: "tag.rename", from: oldName, to: next });
   return true;
 }
 
@@ -240,7 +142,6 @@ export function deleteTagAt(idx) {
   }
   saveSettings();
   scheduleSave();
-  recordOp({ type: "tag.remove", name });
 }
 
 export function moveTag(fromIdx, toIdx) {
@@ -259,7 +160,6 @@ export function setPatientTags(patientIndex, tags) {
   if (!p) return;
   const next = tags.slice();
   p.tags = next;
-  if (p.pid) recordOp({ type: "update", pid: p.pid, field: "tags", value: next });
   markUpdated(patientIndex + 1);
   scheduleSave();
 }
@@ -347,58 +247,8 @@ function entriesToIndex(entries) {
   return m;
 }
 
-// buildGroupSection: tag グルーピング有効時に 1 グループ分の chip 列を作る
-// ヘルパー。makeTagPicker から複数呼ばれる。
-function buildGroupSection(group, entries, getSelected, setSelected, onChange, refreshTrigger, refreshPopup) {
-  const sec = document.createElement("div");
-  sec.className = "tagPickerSection";
-  if (group.name) {
-    const h = document.createElement("div");
-    h.className = "tagPickerSectionHead";
-    h.innerHTML = `<span>${escapeHtml(group.name)}</span><span class="tagPickerSectionMode">${
-      group.mode === GROUP_MODE_SINGLE ? t("tag.group.singleMark") : ""
-    }</span>`;
-    sec.appendChild(h);
-  }
-  const current = new Set(getSelected());
-  for (const e of entries) {
-    const row = document.createElement("label");
-    row.className = "tagPickerOpt";
-    // Always use checkbox visuals; single-select semantics are enforced in JS
-    // (clicking another in the same group clears the previous; clicking the
-    // same one again deselects it — true toggle).
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = current.has(e.value);
-    cb.addEventListener("change", () => {
-      const next = new Set(getSelected());
-      if (group.mode === GROUP_MODE_SINGLE) {
-        for (const x of entries) next.delete(x.value);
-        if (cb.checked) next.add(e.value);
-      } else {
-        if (cb.checked) next.add(e.value);
-        else next.delete(e.value);
-      }
-      setSelected(Array.from(next));
-      refreshTrigger();
-      if (group.mode === GROUP_MODE_SINGLE && refreshPopup) refreshPopup();
-      if (onChange) _pendingOnChange = onChange;
-    });
-    row.appendChild(cb);
-    if (e.color) {
-      const sw = document.createElement("span");
-      sw.style.cssText = `display:inline-block;width:18px;height:18px;border-radius:4px;background:${e.color};border:1px solid ${e.borderColor || "rgba(0,0,0,.2)"};flex-shrink:0;`;
-      sw.title = e.label;
-      row.appendChild(sw);
-    } else {
-      const txt = document.createElement("span");
-      txt.textContent = e.label;
-      row.appendChild(txt);
-    }
-    sec.appendChild(row);
-  }
-  return sec;
-}
+// v7.7+: buildGroupSection / グルーピング描画ロジック撤去。
+// 旧 makeTagPicker の grouped オプションも下記で使われなくなった。
 
 // opts: { getSelected, setSelected, entries: [{value,label,color?}], onChange, fillWidth, withModeToggle, includeStatus, forPatient }
 
@@ -513,8 +363,7 @@ export function makeTagPicker(opts) {
   function refreshTrigger() {
     const selected = getSelected();
     const list = (typeof entries === "function" ? entries() : entries) || [];
-    // iconOnly か grouping ON のときはアイコンのみ表示
-    if (iconOnly || (grouped && isTagGroupingEnabled())) {
+    if (iconOnly) {
       const hasAny = selected.length > 0;
       const svg = iconHtml || TAG_SVG;
       trigger.innerHTML = `<span class="tagPickerIcon" style="color:${hasAny ? '#2563eb' : 'var(--muted)'};">${svg}</span>`;
@@ -565,37 +414,6 @@ export function makeTagPicker(opts) {
       });
       modeRow.appendChild(clr);
       popup.appendChild(modeRow);
-    }
-
-    // Grouped rendering
-    if (grouped && isTagGroupingEnabled()) {
-      const userGroups = getUserGroups();
-      const sectionsHost = document.createElement("div");
-
-      // Status group (filter only)
-      if (!forPatient) {
-        const statusEntries = STATUS_TAG_DEFS.map(d => ({
-          value: d.value, label: d.label, color: d.color, borderColor: d.borderColor,
-        }));
-        sectionsHost.appendChild(buildGroupSection(STATUS_GROUP, statusEntries, getSelected, setSelected, onChange, refreshTrigger, refreshPopup));
-      }
-      // User groups
-      for (const g of userGroups) {
-        const members = getTagsInGroup(g.id);
-        if (!members.length) continue;
-        const groupEntries = members.map(t => ({ value: t, label: t }));
-        sectionsHost.appendChild(buildGroupSection(g, groupEntries, getSelected, setSelected, onChange, refreshTrigger, refreshPopup));
-      }
-      // Unassigned tags
-      const unassigned = getUnassignedTags();
-      if (unassigned.length) {
-        const unGroup = { id: "__unassigned", name: t("tag.group.unassigned"), mode: GROUP_MODE_MULTI };
-        const unEntries = unassigned.map(t => ({ value: t, label: t }));
-        sectionsHost.appendChild(buildGroupSection(unGroup, unEntries, getSelected, setSelected, onChange, refreshTrigger, refreshPopup));
-      }
-      popup.appendChild(sectionsHost);
-      popup.appendChild(buildAddWidget(() => { refreshPopup(); refreshTrigger(); }));
-      return;
     }
 
     const list = (typeof entries === "function" ? entries() : entries) || [];

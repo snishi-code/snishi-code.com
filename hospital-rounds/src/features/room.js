@@ -1,7 +1,6 @@
 "use strict";
 
 import { appState, settings, markUpdated, scheduleSave, saveNow } from "../store.js";
-import { recordOp } from "./roster.js";
 import { t } from "../i18n.js";
 
 export function getPatientRoom(patientIndex) {
@@ -28,7 +27,6 @@ export function makeRoomInput(patientIndex, onChange) {
     if (!p) return;
     if (p.room !== cleaned) {
       p.room = cleaned;
-      if (p.pid) recordOp({ type: "update", pid: p.pid, field: "room", value: cleaned });
     }
     markUpdated(patientIndex + 1);
     scheduleSave();
@@ -95,7 +93,6 @@ export function toggleSortByRoom() {
     appState._sortSnapshot = null;
     for (let i = 0; i < appState.patients.length; i++) {
       const p = appState.patients[i];
-      if (before[i] !== p && p.pid) recordOp({ type: "move", pid: p.pid, to: i });
     }
     saveNow();
     return;
@@ -106,7 +103,6 @@ export function toggleSortByRoom() {
   appState.patients.sort(patientRoomCompare);
   for (let i = 0; i < appState.patients.length; i++) {
     const p = appState.patients[i];
-    if (before[i] !== p && p.pid) recordOp({ type: "move", pid: p.pid, to: i });
   }
   saveNow();
 }

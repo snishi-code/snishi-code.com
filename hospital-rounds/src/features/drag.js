@@ -1,7 +1,6 @@
 "use strict";
 
 import { appState, settings, makeDefaultPatient, scheduleSave, isPatientEmpty } from "../store.js";
-import { recordOp } from "./roster.js";
 import { openMovePatientModal } from "./move-patient.js";
 import { formatPatientLabel } from "./room.js";
 import { t } from "../i18n.js";
@@ -209,7 +208,6 @@ function endCustomDrag(onDrop) {
 export function onPatientDrop(fromIdx, toIdx) {
   const item = appState.patients.splice(fromIdx, 1)[0];
   appState.patients.splice(toIdx, 0, item);
-  if (item && item.pid) recordOp({ type: "move", pid: item.pid, to: toIdx });
   finishDataChange();
 }
 
@@ -240,7 +238,6 @@ export function insertPatients(atIdx, count) {
   for (let i = 0; i < count; i++) {
     const p = makeDefaultPatient();
     newItems.push(p);
-    recordOp({ type: "add", at: atIdx + i, patient: { pid: p.pid, name: "", room: "", tags: [] } });
   }
   appState.patients.splice(atIdx, 0, ...newItems);
   finishDataChange();
@@ -260,12 +257,10 @@ function deletePatientsByIndices(indices) {
   const sorted = [...indices].sort((a, b) => b - a);
   for (const idx of sorted) {
     const victim = appState.patients[idx];
-    if (victim && victim.pid) recordOp({ type: "delete", pid: victim.pid });
     appState.patients.splice(idx, 1);
   }
   if (appState.patients.length === 0) {
     const p = makeDefaultPatient();
-    recordOp({ type: "add", at: 0, patient: { pid: p.pid, name: "", room: "", tags: [] } });
     appState.patients.push(p);
   }
   finishDataChange();

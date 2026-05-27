@@ -6,7 +6,6 @@ import {
   FORMAT_ITEM_KINDS, DEFAULT_ITEM_KIND,
   DEFAULT_LABEL_SEP_TEXT, DEFAULT_LABEL_SEP_OTHER,
   DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS,
-  DEFAULT_TAG_GROUPING_ENABLED,
   QR_KINDS, DEFAULT_QR_ENCRYPTION, DEFAULT_QR_REDISTRIBUTION,
   clone,
 } from "./constants.js";
@@ -55,9 +54,9 @@ export function defaultSettings() {
     clearTargets: clone(DEFAULT_CLEAR_TARGETS),
     tags: clone(DEFAULT_TAGS),
     deviceId: "",
-    tagGroupingEnabled: DEFAULT_TAG_GROUPING_ENABLED,
-    tagGroups: [],
-    tagGroupAssign: {},
+    // v7.7+: tagGroupingEnabled / tagGroups / tagGroupAssign は撤去。
+    // 旧 bundle に含まれる場合は normalizeSettings の未知フィールド温存で
+    // 保持されるが、UI からは触れない
     // QR セキュリティ: kind 別の暗号化フラグ ("HM" → true/false)
     qrEncryption: clone(DEFAULT_QR_ENCRYPTION),
     // QR 受信したデータの再配布制限: kind 別 ("restricted" | "free")
@@ -144,16 +143,9 @@ function normalizeSettings(raw) {
     out.tags = raw.tags.filter(d => typeof d === "string").map(d => String(d));
   }
   if (typeof raw.deviceId === "string") out.deviceId = raw.deviceId;
-  if (typeof raw.tagGroupingEnabled === "boolean") out.tagGroupingEnabled = raw.tagGroupingEnabled;
-  if (Array.isArray(raw.tagGroups)) {
-    out.tagGroups = raw.tagGroups
-      .filter(g => g && typeof g === "object" && typeof g.id === "string")
-      .map(g => ({
-        id: String(g.id),
-        name: String(g.name || ""),
-        mode: g.mode === "single" ? "single" : "multi",
-      }));
-  }
+  // v7.7+: tagGroupingEnabled / tagGroups / tagGroupAssign は撤去。
+  // 旧 bundle のフィールドは forward compat の未知フィールド温存ループ (loop の
+  // 先頭で out に無いキーは raw からコピー) で残るので、ここでは validation 不要
   if (Array.isArray(raw.formatGroups)) {
     out.formatGroups = raw.formatGroups
       .filter(g => g && typeof g === "object" && typeof g.id === "string")
@@ -164,12 +156,6 @@ function normalizeSettings(raw) {
           ? g.formatIds.filter(x => typeof x === "string").map(String)
           : [],
       }));
-  }
-  if (raw.tagGroupAssign && typeof raw.tagGroupAssign === "object") {
-    out.tagGroupAssign = {};
-    for (const [k, v] of Object.entries(raw.tagGroupAssign)) {
-      if (typeof k === "string" && typeof v === "string") out.tagGroupAssign[k] = v;
-    }
   }
   // QR セキュリティ: known kind だけ拾い、未指定はデフォルト維持
   if (raw.qrEncryption && typeof raw.qrEncryption === "object") {
@@ -299,41 +285,15 @@ export function normalizeLoaded(raw) {
 }
 
 // ============================
-// Roster meta normalization
-// ============================
-
-function isMeaningfulRosterMeta(rm) {
-  if (!rm) return false;
-  if (rm.rosterId) return true;
-  if (rm.baseSnapshot) return true;
-  if (Array.isArray(rm.commits) && rm.commits.length) return true;
-  if (rm.head) return true;
-  return false;
-}
-
-export function normalizeRosterMeta(raw) {
-  if (!raw || typeof raw !== "object") return null;
-  const out = {
-    rosterId: typeof raw.rosterId === "string" ? raw.rosterId : "",
-    baseSnapshot: (raw.baseSnapshot && typeof raw.baseSnapshot === "object") ? raw.baseSnapshot : null,
-    commits: Array.isArray(raw.commits) ? raw.commits : [],
-    head: typeof raw.head === "string" ? raw.head : null,
-  };
-  return isMeaningfulRosterMeta(out) ? out : null;
-}
-
-// ============================
 // Live bindings
 // (ES module live bindings — setters allow reassignment)
 // ============================
 
 export let settings = defaultSettings();
 export let appState = { v: 3, title: t("app.title"), patients: normalizePatientArray(null) };
-export let rosterState = null;          // populated lazily when roster features are used
 export let selectedNo = 1;
 
 export function setAppState(s) { appState = s; }
-export function setRosterState(r) { rosterState = r; }
 export function setSettings(s) { settings = s; }
 export function setSelectedNo(n) { selectedNo = n; }
 
@@ -345,7 +305,6 @@ function applyBundleToLive(bundle) {
   if (!bundle) return;
   const sSettings = getSection(bundle, SECTION.SETTINGS);
   const sPatients = getSection(bundle, SECTION.PATIENTS);
-  const sHistory = getSection(bundle, SECTION.HISTORY);
 
   // title は端末固定 (localStorage)。bundle.sections.meta.title は出力時の
   // 体裁のためだけに保持される (workspace 切替で title を上書きしない)。
@@ -357,12 +316,6 @@ function applyBundleToLive(bundle) {
     title: deviceTitle || t("app.title"),
     patients: normalizePatientArray(Array.isArray(sPatients) ? sPatients : null),
   };
-  rosterState = normalizeRosterMeta({
-    rosterId: bundle.rosterId,
-    baseSnapshot: sHistory ? sHistory.baseSnapshot : null,
-    commits: sHistory ? sHistory.commits : [],
-    head: sHistory ? sHistory.head : null,
-  });
 }
 
 // device-wide title を書き換え & live state へ反映。caller は UI を再描画する責務。
@@ -414,7 +367,7 @@ export function scheduleSave() {
 export async function saveNow() {
   saveTimer = null;
   try {
-    await storageSave(projectBundle({ appState, rosterState, settings }));
+    await storageSave(projectBundle({ appState, settings }));
   } catch (e) {
     console.error("save failed:", e);
   }
@@ -449,7 +402,7 @@ export async function switchWorkspace(targetId) {
   // 1) 現アクティブを必ず保存
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
   try {
-    await storageSave(projectBundle({ appState, rosterState, settings }));
+    await storageSave(projectBundle({ appState, settings }));
   } catch (e) {
     console.error("save before switch failed:", e);
   }
@@ -472,7 +425,7 @@ export async function createWorkspace(label) {
   // 1) 現アクティブを保存
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
   try {
-    await storageSave(projectBundle({ appState, rosterState, settings }));
+    await storageSave(projectBundle({ appState, settings }));
   } catch (e) {
     console.error("save before create failed:", e);
   }
@@ -480,7 +433,6 @@ export async function createWorkspace(label) {
   const emptyAppState = { v: 3, title: t("app.title"), patients: normalizePatientArray(null) };
   const emptyBundle = projectBundle({
     appState: emptyAppState,
-    rosterState: null,
     settings: defaultSettings(),
   });
   // 3) IDB に新規エントリを作成

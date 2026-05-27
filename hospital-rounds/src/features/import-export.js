@@ -14,15 +14,14 @@
 // ============================================================================
 
 import {
-  appState, settings, rosterState,
-  setAppState, setSettings, setRosterState,
-  saveNow, normalizeLoaded, normalizeRosterMeta,
+  appState, settings,
+  setAppState, setSettings,
+  saveNow, normalizeLoaded,
 } from "../store.js";
 import { STATUS } from "../constants.js";
 import {
   projectBundle, parseBundle, getSection, SECTION,
 } from "../bundle.js";
-import { recordOp } from "./roster.js";
 import { t } from "../i18n.js";
 
 // 「設定も取込」「患者のみ」「キャンセル」を返す。データありの時だけ表示する。
@@ -98,14 +97,7 @@ function appendNewPatients(importedPatients) {
     p.p = { text: String(src.p?.text ?? "") };
     delete p.vitals;
     delete p.o;
-    const atIdx = appState.patients.length;
     appState.patients.push(p);
-    if (p.pid && rosterState) {
-      recordOp({
-        type: "add", at: atIdx,
-        patient: { pid: p.pid, name: p.name, room: p.room, tags: p.tags.slice() },
-      });
-    }
     count++;
   }
   return count;
@@ -122,16 +114,6 @@ function importedAppStateFromBundle(bundle) {
   return normalizeLoaded({
     title: sMeta && typeof sMeta.title === "string" ? sMeta.title : t("app.title"),
     patients: Array.isArray(sPatients) ? sPatients : null,
-  });
-}
-
-function importedRosterStateFromBundle(bundle) {
-  const sHistory = getSection(bundle, SECTION.HISTORY) || {};
-  return normalizeRosterMeta({
-    rosterId: bundle.rosterId,
-    baseSnapshot: sHistory.baseSnapshot || null,
-    commits: sHistory.commits || [],
-    head: sHistory.head || null,
   });
 }
 
@@ -165,7 +147,7 @@ export function initImportExport(callbacks) {
   function downloadCurrentAsJson() {
     try {
       if (lastExportUrl) URL.revokeObjectURL(lastExportUrl);
-      const bundle = projectBundle({ appState, rosterState, settings });
+      const bundle = projectBundle({ appState, settings });
       const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       lastExportUrl = url;
@@ -210,11 +192,9 @@ export function initImportExport(callbacks) {
     }
 
     const importedState = importedAppStateFromBundle(bundle);
-    const importedRoster = importedRosterStateFromBundle(bundle);
 
     if (isAppStateEmpty()) {
       setAppState(importedState);
-      setRosterState(importedRoster);
       refreshTitleUI();
       if (sSettings) applyImportedSettings(sSettings);
       saveNow();

@@ -51,14 +51,10 @@
   },
 
   "tags": [],
-  "tagGroups": [],
-  "tagGroupAssign": {},
-  "tagGroupingEnabled": false,
 
   "deviceId": "",
 
   "_app": {
-    "patientCount": 50,
-    "rosterDiffWindowDays": 30
+    "patientCount": 50
   }
 }

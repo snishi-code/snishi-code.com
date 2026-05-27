@@ -9,8 +9,6 @@ import {
   DEFAULT_ITEM_KIND,
   DEFAULT_LABEL_SEP_OTHER,
   DEFAULT_LABEL_SEP_TEXT,
-  GROUP_MODE_SINGLE,
-  GROUP_MODE_MULTI,
 } from "../constants.js";
 
 // ========================================================================
@@ -122,11 +120,10 @@ export function buildTimestampHeader() {
 
 export const PANEL_BY_INDEX = Object.freeze(FORMAT_PANELS.slice());      // ["S","O","A","P"]
 export const KIND_BY_INDEX  = Object.freeze(FORMAT_ITEM_KINDS.slice());  // ["text","number","fraction","date"]
-export const MODE_BY_INDEX  = Object.freeze([GROUP_MODE_MULTI, GROUP_MODE_SINGLE]); // ["multi","single"]
+// v7.7+: MODE_BY_INDEX は撤去 (タグ・カテゴリ機能撤去のため)
 
 const PANEL_INDEX = Object.fromEntries(PANEL_BY_INDEX.map((v, i) => [v, i]));
 const KIND_INDEX  = Object.fromEntries(KIND_BY_INDEX.map((v, i) => [v, i]));
-const MODE_INDEX  = Object.fromEntries(MODE_BY_INDEX.map((v, i) => [v, i]));
 
 function panelToIdx(s) {
   const i = PANEL_INDEX[s];
@@ -141,13 +138,6 @@ function kindToIdx(s) {
 }
 function kindFromIdx(i) {
   return KIND_BY_INDEX[i] || DEFAULT_ITEM_KIND;
-}
-function modeToIdx(s) {
-  const i = MODE_INDEX[s];
-  return typeof i === "number" ? i : MODE_INDEX[GROUP_MODE_MULTI];
-}
-function modeFromIdx(i) {
-  return MODE_BY_INDEX[i] || GROUP_MODE_MULTI;
 }
 
 // ============================
@@ -283,57 +273,9 @@ export function patientFromWire(wire, tagDict) {
   };
 }
 
-// ============================
-// Tag groups (ST のみ)
-// ============================
-//   tgs 内は { n, m } で id は持たない。受信側が新発番する。
-//   tga は [[tag_idx, group_idx], ...] の 1-based ペア配列。
-
-export function tagGroupToWire(g) {
-  return {
-    n: String(g?.name || ""),
-    m: modeToIdx(g?.mode),
-  };
-}
-
-export function tagGroupFromWire(w) {
-  return {
-    // id は wire に無いので新発番 (random)
-    id: "grp_" + Math.random().toString(36).slice(2, 10),
-    name: String(w?.n || ""),
-    mode: modeFromIdx(w?.m),
-  };
-}
-
-// tagGroupAssign は in-memory では { tagName: groupId } の object。
-// wire 上は [[tag_idx, group_idx], ...] (両方 1-based)。
-export function tagGroupAssignToWire(assignObj, tagDict, groupsArr) {
-  if (!assignObj || typeof assignObj !== "object") return [];
-  const groupIdToIdx = new Map();
-  (groupsArr || []).forEach((g, i) => { if (g?.id) groupIdToIdx.set(g.id, i + 1); });
-  const out = [];
-  for (const [tagName, groupId] of Object.entries(assignObj)) {
-    const ti = tagDict ? tagDict.indexOf(tagName) + 1 : 0;
-    const gi = groupIdToIdx.get(groupId) || 0;
-    if (ti > 0 && gi > 0) out.push([ti, gi]);
-  }
-  return out;
-}
-
-// wire の [[tag_idx, group_idx]] → in-memory の { tagName: groupId }。
-// resolvedGroups は decode 済の新発番 ID 付きグループ配列。
-export function tagGroupAssignFromWire(wireArr, tagDict, resolvedGroups) {
-  if (!Array.isArray(wireArr)) return {};
-  const out = {};
-  for (const pair of wireArr) {
-    if (!Array.isArray(pair) || pair.length !== 2) continue;
-    const [ti, gi] = pair;
-    const tagName = tagDict?.[ti - 1];
-    const groupId = resolvedGroups?.[gi - 1]?.id;
-    if (tagName && groupId) out[tagName] = groupId;
-  }
-  return out;
-}
+// v7.7+: Tag groups wire 変換 (tagGroupToWire / tagGroupFromWire /
+// tagGroupAssignToWire / tagGroupAssignFromWire) は撤去。
+// 再実装するなら git tag hospital-rounds-v7.6.1 を参照
 
 // ============================
 // 多ページ QR 共通プロトコル (transport layer)

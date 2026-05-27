@@ -11,7 +11,6 @@ import { makePatientTagPicker, getPatientTags, setPatientTags } from "../feature
 import { makeRoomInput, formatPatientLabel } from "../features/room.js";
 import { isPatientTransferred } from "../features/move-patient.js";
 import { t } from "../i18n.js";
-import { recordOp } from "../features/roster.js";
 import { scanQR, isScannerSupported } from "../features/qr-scan.js";
 import { buildTimestampHeader } from "../features/qr-protocol.js";
 import { createEditToggle } from "../features/edit-toggle.js";
@@ -342,7 +341,6 @@ export function initDetailEvents(renderHomeFn) {
       const next = detailTitle.value;
       if (p.name !== next) {
         p.name = next;
-        if (p.pid) recordOp({ type: "update", pid: p.pid, field: "name", value: next });
       }
       markUpdated(selectedNo);
       scheduleSave();

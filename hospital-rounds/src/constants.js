@@ -39,8 +39,6 @@ export const DEFAULT_LABEL_SEP_OTHER = " ";
 
 export const DEFAULT_TAGS = APP_DEFAULTS.tags;
 
-// Roster diff sync (dormant in v7.0.0+, future feature の基盤)
-export const ROSTER_DIFF_WINDOW_DAYS = APP_DEFAULTS._app.rosterDiffWindowDays;
 
 // QR 種別 (kind コード) と設定キー (settings.qrEncryption / qrRedistribution)。
 // 患者画面 QR (clinical text → 電子カルテ貼付) は外部ツールで読む前提のため
@@ -69,10 +67,8 @@ export const DEFAULT_TAG_FILTER_MODE = TAG_FILTER_MODE_AND;
 export const STATUS_TAG_PREFIX = "__status:";
 
 // Tag grouping (categorize tags into groups, off by default)
-export const DEFAULT_TAG_GROUPING_ENABLED = APP_DEFAULTS.tagGroupingEnabled;
-export const GROUP_MODE_SINGLE = "single";
-export const GROUP_MODE_MULTI = "multi";
-export const STATUS_GROUP_ID = "__status";
+// v7.7+: GROUP_MODE_* / STATUS_GROUP_ID / DEFAULT_TAG_GROUPING_ENABLED は撤去
+// (タグ・カテゴリ機能撤去のため)。再実装は git tag hospital-rounds-v7.6.1 を参照
 
 export const DEFAULT_CLEAR_TARGETS = APP_DEFAULTS.clearTargets;
 

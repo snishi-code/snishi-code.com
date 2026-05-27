@@ -6,7 +6,7 @@ import { STATUS } from "./constants.js";
 import { STORAGE_KEYS } from "./storage.js";
 import {
   appState, settings, selectedNo,
-  setAppState, setRosterState, setSelectedNo,
+  setAppState, setSelectedNo,
   saveNow, saveSettings,
   normalizeLoaded,
   setMarkUpdatedHandler, requestStoragePersistence,
@@ -39,7 +39,6 @@ import { initSettingsQr, refreshSettingsQrIfActive, setOnSettingsApplied } from 
 import { createEditToggle } from "./features/edit-toggle.js";
 import { sortPatientsByRoom, invalidateSortSnapshot } from "./features/room.js";
 import { wireScanButton } from "./features/qr-scan.js";
-import { flushCommit, compactHistory } from "./features/roster.js";
 import { initDocsDemo, renderDocsDemo, resetDocsDemo } from "./docs/docs-demo.js";
 import { initNoAutofill } from "./features/no-autofill.js";
 import { maybeShowPwaInitDialog } from "./features/pwa-init.js";
@@ -55,10 +54,6 @@ await maybeShowPwaInitDialog();
 // store.js は module-init 時に state を読み込まなくなったので、ここで明示的に
 // 待つ。以降のすべての top-level コードは hydration 完了後に実行される。
 await initStore();
-
-// アクティブワークスペースの roster commits のうち 30 日より古いものを
-// baseSnapshot に折りたたむ (個人情報の長期保持を避けるため)。
-try { compactHistory(); } catch (e) { console.warn("compactHistory failed:", e); }
 
 // ============================
 // Boot 1: Renderers + Navigators (組み立てだけ)
@@ -313,9 +308,6 @@ document.getElementById("resetBtn")?.addEventListener("click", () => {
   closeHeaderMenu();
   if (!confirm(t("main.clearAllInput.confirm"))) return;
   setAppState(normalizeLoaded(null));
-  // Roster commits reference the previous pids; drop the sync metadata so a
-  // future admin enable starts from a clean baseline.
-  setRosterState(null);
   saveNow();
   doRenderHome();
   doRenderDetail();
@@ -353,12 +345,10 @@ setMarkUpdatedHandler(() => invalidateSortSnapshot());
 
 // ページ離脱・バックグラウンド化時に op-batch + 保存待ちを即時フラッシュ
 window.addEventListener("beforeunload", () => {
-  try { flushCommit(); } catch (_) {}
   try { flushSavePending(); } catch (_) {}
 });
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") {
-    try { flushCommit(); } catch (_) {}
     try { flushSavePending(); } catch (_) {}
   }
 });

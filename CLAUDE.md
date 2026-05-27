@@ -147,6 +147,13 @@ snishi-code.com のソースリポジトリ。医療・個人向けの PWA / 単
 - 「確認しました」など単一アクションの確認系は従来通り (× ではなく大きなボタンが metaphor 的に正しい)
 - 追加クリーンアップ (state リセット・関連 flow の close 等) が要る popup は、× ボタンに id を併用して個別 listener を attach する (グローバルハンドラと加算的に動く)
 
+### 撤去された機能 (再実装したい時の参照点)
+
+v7.7.0 で以下の機能を一時撤去した。再実装するときは `git tag hospital-rounds-v7.6.1` を base に diff を取ると参考実装が手に入る。forward compat (`normalizeSettings` の未知フィールド温存) のおかげで旧 bundle のデータは消えないので、再導入時のデータ移行は気にしなくてよい。
+
+1. **タグ・カテゴリ機能 (グループタグ)**: タグを複数のグループに分類し、グループ内で AND/OR 切替できる機能。`settings.tagGroups` / `settings.tagGroupAssign` / `settings.tagGroupingEnabled` のフィールドと、tags.js §3 + settings-view.js のグループカード描画 + qr-protocol.js の tagGroupToWire 系。利用シーン (タグ数 20+) が薄く、複雑度の割に未使用だったため
+2. **roster.js (Git-like ops 履歴)**: `recordOp` / `compactHistory` / `flushCommit` / rosterState の 325 行。admin 撤去 (v7.0.0) 以降 `FEATURE_ROSTER_OPS=false` で dormant のまま使われず、bundle の history section も死蔵していたため。**将来 sync 機能を作る時の土台になる可能性が高いが、現時点では UI なし**
+
 ### QR Wire Format (端末間データ交換時の規約)
 
 複数端末間で QR を介してデータをやり取りするアプリ (`hospital-rounds` 等) では、wire format の中身を扱う処理は **必ず `src/features/qr-protocol.js` が export するヘルパーを経由** すること。各 feature ファイル (`qr-home.js` / `qr-shared.js` / `qr-settings.js` / `qr-format.js` 等) で独自の wire format を新規定義しないこと。

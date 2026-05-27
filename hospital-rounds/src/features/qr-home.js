@@ -70,7 +70,7 @@ async function applyRosterAsNewWorkspace(decoded, ctrl) {
 
   // bundle 化 → IDB に新規エントリ → 切替
   const newAppState = { v: 3, title: appState.title, patients: newPatients };
-  const newBundle = projectBundle({ appState: newAppState, rosterState: null, settings: newSettings });
+  const newBundle = projectBundle({ appState: newAppState, settings: newSettings });
   const newId = await createWorkspaceRecord(label, newBundle);
   await switchWorkspace(newId);
   ctrl.close();

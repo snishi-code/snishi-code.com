@@ -1,10 +1,8 @@
 "use strict";
 
-import { settings, appState, rosterState, saveSettings } from "../store.js";
+import { settings, appState, saveSettings } from "../store.js";
 import { DEFAULT_TAGS, clone } from "../constants.js";
-import { recordOp } from "../features/roster.js";
-import { renameTagAt, deleteTagAt, moveTag, isTagGroupingEnabled, getUserGroups, getTagsInGroup, getUnassignedTags, addGroup, renameGroup, setGroupMode, deleteGroup, setTagGroup, getAllTags, getGroupForTag, makeAddTagWidget } from "../features/tags.js";
-import { GROUP_MODE_SINGLE, GROUP_MODE_MULTI } from "../constants.js";
+import { renameTagAt, deleteTagAt, moveTag, makeAddTagWidget } from "../features/tags.js";
 import { bindLongPressAndDrag } from "../features/drag.js";
 import { startNewFormat, startEditFormat, deleteFormatById } from "../features/formats.js";
 import { getAllFormatGroups, startNewFormatGroup, startEditFormatGroup, deleteFormatGroupById } from "../features/format-groups.js";
@@ -223,183 +221,8 @@ function renderToggleIcon(iconEl, on) {
   }
 }
 
-function renderTagGroupingToggleIcon() {
-  const icon = document.getElementById("tagGroupingToggleIcon");
-  if (!icon) return;
-  renderToggleIcon(icon, !!settings.tagGroupingEnabled);
-  const host = document.getElementById("tagGroupsHost");
-  if (host) host.style.display = settings.tagGroupingEnabled ? "" : "none";
-}
-
-const SINGLE_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>`;
-const MULTI_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1" fill="currentColor"/><rect x="3" y="14" width="7" height="7" rx="1" fill="currentColor"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`;
-
-function renderTagGroups() {
-  const host = document.getElementById("tagGroupsHost");
-  if (!host) return;
-  host.textContent = "";
-  if (!settings.tagGroupingEnabled) return;
-
-  // Each user group as a "container"
-  for (const g of getUserGroups()) {
-    const card = document.createElement("div");
-    card.className = "tagGroupCard";
-
-    // Header row: name + mode toggle + delete
-    const head = document.createElement("div");
-    head.className = "tagGroupHead";
-    const nameBtn = document.createElement("button");
-    nameBtn.type = "button";
-    nameBtn.className = "tagGroupName";
-    nameBtn.textContent = g.name || t("settings.tagGroup.name.empty");
-    nameBtn.title = t("settings.tagGroup.name.tap");
-    nameBtn.addEventListener("click", () => {
-      const nv = prompt(t("settings.tagGroup.rename.prompt"), g.name);
-      if (nv === null) return;
-      if (!renameGroup(g.id, nv)) alert(t("settings.tagGroup.rename.failed"));
-      renderTagGroups();
-      if (_renderPatientUIFn) _renderPatientUIFn();
-    });
-    head.appendChild(nameBtn);
-
-    const modeBtn = document.createElement("button");
-    modeBtn.type = "button";
-    modeBtn.className = "iconBtn";
-    modeBtn.title = g.mode === GROUP_MODE_SINGLE ? t("settings.tagGroup.mode.toSingle") : t("settings.tagGroup.mode.toMulti");
-    modeBtn.innerHTML = g.mode === GROUP_MODE_SINGLE ? SINGLE_ICON : MULTI_ICON;
-    modeBtn.addEventListener("click", () => {
-      setGroupMode(g.id, g.mode === GROUP_MODE_SINGLE ? GROUP_MODE_MULTI : GROUP_MODE_SINGLE);
-      renderTagGroups();
-      if (_renderPatientUIFn) _renderPatientUIFn();
-    });
-    head.appendChild(modeBtn);
-
-    // Tag-add icon (opens picker to choose which tags belong)
-    const addTagBtn = document.createElement("button");
-    addTagBtn.type = "button";
-    addTagBtn.className = "iconBtn";
-    addTagBtn.title = t("settings.tagGroup.addTag.title");
-    addTagBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
-    addTagBtn.addEventListener("click", () => openGroupMembershipPicker(g.id, addTagBtn));
-    head.appendChild(addTagBtn);
-
-    const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.className = "iconBtn";
-    delBtn.title = t("settings.tagGroup.delete.title");
-    delBtn.innerHTML = TRASH_SVG;
-    delBtn.addEventListener("click", () => {
-      if (!confirm(t("settings.tagGroup.delete.confirm", { name: g.name }))) return;
-      deleteGroup(g.id);
-      renderTagGroups();
-      if (_renderPatientUIFn) _renderPatientUIFn();
-    });
-    head.appendChild(delBtn);
-
-    card.appendChild(head);
-
-    // Tag chips for this group
-    const body = document.createElement("div");
-    body.className = "tagGroupBody";
-    const tags = getTagsInGroup(g.id);
-    if (tags.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "qrHint";
-      empty.textContent = t("settings.tagGroup.empty");
-      body.appendChild(empty);
-    } else {
-      for (const tagName of tags) {
-        const chip = document.createElement("span");
-        chip.className = "tagChip";
-        chip.style.cursor = "pointer";
-        chip.title = t("settings.tagGroup.chip.remove");
-        chip.textContent = tagName;
-        chip.addEventListener("click", () => {
-          setTagGroup(tagName, "");
-          renderTagGroups();
-          if (_renderPatientUIFn) _renderPatientUIFn();
-        });
-        body.appendChild(chip);
-      }
-    }
-    card.appendChild(body);
-    host.appendChild(card);
-  }
-
-  // Add-group button
-  const addGroupBtn = document.createElement("button");
-  addGroupBtn.type = "button";
-  addGroupBtn.className = "tagGroupAdd";
-  addGroupBtn.title = t("settings.tagGroup.add.title");
-  addGroupBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
-  addGroupBtn.addEventListener("click", () => {
-    const nm = prompt(t("settings.tagGroup.add.prompt"));
-    if (!nm) return;
-    if (!addGroup(nm)) alert(t("settings.tagGroup.add.failed"));
-    renderTagGroups();
-  });
-  host.appendChild(addGroupBtn);
-
-  // Unassigned tags hint
-  const un = getUnassignedTags();
-  if (un.length) {
-    const hint = document.createElement("div");
-    hint.className = "qrHint";
-    hint.style.cssText = "margin-top:10px;";
-    hint.textContent = t("settings.tagGroup.unassigned", { n: un.length });
-    host.appendChild(hint);
-  }
-}
-
-function openGroupMembershipPicker(groupId, anchor) {
-  // Simple confirm-based picker using a vertical checkbox list overlay
-  const existing = document.getElementById("groupPickerOverlay");
-  if (existing) existing.remove();
-  const overlay = document.createElement("div");
-  overlay.id = "groupPickerOverlay";
-  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;";
-  const panel = document.createElement("div");
-  panel.style.cssText = "background:#fff;border-radius:12px;max-width:360px;width:100%;max-height:70vh;display:flex;flex-direction:column;overflow:hidden;";
-  const head = document.createElement("div");
-  head.style.cssText = "padding:10px 14px;border-bottom:1px solid var(--line);font-weight:700;";
-  head.textContent = t("settings.tagGroup.picker.title");
-  panel.appendChild(head);
-  const body = document.createElement("div");
-  body.style.cssText = "overflow:auto;padding:8px 14px;";
-  const tags = getAllTags();
-  for (const tagName of tags) {
-    const cur = getGroupForTag(tagName);
-    const lbl = document.createElement("label");
-    lbl.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 0;";
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = cur === groupId;
-    cb.addEventListener("change", () => {
-      setTagGroup(tagName, cb.checked ? groupId : "");
-    });
-    lbl.appendChild(cb);
-    const sp = document.createElement("span");
-    sp.textContent = tagName + (cur && cur !== groupId ? t("settings.tagGroup.picker.otherGroup") : "");
-    lbl.appendChild(sp);
-    body.appendChild(lbl);
-  }
-  panel.appendChild(body);
-  const foot = document.createElement("div");
-  foot.style.cssText = "padding:10px 14px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;";
-  const closeBtn = document.createElement("button");
-  closeBtn.type = "button";
-  closeBtn.className = "secondary";
-  closeBtn.textContent = t("common.close");
-  closeBtn.addEventListener("click", () => {
-    overlay.remove();
-    renderTagGroups();
-    if (_renderPatientUIFn) _renderPatientUIFn();
-  });
-  foot.appendChild(closeBtn);
-  panel.appendChild(foot);
-  overlay.appendChild(panel);
-  document.body.appendChild(overlay);
-}
+// v7.7+: タグ・カテゴリ機能 (renderTagGroups / renderTagGroupingToggleIcon /
+// openGroupMembershipPicker) は撤去。再実装は git tag hospital-rounds-v7.6.1 を参照
 
 // ============================
 // Tag list (chip-based UI with tap-to-edit, long-press to delete/drag)
@@ -457,7 +280,6 @@ function openInlineTagEditor(chipWrap, idx) {
         } else {
           settings.tags[idx] = next;
           saveSettings();
-          recordOp({ type: "tag.add", name: next });
         }
       } else if (next !== old) {
         if (!renameTagAt(idx, next)) {
@@ -662,9 +484,7 @@ function buildWorkspaceRow(r, isActive) {
 
 export function renderSettings() {
   renderClearTargets();
-  renderTagGroupingToggleIcon();
   renderTagsList();
-  renderTagGroups();
   renderFormatList();
   renderFormatGroupList();
   renderWorkspaceList();
@@ -713,21 +533,6 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn, 
     settings.tags.push("");
     saveSettings();
     renderTagsList();
-    if (_renderPatientUIFn) _renderPatientUIFn();
-  });
-
-  const tagGroupingEnableBtn = document.getElementById("tagGroupingEnableBtn");
-  if (tagGroupingEnableBtn) tagGroupingEnableBtn.addEventListener("click", () => {
-    if (settings.tagGroupingEnabled) {
-      if (!confirm(t("tag.group.disable.confirm"))) return;
-      settings.tagGroupingEnabled = false;
-    } else {
-      if (!confirm(t("tag.group.enable.confirm"))) return;
-      settings.tagGroupingEnabled = true;
-    }
-    saveSettings();
-    renderTagGroupingToggleIcon();
-    renderTagGroups();
     if (_renderPatientUIFn) _renderPatientUIFn();
   });
 

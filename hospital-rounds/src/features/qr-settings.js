@@ -2,11 +2,7 @@
 
 import { settings, setSettings, saveSettings } from "../store.js";
 import { createQrFlow } from "./qr-flow.js";
-import {
-  formatToWire, formatFromWire,
-  tagGroupToWire, tagGroupFromWire,
-  tagGroupAssignToWire, tagGroupAssignFromWire,
-} from "./qr-protocol.js";
+import { formatToWire, formatFromWire } from "./qr-protocol.js";
 import { t } from "../i18n.js";
 
 // ============================
@@ -20,11 +16,12 @@ import { t } from "../i18n.js";
 //     "v": 4,
 //     "td": ["内科","外科"],          // tag dictionary
 //     "f":  [<formatToWire>, ...],    // formats
-//     "ct": {memo:false,s:true,...},  // clearTargets
-//     "tge": 1,                       // tagGroupingEnabled (省略時 false)
-//     "tgs": [{n:"診療科",m:1}],       // tagGroups (省略時 無し、id なし)
-//     "tga": [[1,1],[2,1]]            // tagGroupAssign: [[tag_idx, group_idx]]
+//     "ct": {memo:false,s:true,...}   // clearTargets
 //   }
+//
+// v7.7+ で tge / tgs / tga (タグ・カテゴリ機能) は撤去された。WIRE_V は 4 のまま
+// 維持し、旧バージョンが生成した tge/tgs/tga フィールドは無視する (forward
+// compat: 受信側で必要なフィールドだけ拾う)。
 //
 // 端末固有値 (deviceId 等) は wire に載せない。
 // ============================
@@ -42,13 +39,6 @@ function encodePayload() {
   if (settings.clearTargets && typeof settings.clearTargets === "object") {
     out.ct = settings.clearTargets;
   }
-  if (settings.tagGroupingEnabled) out.tge = 1;
-  const groups = Array.isArray(settings.tagGroups) ? settings.tagGroups : [];
-  if (groups.length) {
-    out.tgs = groups.map(tagGroupToWire);
-  }
-  const tga = tagGroupAssignToWire(settings.tagGroupAssign, tagDict, groups);
-  if (tga.length) out.tga = tga;
   return JSON.stringify(out);
 }
 
@@ -67,20 +57,14 @@ function decodePayload(payload) {
       if (typeof v === "boolean") out.clearTargets[k] = v;
     }
   }
-  out.tagGroupingEnabled = !!obj.tge;
-  if (Array.isArray(obj.tgs)) {
-    out.tagGroups = obj.tgs.map(tagGroupFromWire);
-    if (Array.isArray(obj.tga)) {
-      out.tagGroupAssign = tagGroupAssignFromWire(obj.tga, tagDict, out.tagGroups);
-    }
-  }
+  // v7.6 以前の tge / tgs / tga は無視する (タグ・カテゴリ機能撤去のため)
   return out;
 }
 
 let onAppliedHandler = null;
 export function setOnSettingsApplied(fn) { onAppliedHandler = fn; }
 
-const APPLIED_FIELDS = ["formats", "clearTargets", "tags", "tagGroups", "tagGroupingEnabled", "tagGroupAssign"];
+const APPLIED_FIELDS = ["formats", "clearTargets", "tags"];
 
 function applySettings(safe, ctrl) {
   if (!safe) {
@@ -91,7 +75,6 @@ function applySettings(safe, ctrl) {
   if (Array.isArray(safe.tags)) summary.push(t("qrSettings.summary.tags", { n: safe.tags.length }));
   if (Array.isArray(safe.formats)) summary.push(t("qrSettings.summary.formats", { n: safe.formats.length }));
   if (safe.clearTargets) summary.push(t("qrSettings.summary.clearTargets"));
-  if (Array.isArray(safe.tagGroups)) summary.push(t("qrSettings.summary.tagGroups", { n: safe.tagGroups.length }));
   const summaryText = summary.length ? `（${summary.join(", ")}）` : "";
 
   const ok = confirm(t("qrSettings.import.confirm", { summary: summaryText }));
@@ -125,9 +108,6 @@ const flow = createQrFlow({
   decodePayload,
   onApply: applySettings,
   shouldEncrypt: () => !!settings.qrEncryption?.ST,
-  // maxBytes は qr-flow.js の MAX_BYTES (750) を使う。v7.1.x までは 1100 で
-  // 1 ページに収めていたが、v7.2.0 で deflate が入ったので 750 でも 1 ページに
-  // 収まる見込み。
 });
 
 export const initSettingsQr = () => flow.init();

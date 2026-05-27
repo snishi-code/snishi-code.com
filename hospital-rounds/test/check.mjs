@@ -93,7 +93,6 @@ await test("empty storage → defaults populated", async () => {
   const store = await freshStore();
   assert.equal(store.appState.patients.length, 50, "50 default patient slots");
   assert.equal(store.appState.title, "回診");
-  assert.equal(store.rosterState, null, "rosterState is null when nothing stored");
   assert.ok(Array.isArray(store.settings.formats) && store.settings.formats.length > 0, "default formats populated");
   assert.ok(store.appState.patients.every(p => typeof p.pid === "string" && p.pid.length > 0), "every default patient has a pid");
 });
@@ -139,18 +138,10 @@ for (const [name, raw] of Object.entries(fixtures)) {
     const patients = getSection(b, SECTION.PATIENTS) || [];
     const settings = getSection(b, SECTION.SETTINGS) || { deviceId: "", oRules: [], tags: [] };
     const meta = getSection(b, SECTION.META) || {};
-    const history = getSection(b, SECTION.HISTORY);
-    const rosterState = history ? {
-      rosterId: b.rosterId,
-      baseSnapshot: history.baseSnapshot,
-      commits: history.commits || [],
-      head: history.head,
-    } : null;
 
     const projected = projectBundle({
       appState: { title: meta.title, patients },
       settings,
-      rosterState,
     });
     const reparsed = parseBundle(projected);
 
@@ -159,12 +150,9 @@ for (const [name, raw] of Object.entries(fixtures)) {
     const newPids = (getSection(reparsed, SECTION.PATIENTS) || []).map(p => p.pid);
     assert.deepEqual(newPids, origPids);
 
-    // Sections present in source survive projection (other than derived ones).
+    // Meta section survives projection
     if (getSection(b, SECTION.META)?.title) {
       assert.ok(getSection(reparsed, SECTION.META), "meta section retained");
-    }
-    if (history) {
-      assert.ok(getSection(reparsed, SECTION.HISTORY), "history section retained");
     }
   });
 }
@@ -181,12 +169,6 @@ for (const [name, raw] of Object.entries(fixtures)) {
     // v6.5+ では title は端末固定 (localStorage) なので bundle.meta.title からは
     // 読まない。localStorage が空のテスト環境ではフォールバック "回診" になる。
     assert.equal(store.appState.title, "回診");
-
-    // history section in fixture → rosterState non-null
-    const hasHistory = !!raw.sections?.history;
-    if (hasHistory) {
-      assert.ok(store.rosterState, "rosterState should be hydrated when fixture has history");
-    }
 
     // Patients are normalized to objects with all expected fields
     const samplePid = raw.sections?.patients?.[0]?.pid;
@@ -383,58 +365,7 @@ await test("storage.loadBundle returns null on clean state", async () => {
 });
 
 // ============================
-// 9) roster compactHistory: 古い commit を baseSnapshot に折りたたむ
-// ============================
-section("roster compactHistory (30日ローリング)");
-
-// freshStore と同じ instance を使うことで rosterState を roster.js と共有
-const rosterUrl = pathToFileURL(join(srcDir, "features", "roster.js")).href;
-const rosterMod = await import(rosterUrl);
-
-await test("compactHistory folds old commits into baseSnapshot", async () => {
-  const store = await freshStore();
-  // v7+ では FEATURE_ROSTER_OPS=false で recordOp が no-op だが、
-  // ensureRosterState は admin ガートなしで rosterState を作る (= Git 基盤として
-  // 単独利用可能)。本テストは roster.js の compactHistory() 動作の単体検査。
-  rosterMod.ensureRosterState();
-
-  const now = Date.now();
-  // baseSnapshot は空、commits に「40日前」と「3日前」を 1 つずつ仕込む
-  store.rosterState.baseSnapshot = { patients: [], tags: [], ts: now - 60 * 86400_000 };
-  store.rosterState.commits = [
-    {
-      id: "c1", parent: null, ts: now - 40 * 86400_000, deviceId: "x",
-      ops: [{ type: "add", at: 0, patient: { pid: "p1", name: "古い患者", room: "101", tags: [] } }],
-    },
-    {
-      id: "c2", parent: "c1", ts: now - 3 * 86400_000, deviceId: "x",
-      ops: [{ type: "add", at: 1, patient: { pid: "p2", name: "新しい患者", room: "102", tags: [] } }],
-    },
-  ];
-
-  const changed = rosterMod.compactHistory(30);
-  assert.equal(changed, true, "compaction reported changes");
-  assert.equal(store.rosterState.commits.length, 1, "only the recent commit remains");
-  assert.equal(store.rosterState.commits[0].id, "c2");
-  assert.equal(store.rosterState.baseSnapshot.patients.length, 1, "old commit was folded in");
-  assert.equal(store.rosterState.baseSnapshot.patients[0].name, "古い患者");
-});
-
-await test("compactHistory is idempotent when no old commits", async () => {
-  const store = await freshStore();
-  rosterMod.ensureRosterState();
-
-  const now = Date.now();
-  store.rosterState.commits = [
-    { id: "c1", parent: null, ts: now - 1 * 86400_000, deviceId: "x", ops: [] },
-  ];
-  const changed = rosterMod.compactHistory(30);
-  assert.equal(changed, false, "no compaction when all commits are recent");
-  assert.equal(store.rosterState.commits.length, 1);
-});
-
-// ============================
-// 10) storage workspace API: createWorkspaceRecord / getActiveWorkspaceId
+// 9) storage workspace API: createWorkspaceRecord / getActiveWorkspaceId
 // ============================
 section("storage workspace API");
 
@@ -611,7 +542,7 @@ await test("PANEL/KIND/MODE enum tables are stable (bump WIRE_V if you add to th
   // 変えないための歩哨」。enum を増やす時は WIRE_V を bump する必要がある。
   assert.deepEqual([...p.PANEL_BY_INDEX], ["S", "O", "A", "P"]);
   assert.deepEqual([...p.KIND_BY_INDEX], ["text", "number", "fraction", "date"]);
-  assert.deepEqual([...p.MODE_BY_INDEX], ["multi", "single"]);
+  // v7.7+: MODE_BY_INDEX (タグ・カテゴリ用) は撤去
 });
 
 await test("formatToWire / formatFromWire round-trip with tag dict", async () => {
@@ -691,57 +622,11 @@ await test("patientToWire returns empty {} when all fields blank", async () => {
   assert.deepEqual(wire, {});
 });
 
-await test("tagGroupToWire / tagGroupFromWire round-trip (id is regenerated)", async () => {
-  const p = await import("../src/features/qr-protocol.js");
-  const g = { id: "orig_id", name: "診療科", mode: "single" };
-  const wire = p.tagGroupToWire(g);
-  assert.equal(wire.n, "診療科");
-  assert.equal(wire.m, 1, "single = index 1");
-  assert.equal(wire.id, undefined, "id is not on wire");
+// v7.7+: tagGroup wire 変換テストは撤去 (タグ・カテゴリ機能撤去のため)
 
-  const restored = p.tagGroupFromWire(wire);
-  assert.equal(restored.name, "診療科");
-  assert.equal(restored.mode, "single");
-  assert.ok(restored.id && restored.id.startsWith("grp_"), "id is freshly generated");
-  assert.notEqual(restored.id, "orig_id");
-});
-
-await test("tagGroupAssign round-trip via [tag_idx, group_idx]", async () => {
-  const p = await import("../src/features/qr-protocol.js");
-  const dict = ["内科", "外科", "救急"];
-  const groups = [
-    { id: "g1", name: "診療科", mode: "single" },
-    { id: "g2", name: "緊急度", mode: "multi" },
-  ];
-  const assignObj = { "内科": "g1", "外科": "g1", "救急": "g2" };
-  const wire = p.tagGroupAssignToWire(assignObj, dict, groups);
-  // Order may vary, so compare as sets
-  const wireSet = new Set(wire.map(pair => pair.join(",")));
-  assert.ok(wireSet.has("1,1"), "内科 → g1");
-  assert.ok(wireSet.has("2,1"), "外科 → g1");
-  assert.ok(wireSet.has("3,2"), "救急 → g2");
-  assert.equal(wire.length, 3);
-
-  // 受信側で new IDs を割り振った groups を使って復元
-  const resolvedGroups = [
-    { id: "new_g_A", name: "診療科", mode: "single" },
-    { id: "new_g_B", name: "緊急度", mode: "multi" },
-  ];
-  const restored = p.tagGroupAssignFromWire(wire, dict, resolvedGroups);
-  assert.equal(restored["内科"], "new_g_A");
-  assert.equal(restored["外科"], "new_g_A");
-  assert.equal(restored["救急"], "new_g_B");
-});
-
-await test("qr-settings encode/decode round-trip with formats + tagGroups", async () => {
+await test("qr-settings encode/decode round-trip with formats", async () => {
   const store = await freshStore();
-  // 仕込み: タグ辞書 + tagGroups + tagGroupAssign
   store.settings.tags = ["内科", "外科", "救急"];
-  store.settings.tagGroups = [
-    { id: "g_doctor", name: "診療科", mode: "single" },
-  ];
-  store.settings.tagGroupAssign = { "内科": "g_doctor", "外科": "g_doctor" };
-  store.settings.tagGroupingEnabled = true;
 
   // qr-settings.js は flow に encodePayload/decodePayload を渡しているだけで
   // export していない。 同じ振る舞いを再現するため、qr-protocol の helper を
@@ -749,25 +634,15 @@ await test("qr-settings encode/decode round-trip with formats + tagGroups", asyn
   const proto = await import("../src/features/qr-protocol.js");
   const tagDict = store.settings.tags.slice();
   const wireFormats = store.settings.formats.map(f => proto.formatToWire(f, tagDict));
-  const wireGroups = store.settings.tagGroups.map(proto.tagGroupToWire);
-  const wireAssign = proto.tagGroupAssignToWire(store.settings.tagGroupAssign, tagDict, store.settings.tagGroups);
 
   // 復号
   const restoredFormats = wireFormats.map(w => proto.formatFromWire(w, tagDict));
-  const restoredGroups = wireGroups.map(proto.tagGroupFromWire);
-  const restoredAssign = proto.tagGroupAssignFromWire(wireAssign, tagDict, restoredGroups);
 
   // panel/kind enum が文字列に戻っている
   assert.equal(restoredFormats[0].panel, store.settings.formats[0].panel);
   assert.equal(restoredFormats[0].items[0].kind, store.settings.formats[0].items[0].kind);
-
-  // tagGroupAssign 復元: タグ名は同じ、groupId は新発番
-  for (const tagName of Object.keys(store.settings.tagGroupAssign)) {
-    const origGroupName = store.settings.tagGroups.find(g => g.id === store.settings.tagGroupAssign[tagName])?.name;
-    const newGroupId = restoredAssign[tagName];
-    const newGroupName = restoredGroups.find(g => g.id === newGroupId)?.name;
-    assert.equal(newGroupName, origGroupName, `tag ${tagName} stays assigned to "${origGroupName}"`);
-  }
+  // tags も dict 経由で正しく復元
+  assert.deepEqual(restoredFormats[0].tags, store.settings.formats[0].tags);
 });
 
 await test("qr-patient-list v3 round-trip via encodePatientList + decodePatientList", async () => {

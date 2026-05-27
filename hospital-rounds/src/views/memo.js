@@ -6,7 +6,6 @@ import { syncDetailMemoDisplay } from "../features/navigation.js";
 import { makePatientTagPicker, makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
 import { makeRoomInput, formatPatientLabel, isRoomSortActive } from "../features/room.js";
 import { refreshMemoQrIfActive } from "../features/qr-shared.js";
-import { recordOp } from "../features/roster.js";
 import { statusClass } from "./home.js";
 
 let _editMode = false;
@@ -63,7 +62,6 @@ export function renderMemoScreen(renderHomeFn, opts, navigateToPatientFn) {
         const cur = appState.patients[i - 1];
         if (cur.name !== next) {
           cur.name = next;
-          if (cur.pid) recordOp({ type: "update", pid: cur.pid, field: "name", value: next });
         }
         markUpdated(appState.patients.indexOf(p) + 1);
         scheduleSave();

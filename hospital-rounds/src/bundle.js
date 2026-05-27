@@ -42,15 +42,15 @@ export const SECTION = Object.freeze({
   ROSTER: "roster",
   MEMO: "memo",
   SHARED: "shared",
-  HISTORY: "history",
+  // v7.7+: HISTORY section (roster commits) は撤去。section 値自体は parseBundle
+  // が旧 bundle を読んだ時に未知フィールドとして温存される (forward compat)
 });
 
 // Default sections written by the "save everything" preset (file export +
-// localStorage snapshot). Derived sections (roster/memo/shared) are excluded
-// because they are projections of patients — including them would just
-// duplicate data.
+// localStorage snapshot). Derived sections (roster/memo/shared) は projection
+// なので除外。
 export const FULL_BACKUP_SECTIONS = Object.freeze([
-  SECTION.META, SECTION.SETTINGS, SECTION.PATIENTS, SECTION.HISTORY,
+  SECTION.META, SECTION.SETTINGS, SECTION.PATIENTS,
 ]);
 
 function nowIso() {
@@ -75,7 +75,6 @@ function projectRosterView(patients, tags) {
 
 export function projectBundle({
   appState,
-  rosterState,
   settings,
   sections = FULL_BACKUP_SECTIONS,
   owner,
@@ -88,13 +87,10 @@ export function projectBundle({
     appVersion: BUNDLE_APP_VERSION,
     exportedAt: exportedAt != null ? exportedAt : nowIso(),
     owner: owner || { deviceId: settings?.deviceId || "", label: "" },
-    rosterId: rosterState?.rosterId || "",
     sections: {},
   };
 
   if (want.has(SECTION.META)) {
-    // appState.title が空ならアプリ名フォールバック。bundle.js は import 循環を
-    // 避けるため i18n を直接 import せず、defaults.json のフォールバックを使う
     out.sections.meta = { title: String(appState?.title || t("app.title")) };
   }
   if (want.has(SECTION.SETTINGS) && settings) {
@@ -116,17 +112,9 @@ export function projectBundle({
       .filter(p => p && p.pid && p.shared)
       .map(p => ({ pid: p.pid, shared: p.shared }));
   }
-  if (want.has(SECTION.HISTORY) && rosterState && (
-    rosterState.baseSnapshot
-    || (Array.isArray(rosterState.commits) && rosterState.commits.length)
-    || rosterState.head
-  )) {
-    out.sections.history = {
-      baseSnapshot: rosterState.baseSnapshot || null,
-      commits: Array.isArray(rosterState.commits) ? rosterState.commits : [],
-      head: rosterState.head || null,
-    };
-  }
+  // v7.7+: HISTORY section (roster commits) は撤去。bundle に rosterId / history
+  // 含まないが、未知フィールドとして残っている旧 bundle を読んでも parseBundle
+  // 側で無視される。再実装時は v7.6.1 タグを参照
   return out;
 }
 
