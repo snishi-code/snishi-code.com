@@ -209,6 +209,8 @@
   "formatGroup.name.required": "グループ名を入力してください。",
   "formatGroup.name.duplicate": "既に同名のグループがあります。別の名前にしてください。",
   "formatGroup.toggle.title": "フォーマットグループを切替",
+  "formatGroup.toggle.active.title": "「{name}」グループ適用中 (タップで切替)",
+  "formatGroup.option.none.label": "通常",
   "formatGroup.picker.title": "フォーマットグループ",
   "formatGroup.picker.hint": "この患者の pin 表示を、選んだグループに含まれるフォーマットだけに切り替えます。",
   "formatGroup.picker.empty": "グループ未登録。設定画面で追加してください。",

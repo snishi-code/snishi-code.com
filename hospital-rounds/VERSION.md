@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 6.9.0
+現在のバージョン: 6.10.0
 
 ## バージョニング方針
 
@@ -14,6 +14,11 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **6.10.0**: フォーマット入力 UI のシンプル化 + グループトグルの視認性向上
+  - **数字系フォーマットの備考欄を撤去**: `buildNumberRow` / `buildFractionRow` から memo input を削除。反映後に textarea で直接編集する想定。`applyFormatInput` の number / fraction 分岐から memo 連結を除去。`body.mixed` 4 列 grid は維持しつつ、memo 列は空 placeholder (`formatInputMemoPlaceholder`) で埋めて行間整合を保つ。date は memo を温存 (Labo/CT prefill 用)
+  - **グループフォーマット トグルの刷新**: 旧 アイコンのみの `detailFormatGroupBtn` → テキスト + アイコン + chevron の `formatGroupToggleBtn` に。通常時は「通常」、active 時はグループ名 (例「発熱対応」) + 青ハイライトで適用状態が一目で分かる。`refreshFormatGroupToggle()` を `renderDetail` から呼んで患者切替時も即時更新
+  - **ヘッダーアイコン順を統一**: 旧 `move / group / QR / ?` → 新 `move / group / ? / QR` (他画面の「? 左 / QR 右」と整合)
+  - i18n: `formatGroup.toggle.active.title` / `formatGroup.option.none.label` 追加
 - **6.9.0**: アーキテクチャ整理 (forward compat + 移植性の store adapter 化)
   - **forward compatibility**: `normalizePatientArray` と `normalizeSettings` を「未知フィールド温存型」に変更。new バージョンで追加されたフィールドを old バージョンが読み戻し → 再保存しても未知フィールドが失われない。`{ ...rawIfObject, ...validatedKnownFields }` パターン
   - **qr-format.js を store-agnostic 化**: `setFormatStoreAdapter({getExistingFormats, getKnownTags, addFormat})` で外部から read/write を注入。`settings` / `saveSettings` / `getAllTags` への直接 import を撤去。これにより他アプリへの移植 / Preact 化時の差し替えが容易に

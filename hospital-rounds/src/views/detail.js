@@ -2,6 +2,7 @@
 
 import { appState, settings, selectedNo, markUpdated, scheduleSave } from "../store.js";
 import { renderFormatStrip } from "../features/formats.js";
+import { refreshFormatGroupToggle } from "../features/format-groups.js";
 import { STATUS } from "../constants.js";
 import { buildTabPayload } from "../payload.js";
 import { utf8ByteLength } from "../payload.js";
@@ -315,6 +316,7 @@ export function renderDetail(syncDetailMemoDisplay) {
 
   renderInlineTags();
   renderTransferredBanner(p);
+  refreshFormatGroupToggle();
 
   if (sText) sText.value = p.s;
   if (aText) aText.value = p.a.text;

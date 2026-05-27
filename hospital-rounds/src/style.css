@@ -904,13 +904,12 @@
     }
 
     /* mixed (= 異なる kind が混在 / または全 number/fraction/date): 4 列 grid で
-       行間を縦揃え (label / value / unit / memo)。fraction は value セルの中で
-       numer/slash/denom を flex で並べる (formatInputFracGroup でラップ)。
-       date は unit セルが空 span だが grid 列の整合性のために省略しない。
-       value セルは minmax で幅を制限し、memo が残り幅を持つ。 */
+       行間を縦揃え (label / value / unit / memo)。number / fraction は memo セルを
+       空のままにする (v6.10+ で備考欄を撤去)。date のみ memo を出す (Labo/CT prefill)。
+       fraction は value セルの中で numer/slash/denom を flex で並べる。 */
     .formatInputBody.mixed {
       display: grid;
-      grid-template-columns: max-content minmax(96px, 120px) max-content minmax(80px, 1fr);
+      grid-template-columns: max-content minmax(100px, 140px) max-content minmax(0, 1fr);
       column-gap: 8px;
       row-gap: 8px;
       align-items: center;
@@ -2393,6 +2392,48 @@
       background: var(--status-blue-bg, #bfdbfe);
       border-color: var(--status-blue-bd, #2563eb);
       color: var(--status-blue-text, #1e3a8a);
+    }
+
+    /* 患者ヘッダーのフォーマットグループ トグル: 「通常」/ グループ名を表示。
+       active 時 (= 何か選ばれている) は青ハイライトでパッと見えるように */
+    .formatGroupToggleBtn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 44px;          /* タッチターゲット 44 確保 */
+      padding: 6px 10px;
+      margin: 0;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      max-width: 160px;
+    }
+    .formatGroupToggleBtn:hover {
+      background: rgba(0, 0, 0, 0.04);
+      color: var(--text);
+    }
+    .formatGroupToggleBtn.active {
+      background: var(--blue-light);
+      border-color: var(--blue-border);
+      color: var(--blue);
+    }
+    .formatGroupToggleBtn.active:hover {
+      background: var(--blue-border);
+    }
+    .formatGroupToggleLabel {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+      max-width: 90px;
+    }
+    .formatGroupToggleChevron {
+      flex-shrink: 0;
+      opacity: 0.6;
     }
 
     /* フォーマット QR 共有モーダル: QR を大きめに表示できる幅 */

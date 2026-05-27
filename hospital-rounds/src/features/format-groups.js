@@ -37,6 +37,32 @@ export function getFormatGroupById(id) {
   return getAllFormatGroups().find(g => g.id === id) || null;
 }
 
+// 現在開いている患者の active group に応じて、ヘッダー上のトグルボタンの
+// 表示 (グループ名 or 「通常」) と active styling を更新する。
+// 詳細画面の renderDetail から呼ばれる。
+export function refreshFormatGroupToggle() {
+  const btn = document.getElementById("detailFormatGroupBtn");
+  const lbl = document.getElementById("detailFormatGroupLabel");
+  if (!btn || !lbl) return;
+  const p = appState.patients[selectedNo - 1];
+  const activeId = String(p?.activeFormatGroupId || "");
+  if (activeId) {
+    const g = getFormatGroupById(activeId);
+    if (g) {
+      lbl.textContent = g.name;
+      btn.classList.add("active");
+      btn.title = t("formatGroup.toggle.active.title", { name: g.name });
+      return;
+    }
+    // active group が削除されていた場合は通常モードへフォールバック
+    btn.classList.remove("active");
+  } else {
+    btn.classList.remove("active");
+  }
+  lbl.textContent = t("formatGroup.option.none.label");
+  btn.title = t("formatGroup.toggle.title");
+}
+
 // ============================
 // 患者画面: ピッカー (この患者の active group を選ぶ)
 // ============================

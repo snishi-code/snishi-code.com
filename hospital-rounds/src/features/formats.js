@@ -307,15 +307,14 @@ function buildNumberRow(host, item) {
   unit.textContent = item.unit || "";
   row.appendChild(unit);
 
-  const memo = document.createElement("input");
-  memo.type = "text";
-  memo.className = "formatInputMemo";
-  memo.placeholder = t("format.placeholder.memo");
-  setupTextInput(memo);
-  row.appendChild(memo);
+  // v6.10+ : 備考欄を撤去。grid 4 列との整合のため空 placeholder cell を 1 つ出す
+  // (display:contents の row が cell 数を揃えないと次の行が前行に流れ込んでズレる)
+  const memoPlaceholder = document.createElement("span");
+  memoPlaceholder.className = "formatInputMemoPlaceholder";
+  row.appendChild(memoPlaceholder);
 
   host.appendChild(row);
-  return { item, kind: "number", val, memo };
+  return { item, kind: "number", val };
 }
 
 function buildFractionRow(host, item) {
@@ -354,15 +353,13 @@ function buildFractionRow(host, item) {
   unit.textContent = item.unit || "";
   row.appendChild(unit);
 
-  const memo = document.createElement("input");
-  memo.type = "text";
-  memo.className = "formatInputMemo";
-  memo.placeholder = t("format.placeholder.memo");
-  setupTextInput(memo);
-  row.appendChild(memo);
+  // v6.10+ : 備考欄を撤去。grid 4 列との整合のため空 placeholder cell を 1 つ出す
+  const memoPlaceholder = document.createElement("span");
+  memoPlaceholder.className = "formatInputMemoPlaceholder";
+  row.appendChild(memoPlaceholder);
 
   host.appendChild(row);
-  return { item, kind: "fraction", numer, denom, memo };
+  return { item, kind: "fraction", numer, denom };
 }
 
 function buildDateRow(host, item) {
@@ -473,28 +470,22 @@ function applyFormatInput() {
   const parts = [];
   for (const row of rowEls) {
     if (row.kind === "number") {
+      // v6.10+ : 備考欄を撤去。値が空ならスキップ。値があれば「ラベル <labelSep> 値<unit>」
       const value = String(row.val.value || "").trim();
-      const memo  = String(row.memo.value || "").trim();
-      if (!value && !memo) continue;
+      if (!value) continue;
       const unit = row.item.unit || "";
-      // 値 + 単位 をひとまとめにしてから labelSep で繋ぐ
-      const valueWithUnit = value
-        ? `${value}${unit}`
-        : (unit ? `(${unit})` : "");
-      parts.push(combineLabelValueMemo(row.item.label, labelSep, valueWithUnit, memo));
+      const valueWithUnit = `${value}${unit}`;
+      parts.push(combineLabelValueMemo(row.item.label, labelSep, valueWithUnit, ""));
     } else if (row.kind === "fraction") {
+      // v6.10+ : 備考欄を撤去。"120/53" / "/53" / "120/" を許容 (片側だけ入力可)
       const a = String(row.numer.value || "").trim();
       const b = String(row.denom.value || "").trim();
-      const memo = String(row.memo.value || "").trim();
-      // どちらも空、かつ memo も無いならスキップ
-      if (!a && !b && !memo) continue;
+      if (!a && !b) continue;
       const unit = row.item.unit || "";
-      // "120/53" / "/53" / "120/" を許容 (片側だけ入力されたら片側だけ出す)
-      let frac = "";
-      if (a || b) frac = `${a}/${b}`;
-      const valueWithUnit = frac ? `${frac}${unit}` : (unit ? `(${unit})` : "");
-      parts.push(combineLabelValueMemo(row.item.label, labelSep, valueWithUnit, memo));
+      const valueWithUnit = `${a}/${b}${unit}`;
+      parts.push(combineLabelValueMemo(row.item.label, labelSep, valueWithUnit, ""));
     } else if (row.kind === "date") {
+      // date は memo を残す (Labo/CT 等の prefill を活かす)
       const md = formatDateMonthDay(row.val.value);
       const memo = String(row.memo.value || "").trim();
       if (!md && !memo) continue;
