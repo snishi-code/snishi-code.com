@@ -1,8 +1,9 @@
 "use strict";
 
-import { appState, settings, makeDefaultPatient, saveSettings } from "../store.js";
-import { finishDataChange } from "./drag.js";
-import { recordOp } from "./roster.js";
+import { appState, settings, makeDefaultPatient, switchWorkspace } from "../store.js";
+import { createWorkspaceRecord } from "../storage.js";
+import { projectBundle } from "../bundle.js";
+import { DEFAULT_PATIENT_COUNT } from "../constants.js";
 import { createQrFlow } from "./qr-flow.js";
 import { encodePatientList, decodePatientList } from "./qr-patient-list.js";
 import { t } from "../i18n.js";
@@ -12,114 +13,68 @@ import { t } from "../i18n.js";
 //
 // プロトコルとフローは共通 (qr-flow / qr-patient-list)。ホーム固有なのは:
 //   - includeEmpty=true で送る（slot 位置を保つ）
-//   - 受信時の挙動分岐:
-//     * 名簿が全患者で空 → reflect モード (slot 1..N を上書き、必要なら拡張)
-//     * 名簿が空でない   → append モード (空患者を除き末尾に追加)
-//   - タグも一緒に取り込む:
-//     * reflect → settings.tags 丸ごと差し替え
-//     * append  → 既存タグと衝突しないよう A→A(1)→A(2) と suffix 改名で union
+//   - 受信時は **常に新規ワークスペースとして作成 + 切替** (v7.6+ で統一)
+//
+// 旧 (v6.x〜v7.5): 受信側の名簿が空なら丸ごと上書き (reflect モード)、
+//                   非空なら末尾に追加 (append モード)。タグ衝突 rename あり。
+// 新 (v7.6+):     受信は常に新規 WS を作成し、現在の WS は無傷で残す。
+//                   ユーザは確認ダイアログ後、自動的に新 WS に切り替わる。
+// 利点: データ上書き事故ゼロ + 100 行のロジック削除 + WS 一覧が「データ来歴」になる
 // ============================
 
-// 同名タグの衝突回避（ファイルコピー風の括弧付き連番）
-function uniqueTagName(name, existing) {
-  if (!existing.includes(name)) return name;
-  for (let i = 1; i < 10000; i++) {
-    const cand = `${name}(${i})`;
-    if (!existing.includes(cand)) return cand;
-  }
-  return `${name}(${Date.now().toString(36)})`;
+function formatRecvLabel() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return t("home.qrImport.newWs.label", { ts: `${yyyy}-${mm}-${dd} ${hh}:${mi}` });
 }
 
-function applyRoster(decoded, ctrl) {
+async function applyRosterAsNewWorkspace(decoded, ctrl) {
   const { tagNames: senderTagNames, patients: roster } = decoded;
   if (roster.length === 0) {
     alert(t("qr.import.empty.home"));
     return;
   }
 
-  const isEmpty = appState.patients.every(p =>
-    !String(p?.room || "").trim() &&
-    !String(p?.name || "").trim() &&
-    (!p?.tags || p.tags.length === 0)
-  );
+  const label = formatRecvLabel();
+  if (!confirm(t("home.qrImport.newWs.confirm", { count: roster.length, label }))) return;
 
-  if (isEmpty) {
-    // reflect モード: 設定タグを丸ごと送信側のものに差し替え
-    settings.tags = senderTagNames.slice();
-    saveSettings();
-    const resolveTag = (idx) => settings.tags[idx - 1] || null;
-
-    while (appState.patients.length < roster.length) {
-      appState.patients.push(makeDefaultPatient());
-    }
-    for (let i = 0; i < roster.length; i++) {
-      const p = appState.patients[i];
-      const r = roster[i];
-      p.room = r.room;
-      p.name = r.name;
-      p.tags = r.tagIdxs.map(resolveTag).filter(Boolean);
-      // 受信した患者は外部由来としてマーク (qrRedistribution.HM=restricted の時、
-      // 再 export 時にこの患者を除外できる)。空 slot は origin を立てない
-      if (r.room || r.name || r.tagIdxs.length) p.origin = "external";
-      if (p.pid) {
-        recordOp({ type: "update", pid: p.pid, field: "room", value: p.room });
-        recordOp({ type: "update", pid: p.pid, field: "name", value: p.name });
-        recordOp({ type: "update", pid: p.pid, field: "tags", value: p.tags.slice() });
-      }
-    }
-    finishDataChange();
-    ctrl.close();
-    const msg = senderTagNames.length
-      ? t("home.qrImport.reflected.full", { roster: roster.length, tags: senderTagNames.length })
-      : t("home.qrImport.reflected.rosterOnly", { roster: roster.length });
-    alert(msg);
-    return;
-  }
-
-  // append モード: 送信側タグを衝突回避しつつ追加、患者は末尾に追加
-  const existing = (settings.tags || []).slice();
-  const senderIdxToReceiverName = [null];
-  let tagsAdded = 0;
-  let tagsRenamed = 0;
-  for (let i = 0; i < senderTagNames.length; i++) {
-    const name = senderTagNames[i];
-    if (existing.includes(name)) {
-      senderIdxToReceiverName[i + 1] = name;
-    } else {
-      const unique = uniqueTagName(name, existing);
-      existing.push(unique);
-      settings.tags.push(unique);
-      senderIdxToReceiverName[i + 1] = unique;
-      tagsAdded++;
-      if (unique !== name) tagsRenamed++;
-    }
-  }
-  if (tagsAdded > 0) saveSettings();
-  const resolveTag = (idx) => senderIdxToReceiverName[idx] || null;
-
-  const added = [];
-  for (const r of roster) {
-    if (!r.room && !r.name && r.tagIdxs.length === 0) continue;
+  // 新規 WS の patients: 50 slot 確保し、受信 roster を先頭から流し込む。
+  // 末尾の連続空 slot は roster.length で打ち切る想定だが、最低 DEFAULT_PATIENT_COUNT
+  // は確保しておく (一般的な回診運用に合わせる)。
+  const slotCount = Math.max(DEFAULT_PATIENT_COUNT, roster.length);
+  const newPatients = [];
+  for (let i = 0; i < slotCount; i++) {
     const p = makeDefaultPatient();
-    p.room = r.room;
-    p.name = r.name;
-    p.tags = r.tagIdxs.map(resolveTag).filter(Boolean);
-    // 受信した患者は外部由来としてマーク (再配布制限の対象)
-    p.origin = "external";
-    const atIdx = appState.patients.length;
-    appState.patients.push(p);
-    added.push(p);
-    recordOp({ type: "add", at: atIdx, patient: { pid: p.pid, name: p.name, room: p.room, tags: p.tags.slice() } });
+    const r = roster[i];
+    if (r) {
+      p.room = r.room || "";
+      p.name = r.name || "";
+      // tagIdxs は sender 辞書 (senderTagNames) に対する 1-based index
+      p.tags = (r.tagIdxs || []).map(idx => senderTagNames[idx - 1]).filter(Boolean);
+      // 受信した患者は外部由来としてマーク (qrRedistribution.HM=restricted 用)
+      if (p.room || p.name || p.tags.length) p.origin = "external";
+    }
+    newPatients.push(p);
   }
-  finishDataChange();
+
+  // 新規 WS の settings: 現在の settings をベースに、送信側のタグを union
+  const mergedTags = (settings.tags || []).slice();
+  for (const tag of senderTagNames) {
+    if (!mergedTags.includes(tag)) mergedTags.push(tag);
+  }
+  const newSettings = { ...settings, tags: mergedTags };
+
+  // bundle 化 → IDB に新規エントリ → 切替
+  const newAppState = { v: 3, title: appState.title, patients: newPatients };
+  const newBundle = projectBundle({ appState: newAppState, rosterState: null, settings: newSettings });
+  const newId = await createWorkspaceRecord(label, newBundle);
+  await switchWorkspace(newId);
   ctrl.close();
-  const msgs = [t("home.qrImport.appended.count", { n: added.length })];
-  if (tagsAdded) {
-    msgs.push(tagsRenamed
-      ? t("home.qrImport.tagsAdded.withRename", { added: tagsAdded, renamed: tagsRenamed })
-      : t("home.qrImport.tagsAdded.plain", { added: tagsAdded }));
-  }
-  alert(msgs.join("\n"));
+  alert(t("home.qrImport.newWs.done", { count: roster.length, label }));
 }
 
 const flow = createQrFlow({
@@ -137,7 +92,7 @@ const flow = createQrFlow({
   },
   encodePayload: () => encodePatientList({ fieldName: null, includeEmpty: true, kind: "HM" }),
   decodePayload: (payload) => decodePatientList(payload),
-  onApply: applyRoster,
+  onApply: applyRosterAsNewWorkspace,
   // 設定で kind=HM の暗号化が ON なら encrypt
   shouldEncrypt: () => !!settings.qrEncryption?.HM,
 });

@@ -70,9 +70,6 @@
         <button class="secondary" id="headerSharedBtn" type="button" data-i18n-title="header.shared" data-i18n-aria="header.shared" title="共有" aria-label="共有">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         </button>
-        <button class="secondary" id="headerSettingsBtn" type="button" data-i18n-title="header.settings" data-i18n-aria="header.settings" title="設定" aria-label="設定">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
         <button class="secondary" id="headerMenuBtn" type="button" data-i18n-title="header.menu" data-i18n-aria="header.menu" title="メニュー" aria-label="メニュー">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
@@ -394,6 +391,29 @@
       <!-- v7.1+ QR セキュリティ (暗号化 / 再配布制限) はユーザ向け UI からは隠す。
            設定モデル (settings.qrEncryption / qrRedistribution) はそのまま機能する
            ので、デフォルト値で常時 ON で動く。将来 admin 機能で expose する想定。 -->
+
+      <!-- ワークスペース管理 (v7.6+: rename / delete / JSON I/O は設定画面に集約)。
+           切替・新規作成はヘッダーの WS 名タップで開く WS picker のほうが手早い。 -->
+      <div class="card">
+        <div class="cardHead">
+          <div class="label" data-i18n="settings.title.workspaces">ワークスペース管理</div>
+        </div>
+        <div class="cardBody">
+          <div class="movePatientHint" data-i18n="settings.workspace.hint"></div>
+          <div class="ioDbList" id="settingsWorkspaceList"></div>
+          <div class="ioJsonSection">
+            <div class="ioJsonHeading" data-i18n="io.json.heading">JSON</div>
+            <div class="ioJsonActions">
+              <button class="ioJsonIconBtn" id="ioFilePickBtn" type="button" data-i18n-title="io.json.import" data-i18n-aria="io.json.import.aria" title="JSON 取込" aria-label="JSON ファイルから取込">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </button>
+              <button class="ioJsonIconBtn" id="ioFileSaveBtn" type="button" data-i18n-title="io.json.export" data-i18n-aria="io.json.export.aria" title="JSON 保存" aria-label="JSON ファイルに保存">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
       </div>
     </section>
 
@@ -535,9 +555,9 @@
 
     <div class="popupMenuOverlay" id="headerMenuOverlay">
       <div class="popupMenu menuIcons">
-        <button class="iconBtn" id="settingsDbBtn" type="button" data-i18n-title="io.db.title" data-i18n-aria="io.db.title" title="データ管理" aria-label="データ管理">
-          <!-- lucide: database (DB cylinder) -->
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6"/></svg>
+        <button class="iconBtn" id="headerSettingsBtn" type="button" data-i18n-title="header.settings" data-i18n-aria="header.settings" title="設定" aria-label="設定">
+          <!-- lucide: settings (gear) -->
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
         <button class="iconBtn" id="clearAllBtn" type="button" title="全患者クリア" aria-label="全患者クリア">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
@@ -748,36 +768,16 @@
       </div>
     </div>
 
-    <!-- 入出力 chooser: ワークスペース切替/作成 + 末尾に JSON 取込/保存 -->
-    <div class="popupMenuOverlay" id="ioChooserOverlay">
-      <div class="popupMenu ioChooserMenu">
-        <button class="popupCloseX" type="button" id="ioChooserCancelBtn" data-close-popup data-i18n-aria="common.close" aria-label="閉じる">
+    <!-- ワークスペースピッカー (ヘッダー WS 名タップで開く軽量 popup)。
+         切替 + 新規作成のみ。rename/delete は設定画面の「ワークスペース管理」へ。 -->
+    <div class="popupMenuOverlay" id="wsPickerOverlay">
+      <div class="popupMenu wsPickerMenu">
+        <button class="popupCloseX" type="button" data-close-popup data-i18n-aria="common.close" aria-label="閉じる">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
-        <div class="popupTitle" id="ioChooserTitle" data-i18n="io.db.title">データ管理</div>
-
-        <!-- ワークスペース: 一覧 + 切替 + (各行 鉛筆で rename) + 末尾 + で新規作成 -->
-        <div class="ioPanel" id="ioPanelWorkspaces">
-          <div class="ioDbList" id="ioWorkspaceList"></div>
-          <!-- 「+」で新規作成。クリックで入力欄に展開、Enter/blur で確定 (Escape でキャンセル)。
-               JS から動的に input に切り替えるので、初期状態は + アイコンのボタン。 -->
-          <div class="ioWsAddRow" id="ioWsAddRow"></div>
-        </div>
-
-        <!-- JSON 取込/保存: 旧ヘッダーで使っていた下/上矢印アイコンに戻す。
-             小さめのアイコン 2 つを「JSON」見出しの下に並べる脇役配置。 -->
-        <div class="ioJsonSection">
-          <div class="ioJsonHeading" data-i18n="io.json.heading">JSON</div>
-          <div class="ioJsonActions">
-            <button class="ioJsonIconBtn" id="ioFilePickBtn" type="button" data-i18n-title="io.json.import" data-i18n-aria="io.json.import.aria" title="JSON 取込" aria-label="JSON ファイルから取込">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            </button>
-            <button class="ioJsonIconBtn" id="ioFileSaveBtn" type="button" data-i18n-title="io.json.export" data-i18n-aria="io.json.export.aria" title="JSON 保存" aria-label="JSON ファイルに保存">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            </button>
-          </div>
-        </div>
-
+        <div class="popupTitle" data-i18n="wsPicker.title">ワークスペース</div>
+        <div class="ioDbList" id="wsPickerList"></div>
+        <div class="ioWsAddRow" id="wsPickerAdd"></div>
       </div>
     </div>
   </main>

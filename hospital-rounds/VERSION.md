@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 7.5.0
+現在のバージョン: 7.6.0
 
 ## バージョニング方針
 
@@ -14,6 +14,30 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **7.6.0**: HM 受信を新規 WS 化 + ヘッダー UI 再構成 + DB chooser 撤去
+  - **HM 受信は常に新規ワークスペースに作成 + 切替** (qr-home.js)
+    - 旧 reflect / append モード約 100 行を削除
+    - 受信した名簿は「受信 YYYY-MM-DD HH:MM」というラベルで新規 WS として保存され、
+      自動的に切り替わる。現在の WS は無傷
+    - データ上書き事故ゼロ、WS 一覧が「データ来歴」になる
+  - **ヘッダーの WS 名タップで WS picker (切替 + 新規作成のみ) を開く**
+    - 新規 `features/ws-picker.js` + `wsPickerOverlay` HTML
+    - appWsLabelInput を常時 readonly に降格 (rename は設定画面へ)
+    - 鉛筆は端末タイトルの編集のみを担当
+  - **設定画面に「ワークスペース管理」セクションを追加**
+    - WS 一覧 (rename inline + delete per row)
+    - JSON 取込 / 保存ボタンもここへ移植
+    - 設定の最下部に配置 (頻繁には触らない設定操作)
+  - **ヘッダーから Settings ボタンを撤去 → ハンバーガー内へ移動**
+    - ハンバーガー: Settings + 全クリア + 全消去 (旧 DB アイコンは撤去)
+    - ヘッダー右側: メモ / 共有 / ハンバーガー (3 ボタンに整理)
+  - **DB chooser (ioChooserOverlay) を完全撤去**
+    - HTML / CSS / JS の chooser 専用コードを削除
+    - import-export.js は JSON ファイル I/O の責務だけに集中
+    - WS rename / delete は settings-view.js に移植 (renderWorkspaceList)
+  - i18n: `home.qrImport.newWs.*` 3 個追加 / `wsPicker.title` / `settings.title.workspaces` /
+    `settings.workspace.hint` 追加 / `home.qrImport.reflected.*` / `.appended.*` /
+    `.tagsAdded.*` / `io.title` / `io.db.title` 計 8 個削除
 - **7.5.0**: style.css を 9 ファイルに分割 (DX 改善)
   - 2804 行の単一 style.css を `src/style/{base,header,views,detail,formats,memo-shared,tags,settings,popups}.css` の 9 ファイルに分割
   - **src/style.css は manifest のみ** (9 個の `@import` 文と分割方針のコメント)

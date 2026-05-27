@@ -3,18 +3,20 @@
 // ============================
 // アプリヘッダーのタイトル + ワークスペース名 入力欄
 //
-// - タイトルは「端末固定」(localStorage 経由で永続化、live state に反映)
-// - ワークスペース名は「アクティブ ws の label」(IDB の bundles テーブル)
-// - 普段は readonly 表示。鉛筆 (createEditToggle) で両方とも編集可能
-// - タイトル input をタップ (非編集時) → ホーム遷移
-// - 編集確定 (blur / Enter) で IDB に rename を反映
+// - タイトルは「端末固定」(localStorage 経由で永続化、live state に反映)。
+//   普段は readonly。鉛筆 (createEditToggle) でだけ編集可能
+//   タップ (非編集時) → ホーム遷移
+//
+// - ワークスペース名は「アクティブ ws の label」(IDB の bundles テーブル) を
+//   表示するだけ。v7.6+ で rename は設定画面に移行したため、ヘッダー上では
+//   常時 readonly。タップで WS picker を開く (features/ws-picker.js)
 //
 // 公開 API:
 //   initAppTitle({ titleToggleSetter, navToHome })
-//     - titleToggleSetter: createEditToggle の戻り値を後で受け取る setter
+//     - getTitleToggle: createEditToggle の戻り値を後で受け取る getter
 //     - navToHome: タイトル input をタップ (非編集時) → ホームへ
 //   refreshAppWsLabel()
-//     - ws の label を IDB から取得して input に反映 (rename 後 / ws 切替時)
+//     - active ws の label を IDB から取得して input に反映 (ws 切替時に呼ぶ)
 //   updateAppTitle(newTitle)
 //     - タイトル変更 (input イベント or 別 view から呼ぶ用)
 //   syncInputSize(inp)
@@ -22,7 +24,7 @@
 // ============================
 
 import { appState, updateDeviceTitle, scheduleSave } from "../store.js";
-import { listBundles, getActiveWorkspaceId, renameBundle } from "../storage.js";
+import { listBundles, getActiveWorkspaceId } from "../storage.js";
 import { t } from "../i18n.js";
 
 // field-sizing 未対応ブラウザ向けの size 属性同期。
@@ -84,32 +86,12 @@ export function initAppTitle({ getTitleToggle, navToHome }) {
   }
 
   if (appWsLabelInput) {
-    // 初期値は async fetch で埋まる
+    // v7.6+: WS 名の rename は設定画面の「ワークスペース管理」セクションで行う。
+    // ヘッダー側の WS 名表示は「タップ → WS picker (切替/新規作成)」のトリガー
+    // 専用に降格。常時 readonly で、editable にはしない。
     refreshAppWsLabel();
+    appWsLabelInput.readOnly = true;
     appWsLabelInput.placeholder = t("header.ws.placeholder");
-    appWsLabelInput.addEventListener("input", () => syncInputSize(appWsLabelInput));
-    // 編集確定時 (blur or Enter) に renameBundle を呼ぶ。input 中はまだ保存しない
-    // (タイプ途中の中間状態が IDB に頻繁に書かれるのを避ける)
-    const commitWsLabel = async () => {
-      const newLabel = String(appWsLabelInput.value || "").trim();
-      const activeId = getActiveWorkspaceId();
-      if (!newLabel) {
-        refreshAppWsLabel();
-        return;
-      }
-      try {
-        await renameBundle(activeId, newLabel);
-      } catch (e) {
-        console.error("ws rename failed:", e);
-        refreshAppWsLabel();
-      }
-    };
-    appWsLabelInput.addEventListener("blur", commitWsLabel);
-    appWsLabelInput.addEventListener("keydown", (e) => {
-      if (getTitleToggle()?.isEditing() && e.key === "Enter") {
-        e.preventDefault();
-        getTitleToggle().exit();
-      }
-    });
+    // タップ時の click 動作は features/ws-picker.js の initWsPicker() が配線する
   }
 }

@@ -8,6 +8,7 @@ import { GROUP_MODE_SINGLE, GROUP_MODE_MULTI } from "../constants.js";
 import { bindLongPressAndDrag } from "../features/drag.js";
 import { startNewFormat, startEditFormat, deleteFormatById } from "../features/formats.js";
 import { getAllFormatGroups, startNewFormatGroup, startEditFormatGroup, deleteFormatGroupById } from "../features/format-groups.js";
+import { listBundles, renameBundle, deleteBundle, getActiveWorkspaceId } from "../storage.js";
 import { t } from "../i18n.js";
 
 const STATUS_SWATCHES = { statusYellow: "#f59e0b", statusGreen: "#14b8a6", statusGray: "#6b7280", statusBlue: "#2563eb" };
@@ -514,6 +515,151 @@ function renderTagsList() {
 // 設定モデル (settings.qrEncryption / qrRedistribution) はデフォルト値で常時動作する。
 // 将来 admin 機能から expose する場合はここに renderQrSecurity を復活させる。
 
+// ============================
+// ワークスペース管理 (v7.6+: 旧 DB chooser から settings page に移植)
+// ============================
+// 切替・新規作成はヘッダーの WS picker に分離した。ここでは rename / delete /
+// JSON 取込/保存ができる。
+
+function fmtTimestamp(ms) {
+  if (!ms) return "";
+  const d = new Date(ms);
+  const yy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${yy}-${mm}-${dd} ${hh}:${mi}`;
+}
+
+async function renderWorkspaceList() {
+  const host = document.getElementById("settingsWorkspaceList");
+  if (!host) return;
+  host.textContent = "";
+
+  let all = [];
+  try { all = await listBundles(); } catch (e) { console.error("listBundles failed:", e); }
+  if (!all.length) {
+    const empty = document.createElement("div");
+    empty.className = "ioDbListEmpty";
+    empty.textContent = t("io.ws.list.empty");
+    host.appendChild(empty);
+    return;
+  }
+
+  const activeId = getActiveWorkspaceId();
+  // active が一番上、その他は updatedAt 降順
+  const sorted = all.slice().sort((a, b) => {
+    if (a.id === activeId) return -1;
+    if (b.id === activeId) return 1;
+    return (b.updatedAt || 0) - (a.updatedAt || 0);
+  });
+
+  for (const r of sorted) host.appendChild(buildWorkspaceRow(r, r.id === activeId));
+}
+
+function buildWorkspaceRow(r, isActive) {
+  const row = document.createElement("div");
+  row.className = "ioDbRow" + (isActive ? " activeRow" : "");
+
+  const main = document.createElement("div");
+  main.className = "ioDbRowMain";
+  main.style.cursor = "default";
+  row.appendChild(main);
+
+  const labelHost = document.createElement("div");
+  labelHost.className = "ioDbRowLabelHost";
+  main.appendChild(labelHost);
+
+  const meta = document.createElement("div");
+  meta.className = "ioDbRowMeta";
+  meta.textContent = `${fmtTimestamp(r.updatedAt)}${r.title ? " ・ " + r.title : ""}`;
+  main.appendChild(meta);
+
+  // アクション欄: 鉛筆 (rename) + 削除 (active 以外のみ)
+  const actions = document.createElement("div");
+  actions.className = "ioDbRowActions";
+  row.appendChild(actions);
+
+  const editBtn = document.createElement("button");
+  editBtn.type = "button";
+  editBtn.className = "ioDbRowEdit";
+  editBtn.title = t("io.ws.rename.title");
+  editBtn.setAttribute("aria-label", t("io.ws.rename.title"));
+  editBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+  editBtn.addEventListener("click", () => enterRenameMode());
+  actions.appendChild(editBtn);
+
+  if (!isActive) {
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "ioDbRowDel";
+    del.title = t("common.delete");
+    del.setAttribute("aria-label", t("common.delete"));
+    del.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+    del.addEventListener("click", async () => {
+      const name = r.label || r.title || t("io.ws.untitled");
+      if (!confirm(t("io.ws.delete.confirm", { name }))) return;
+      try {
+        await deleteBundle(r.id);
+        await renderWorkspaceList();
+      } catch (err) {
+        console.error("workspace delete failed:", err);
+        alert(t("io.ws.delete.failed"));
+      }
+    });
+    actions.appendChild(del);
+  }
+
+  showReadMode();
+
+  function showReadMode() {
+    labelHost.textContent = "";
+    const lbl = document.createElement("div");
+    lbl.className = "ioDbRowLabel";
+    lbl.textContent = r.label || r.title || t("io.ws.untitled");
+    labelHost.appendChild(lbl);
+    editBtn.style.display = "";
+  }
+
+  function enterRenameMode() {
+    labelHost.textContent = "";
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.className = "ioDbRowEditInput";
+    inp.value = r.label || r.title || "";
+    labelHost.appendChild(inp);
+    editBtn.style.display = "none";
+
+    let done = false;
+    async function finalize(commit) {
+      if (done) return;
+      done = true;
+      if (!commit) { showReadMode(); return; }
+      const next = String(inp.value || "").trim();
+      if (!next || next === (r.label || "")) { showReadMode(); return; }
+      try {
+        await renameBundle(r.id, next);
+        r.label = next;
+        // active workspace を改名した時はヘッダーの WS 名表示も更新
+        if (r.id === getActiveWorkspaceId() && _refreshHeaderWsLabelFn) _refreshHeaderWsLabelFn();
+      } catch (err) {
+        console.error("workspace rename failed:", err);
+        alert(t("io.ws.rename.failed"));
+      }
+      showReadMode();
+    }
+    inp.addEventListener("blur", () => finalize(true));
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); finalize(true); }
+      else if (e.key === "Escape") { e.preventDefault(); finalize(false); }
+    });
+    setTimeout(() => { inp.focus(); inp.select(); }, 0);
+  }
+
+  return row;
+}
+
 export function renderSettings() {
   renderClearTargets();
   renderTagGroupingToggleIcon();
@@ -521,17 +667,20 @@ export function renderSettings() {
   renderTagGroups();
   renderFormatList();
   renderFormatGroupList();
+  renderWorkspaceList();
 }
 
 // Callbacks wired by main.js to avoid circular deps
 let _renderDetailFn = null;
 let _renderQrFn = null;
 let _renderPatientUIFn = null;
+let _refreshHeaderWsLabelFn = null;
 
-export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) {
+export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn, refreshHeaderWsLabelFn) {
   _renderDetailFn = renderDetailFn;
   _renderQrFn = renderQrFn;
   _renderPatientUIFn = renderPatientUIFn;
+  _refreshHeaderWsLabelFn = refreshHeaderWsLabelFn || null;
 
   const addTagBtn = document.getElementById("addTagBtn");
   const resetTagsBtn = document.getElementById("resetTagsBtn");

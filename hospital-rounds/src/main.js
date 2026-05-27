@@ -23,6 +23,7 @@ import { showView, syncDetailMemoDisplay, createNavigators, createDocsOpener } f
 import { createRenderers } from "./features/renderers.js";
 import { initHeaderMenu, closeHeaderMenu } from "./features/header-menu.js";
 import { initAppTitle, refreshAppWsLabel } from "./features/app-title.js";
+import { initWsPicker } from "./features/ws-picker.js";
 import { DOCS_BUNDLE } from "./docs-bundle.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initFormats, setOnTextChanged as setOnFormatTextChanged, setFormatStoreAdapter } from "./features/formats.js";
@@ -89,7 +90,7 @@ const openDocsPage = createDocsOpener({ docsBundle: DOCS_BUNDLE, renderDocsDemo 
 // ============================
 // Boot 2: Settings / Detail wiring
 // ============================
-initSettingsView(doRenderDetail, renderQrIfNeeded, refreshPatientUI);
+initSettingsView(doRenderDetail, renderQrIfNeeded, refreshPatientUI, refreshAppWsLabel);
 initDetailEvents(doRenderHome);
 initStatusButtons(doRenderHome);
 initQrNavButtons();
@@ -121,7 +122,11 @@ window.addEventListener("popstate", (e) => {
 
 document.getElementById("headerMemoBtn")?.addEventListener("click", navToMemo);
 document.getElementById("headerSharedBtn")?.addEventListener("click", navToShared);
-document.getElementById("headerSettingsBtn")?.addEventListener("click", navToSettings);
+// 設定ボタンはハンバーガーメニュー内に移動済 (v7.6+)。click で menu を閉じてから遷移
+document.getElementById("headerSettingsBtn")?.addEventListener("click", () => {
+  closeHeaderMenu();
+  navToSettings();
+});
 
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".helpLinkBtn");
@@ -170,7 +175,6 @@ initImportExport({
   renderMemoScreen: doRenderMemo,
   renderSharedScreen: doRenderShared,
   showView,
-  refreshHeaderWsLabel: refreshAppWsLabel,
 });
 initNoAutofill();
 initActionMenu();
@@ -372,12 +376,11 @@ setOnWorkspaceChanged(() => {
 });
 
 // ============================
-// Boot 11: タイトル / WS 名 入力欄 (header)
+// Boot 11: タイトル + WS 名 (header)
 // ============================
-// 普段は readonly。タイトル input をタップ → ホーム遷移。鉛筆で両方とも編集可。
-// 編集確定 (blur / Enter) で renameBundle を発火する (app-title.js の責務)。
-// createEditToggle の戻り値 (titleToggle) は app-title.js から getter 経由で
-// 参照させる (相互参照を避けるため、後で setTitleToggle で渡す)。
+// タイトル: 普段は readonly。タップ → ホーム遷移、鉛筆で編集可。
+// WS 名:   常時 readonly。タップで WS picker を開く (切替/新規作成)。
+//          rename / delete は設定画面の「ワークスペース管理」セクションで行う。
 let titleToggle = null;
 initAppTitle({
   getTitleToggle: () => titleToggle,
@@ -388,17 +391,14 @@ titleToggle = createEditToggle({
   container: document.querySelector(".appTitleRow"),
   onEnter: () => {
     const a = document.getElementById("appTitleInput");
-    const w = document.getElementById("appWsLabelInput");
     if (a) { a.readOnly = false; a.focus(); a.select(); }
-    if (w) w.readOnly = false;
   },
   onExit: () => {
     const a = document.getElementById("appTitleInput");
-    const w = document.getElementById("appWsLabelInput");
     if (a) { a.readOnly = true; a.blur(); }
-    if (w) { w.readOnly = true; w.blur(); }
   },
 });
+initWsPicker();
 
 // ============================
 // Boot 12: Header menu (☰) + storage label

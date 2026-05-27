@@ -41,8 +41,6 @@ export function initHeaderMenu() {
     });
   }
 
-  // DB アイコンは settingsDbBtn の ID のままハンバーガー内に置いてあり、
-  // import-export.js が click を拾って chooser を開く。ここではメニュー close
-  // だけ追加する (chooser を開く処理は import-export.js の責務)。
-  document.getElementById("settingsDbBtn")?.addEventListener("click", closeHeaderMenu);
+  // 設定ボタン (v7.6+ でハンバーガー内に移動) の閉じる配線は main.js 側で
+  // navToSettings と組み合わせて行う。ここは menu の開閉のみが責務。
 }
