@@ -27,6 +27,7 @@ import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
 import { initFormats, setOnTextChanged as setOnFormatTextChanged } from "./features/formats.js";
 import { initMovePatient } from "./features/move-patient.js";
 import { initQrFormat, closeQrFormatOverlay, setOnFormatApplied } from "./features/qr-format.js";
+import { initFormatGroups } from "./features/format-groups.js";
 import { t, applyI18n } from "./i18n.js";
 import { initImportExport } from "./features/import-export.js";
 import { initSharedQr, refreshSharedQrIfActive, initMemoQr, refreshMemoQrIfActive } from "./features/qr-shared.js";
@@ -348,6 +349,11 @@ setOnFormatApplied(() => {
   // 開いていればフォーマット一覧と patient strip を再描画する
   renderSettings();
   doRenderDetail();
+});
+
+// フォーマットグループ機能
+initFormatGroups({
+  renderDetail: doRenderDetail,
 });
 // QR フォーマット overlay の close ボタン + overlay 外クリックで閉じる配線
 document.getElementById("qrFormatCloseBtn")?.addEventListener("click", closeQrFormatOverlay);

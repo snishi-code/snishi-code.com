@@ -46,6 +46,11 @@ export function defaultSettings() {
   return {
     v: 1,
     formats: makeDefaultFormats(),
+    // フォーマットの「束」。患者ごとに 1 つ active group を設定すると、
+    // 各パネルの pin チップがそのグループに属するフォーマットだけに切り替わる
+    // (= お気に入りを切り替える感覚)。例: 「発熱対応」グループに 血液 / エコー /
+    // CT / Xp を束ねておけば、発熱患者を開いた時に一気にそれらをワンタップで開ける。
+    formatGroups: [],
     clearTargets: clone(DEFAULT_CLEAR_TARGETS),
     tags: clone(DEFAULT_TAGS),
     adminEnabled: DEFAULT_ADMIN_ENABLED,
@@ -186,6 +191,17 @@ function normalizeSettings(raw) {
         mode: g.mode === "single" ? "single" : "multi",
       }));
   }
+  if (Array.isArray(raw.formatGroups)) {
+    out.formatGroups = raw.formatGroups
+      .filter(g => g && typeof g === "object" && typeof g.id === "string")
+      .map(g => ({
+        id: String(g.id),
+        name: String(g.name || ""),
+        formatIds: Array.isArray(g.formatIds)
+          ? g.formatIds.filter(x => typeof x === "string").map(String)
+          : [],
+      }));
+  }
   if (raw.tagGroupAssign && typeof raw.tagGroupAssign === "object") {
     out.tagGroupAssign = {};
     for (const [k, v] of Object.entries(raw.tagGroupAssign)) {
@@ -224,6 +240,10 @@ export function makeDefaultPatient() {
     //   transferredTo: 移動先ワークスペースの label (表示用)。
     transferredAt: 0,
     transferredTo: "",
+    // この患者で active なフォーマットグループ ID。null = 通常 (= 全 pin チップ
+    // が見える)。設定されている場合、各パネルの strip はそのグループに属する
+    // フォーマットだけを表示する (= 患者固有の「お気に入り切替」)。
+    activeFormatGroupId: "",
   };
 }
 
@@ -346,6 +366,7 @@ function normalizePatientArray(arr) {
       updatedAt: (r && typeof r.updatedAt === "number") ? r.updatedAt : 0,
       transferredAt: (r && typeof r.transferredAt === "number") ? r.transferredAt : 0,
       transferredTo: (r && typeof r.transferredTo === "string") ? r.transferredTo : "",
+      activeFormatGroupId: (r && typeof r.activeFormatGroupId === "string") ? r.activeFormatGroupId : "",
     };
   }
   return out;

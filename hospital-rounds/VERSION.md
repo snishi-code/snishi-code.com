@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 6.6.0
+現在のバージョン: 6.7.0
 
 ## バージョニング方針
 
@@ -14,6 +14,13 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **6.7.0**: フォーマットグループ + 患者画面ヘルプボタン追加
+  - **データモデル**: `settings.formatGroups = [{id, name, formatIds: []}]` 追加。`patient.activeFormatGroupId` (空文字 = 通常モード) を追加
+  - **挙動**: 患者画面のヘッダー「束」アイコン (`detailFormatGroupBtn`) → 単選択ピッカー → 選んだグループが `patient.activeFormatGroupId` に保存される。active なグループがあると、各パネルの strip の pin チップが「グループに含まれるフォーマットを panel フィルタした集合」に置き換わる (= お気に入りの動的切替)。グループモード中はチップが薄青色で視覚的に区別
+  - **設定 UI**: 設定画面に「フォーマットグループ」セクション追加。+ ボタンで新規作成 → グループ編集モーダル (名前 + S/O/A/P 別のフォーマットチェックリスト)。各行に編集/削除アイコン
+  - **? ヘルプボタン追加**: 患者画面のヘッダー右にも `helpLinkBtn` (`03_患者画面.html` へジャンプ) を追加 (他画面に倣う)
+  - **module**: `src/features/format-groups.js` 新設 (CRUD + ピッカー + 編集モーダル)。`features/formats.js#groupFormatsForPanel` を export して strip 描画に活用
+  - i18n: `formatGroup.*` (一連) を追加
 - **6.6.0**: フォーマット 1 つを QR で共有する機能 (FMT wire kind)
   - `src/features/qr-format.js` 新設。`createQrFlow` を kind=FMT で利用。送受信ライフサイクルは既存 QR インフラ (qr-protocol / qr-flow / qr-scan) を流用
   - **送信**: フォーマット編集モーダル左下に QR アイコンボタン (`formatEditQrShareBtn`)。タップで `qrFormatOverlay` を開き編集中のフォーマット (= 未保存の状態でも OK) を QR エンコード表示

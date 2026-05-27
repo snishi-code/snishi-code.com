@@ -8,6 +8,7 @@ import { renameTagAt, deleteTagAt, moveTag, isTagGroupingEnabled, getUserGroups,
 import { GROUP_MODE_SINGLE, GROUP_MODE_MULTI } from "../constants.js";
 import { bindLongPressAndDrag } from "../features/drag.js";
 import { startNewFormat, startEditFormat, deleteFormatById } from "../features/formats.js";
+import { getAllFormatGroups, startNewFormatGroup, startEditFormatGroup, deleteFormatGroupById } from "../features/format-groups.js";
 import { renderPassphraseStrength, PASSPHRASE_MIN_LEN } from "../features/passphrase-strength.js";
 import { t } from "../i18n.js";
 
@@ -106,6 +107,68 @@ function renderFormatListForPanel(panel) {
 
 function renderFormatList() {
   for (const panel of PANELS_IN_ORDER) renderFormatListForPanel(panel);
+}
+
+// フォーマットグループ一覧 (設定画面: フォーマット群の下のセクション)
+function renderFormatGroupList() {
+  const host = document.getElementById("setFormatGroups");
+  if (!host) return;
+  host.textContent = "";
+  const groups = getAllFormatGroups();
+  if (!groups.length) {
+    const empty = document.createElement("div");
+    empty.style.padding = "8px 4px";
+    empty.style.color = "#6b7280";
+    empty.style.fontSize = "13px";
+    empty.textContent = t("formatGroup.empty");
+    host.appendChild(empty);
+    return;
+  }
+  for (const g of groups) {
+    const row = document.createElement("div");
+    row.className = "formatListRow";
+    const name = document.createElement("span");
+    name.className = "formatListName";
+    name.textContent = g.name;
+    row.appendChild(name);
+    const meta = document.createElement("span");
+    meta.className = "formatListMeta";
+    meta.textContent = t("formatGroup.option.formats", { n: (g.formatIds || []).length });
+    row.appendChild(meta);
+
+    const actions = document.createElement("span");
+    actions.className = "formatListActions";
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "iconBtn";
+    editBtn.title = t("common.edit");
+    editBtn.setAttribute("aria-label", t("common.edit"));
+    editBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+    editBtn.addEventListener("click", () => {
+      startEditFormatGroup(g, () => {
+        renderFormatGroupList();
+        if (_renderDetailFn) _renderDetailFn();
+      });
+    });
+    actions.appendChild(editBtn);
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "iconBtn";
+    del.title = t("common.delete");
+    del.setAttribute("aria-label", t("common.delete"));
+    del.innerHTML = TRASH_SVG;
+    del.addEventListener("click", () => {
+      if (!confirm(t("formatGroup.delete.confirm", { name: g.name }))) return;
+      deleteFormatGroupById(g.id);
+      renderFormatGroupList();
+      if (_renderDetailFn) _renderDetailFn();
+    });
+    actions.appendChild(del);
+
+    row.appendChild(actions);
+    host.appendChild(row);
+  }
 }
 
 function buildClearTargetLabelContent(key) {
@@ -477,6 +540,7 @@ export function renderSettings() {
   renderTagsList();
   renderTagGroups();
   renderFormatList();
+  renderFormatGroupList();
 }
 
 // Callbacks wired by main.js to avoid circular deps
@@ -501,6 +565,17 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn) 
         renderFormatList();
         if (_renderDetailFn) _renderDetailFn();
       }, panel);
+    });
+  }
+
+  // フォーマットグループ追加ボタン
+  const addFormatGroupBtn = document.getElementById("addFormatGroupBtn");
+  if (addFormatGroupBtn) {
+    addFormatGroupBtn.addEventListener("click", () => {
+      startNewFormatGroup(() => {
+        renderFormatGroupList();
+        if (_renderDetailFn) _renderDetailFn();
+      });
     });
   }
 

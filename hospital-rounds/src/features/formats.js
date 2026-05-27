@@ -71,6 +71,25 @@ export function pinnedFormatsForPanel(panel) {
   return formatsForPanel(panel).filter(f => f.pinned);
 }
 
+// 現在の患者で active なフォーマットグループに属する、指定 panel のフォーマット。
+// activeGroupId が無い / グループが見つからない場合は null を返す。caller は null
+// なら通常の pinnedFormatsForPanel にフォールバックする。
+export function groupFormatsForPanel(panel, activeGroupId) {
+  if (!activeGroupId) return null;
+  const groups = Array.isArray(settings.formatGroups) ? settings.formatGroups : [];
+  const g = groups.find(x => x.id === activeGroupId);
+  if (!g) return null;
+  const idSet = new Set(g.formatIds || []);
+  // グループ内の順序を保つため、g.formatIds 順に取り出す
+  const byId = new Map(formatsForPanel(panel).map(f => [f.id, f]));
+  const out = [];
+  for (const fid of g.formatIds || []) {
+    const f = byId.get(fid);
+    if (f) out.push(f);
+  }
+  return out;
+}
+
 // ============================
 // 患者画面: 各パネル右肩のボタン strip 描画
 // ============================
@@ -123,13 +142,21 @@ export function renderFormatStrip(panel, hostEl) {
   hostEl.textContent = "";
   hostEl.className = "formatStrip";
 
-  // 1) お気に入り (pinned) チップ。横スクロール領域。タップで入力モーダル直開
+  // active なフォーマットグループがあれば、そのグループのフォーマット (panel
+  // フィルタ済) を pin の代わりに使う。グループ未指定の時は通常の pinned を使う。
+  const p = appState.patients[selectedNo - 1];
+  const activeGroupId = String(p?.activeFormatGroupId || "");
+  const groupFormats = groupFormatsForPanel(panel, activeGroupId);
+  const visible = groupFormats || pinnedFormatsForPanel(panel);
+  const isGroupMode = !!groupFormats;
+
+  // 1) お気に入り (pinned) または active group のチップ。横スクロール領域。
   const chips = document.createElement("div");
-  chips.className = "formatStripChips";
-  for (const f of pinnedFormatsForPanel(panel)) {
+  chips.className = "formatStripChips" + (isGroupMode ? " inGroup" : "");
+  for (const f of visible) {
     const chip = document.createElement("button");
     chip.type = "button";
-    chip.className = "formatStripBtn formatStripPinned";
+    chip.className = "formatStripBtn formatStripPinned" + (isGroupMode ? " formatStripGroupChip" : "");
     chip.textContent = f.name;
     chip.title = t("format.chip.input.title", { name: f.name });
     chip.addEventListener("click", () => openFormatInputModal(f, panel));

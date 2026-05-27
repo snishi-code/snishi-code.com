@@ -2298,6 +2298,92 @@
       box-sizing: border-box;
     }
 
+    /* フォーマットグループ ピッカー (患者画面で active group を選ぶ単選択) */
+    .popupMenu.formatGroupPickerMenu {
+      width: min(92vw, 360px);
+      max-width: 360px;
+      box-sizing: border-box;
+    }
+    .formatGroupHint {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+    .formatGroupPickerRow {
+      width: 100% !important;
+      margin: 4px 0 !important;
+      padding: 10px 12px !important;
+      text-align: left;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .formatGroupPickerRow:hover {
+      background: #f3f4f6;
+    }
+    .formatGroupPickerRow.selected {
+      border-color: var(--status-blue-bd);
+      background: var(--status-blue-bg);
+    }
+    .formatGroupPickerName {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .formatGroupPickerSub {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .formatGroupPickerEmpty {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+      padding: 12px 0;
+    }
+
+    /* グループ編集モーダル */
+    .popupMenu.formatGroupEditMenu {
+      width: min(92vw, 480px);
+      max-width: 480px;
+      padding: 14px 16px;
+      box-sizing: border-box;
+    }
+    .formatGroupEditSection {
+      margin: 8px 0;
+      border-top: 1px solid var(--line);
+      padding-top: 6px;
+    }
+    .formatGroupEditSectionHead {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .formatGroupEditOpt {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .formatGroupEditOpt input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* 患者画面の strip: active group モードの時はチップを薄青系にして区別 */
+    .formatStripChips.inGroup .formatStripGroupChip {
+      background: var(--status-blue-bg, #bfdbfe);
+      border-color: var(--status-blue-bd, #2563eb);
+      color: var(--status-blue-text, #1e3a8a);
+    }
+
     /* フォーマット QR 共有モーダル: QR を大きめに表示できる幅 */
     .popupMenu.qrFormatMenu {
       width: min(94vw, 480px);
