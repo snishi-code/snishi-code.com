@@ -159,6 +159,7 @@ const flow = createQrFlow({
   encodePayload,
   decodePayload,
   onApply: applySettings,
+  shouldEncrypt: () => !!settings.qrEncryption?.ST,
 });
 
 export const initSettingsQr = () => flow.init();

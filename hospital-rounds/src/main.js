@@ -302,6 +302,7 @@ setQrFormatStoreAdapter({
     settings.formats.push(newFmt);
     saveSettings();
   },
+  shouldEncrypt: () => !!settings.qrEncryption?.FMT,
 });
 
 initFormats();

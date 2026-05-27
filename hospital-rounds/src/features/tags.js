@@ -267,11 +267,14 @@ function closeOpenPopup() {
     try { fn(); } catch (e) { console.error(e); }
   }
 }
-document.addEventListener("click", (e) => {
-  if (!_openPopup) return;
-  const wrap = _openPopup.closest(".tagPicker");
-  if (wrap && !wrap.contains(e.target)) closeOpenPopup();
-});
+// Node 環境 (テスト) には document が無いため defensive check
+if (typeof document !== "undefined") {
+  document.addEventListener("click", (e) => {
+    if (!_openPopup) return;
+    const wrap = _openPopup.closest(".tagPicker");
+    if (wrap && !wrap.contains(e.target)) closeOpenPopup();
+  });
+}
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" })[c]);

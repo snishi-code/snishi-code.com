@@ -2307,6 +2307,39 @@
       height: 18px;
     }
 
+    /* QR セキュリティ設定テーブル */
+    .qrSecurityHint {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+    .qrSecurityTable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .qrSecurityTable th,
+    .qrSecurityTable td {
+      padding: 6px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+    }
+    .qrSecurityTable th {
+      font-weight: 700;
+      color: var(--muted);
+      background: #fafafa;
+    }
+    .qrSecurityCheck {
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+    }
+    .qrSecurityCheck input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+    }
+
     /* 患者画面の strip: active group モードの時はチップを薄青系にして区別 */
     .formatStripChips.inGroup .formatStripGroupChip {
       background: var(--status-blue-bg, #bfdbfe);

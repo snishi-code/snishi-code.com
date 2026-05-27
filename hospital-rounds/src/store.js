@@ -7,6 +7,7 @@ import {
   DEFAULT_LABEL_SEP_TEXT, DEFAULT_LABEL_SEP_OTHER,
   DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS,
   DEFAULT_TAG_GROUPING_ENABLED,
+  QR_KINDS, DEFAULT_QR_ENCRYPTION, DEFAULT_QR_REDISTRIBUTION,
   clone,
 } from "./constants.js";
 import { projectBundle, parseBundle, getSection, SECTION } from "./bundle.js";
@@ -56,6 +57,10 @@ export function defaultSettings() {
     tagGroupingEnabled: DEFAULT_TAG_GROUPING_ENABLED,
     tagGroups: [],
     tagGroupAssign: {},
+    // QR セキュリティ: kind 別の暗号化フラグ ("HM" → true/false)
+    qrEncryption: clone(DEFAULT_QR_ENCRYPTION),
+    // QR 受信したデータの再配布制限: kind 別 ("restricted" | "free")
+    qrRedistribution: clone(DEFAULT_QR_REDISTRIBUTION),
   };
 }
 
@@ -165,6 +170,18 @@ function normalizeSettings(raw) {
       if (typeof k === "string" && typeof v === "string") out.tagGroupAssign[k] = v;
     }
   }
+  // QR セキュリティ: known kind だけ拾い、未指定はデフォルト維持
+  if (raw.qrEncryption && typeof raw.qrEncryption === "object") {
+    for (const k of QR_KINDS) {
+      if (typeof raw.qrEncryption[k] === "boolean") out.qrEncryption[k] = raw.qrEncryption[k];
+    }
+  }
+  if (raw.qrRedistribution && typeof raw.qrRedistribution === "object") {
+    for (const k of QR_KINDS) {
+      const v = raw.qrRedistribution[k];
+      if (v === "restricted" || v === "free") out.qrRedistribution[k] = v;
+    }
+  }
   return out;
 }
 
@@ -201,6 +218,10 @@ export function makeDefaultPatient() {
     // が見える)。設定されている場合、各パネルの strip はそのグループに属する
     // フォーマットだけを表示する (= 患者固有の「お気に入り切替」)。
     activeFormatGroupId: "",
+    // 患者識別データの出所マーカー。"external" = 他端末から QR で受信 = 再配布禁止。
+    // 空文字 = この端末で作成された = 再配布可。settings.qrRedistribution.HM/MM が
+    // "restricted" の時、QR 送信時に external 患者を除外する判定に使う。
+    origin: "",
   };
 }
 
@@ -259,6 +280,7 @@ function normalizePatientArray(arr) {
       transferredAt: (r && typeof r.transferredAt === "number") ? r.transferredAt : 0,
       transferredTo: (r && typeof r.transferredTo === "string") ? r.transferredTo : "",
       activeFormatGroupId: (r && typeof r.activeFormatGroupId === "string") ? r.activeFormatGroupId : "",
+      origin: (r && r.origin === "external") ? "external" : "",
     };
   }
   return out;

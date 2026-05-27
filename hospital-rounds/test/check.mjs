@@ -500,6 +500,65 @@ await test("DEFAULT_FORMATS comes from defaults.json", async () => {
 });
 
 // ============================
+// 11) QR セキュリティ: 暗号化 round-trip + redistribution フィルタ
+// ============================
+section("QR security (encryption + redistribution)");
+
+await test("encryptPayload + decryptPayload round-trip", async () => {
+  // Node 18+ には globalThis.crypto.subtle がある (Web Crypto API)
+  const m = await import("../src/features/crypto-payload.js");
+  const plain = "RND_HM #abc 1/1\n{\"v\":2,\"p\":[{\"r\":\"203\",\"n\":\"テスト太郎\"}]}";
+  const enc = await m.encryptPayload(plain);
+  assert.ok(m.isEncrypted(enc), "encrypted payload has E1: prefix");
+  assert.notEqual(enc, plain, "ciphertext differs from plaintext");
+  const dec = await m.decryptPayload(enc);
+  assert.equal(dec, plain, "round-trip recovers exact plaintext");
+});
+
+await test("decryptPayload passes plain text through", async () => {
+  const m = await import("../src/features/crypto-payload.js");
+  const result = await m.decryptPayload("not encrypted");
+  assert.equal(result, "not encrypted");
+});
+
+await test("defaultSettings has qrEncryption + qrRedistribution with expected defaults", async () => {
+  const store = await freshStore();
+  assert.equal(store.settings.qrEncryption.HM, true, "HM encrypted by default");
+  assert.equal(store.settings.qrEncryption.ST, true, "ST encrypted by default");
+  assert.equal(store.settings.qrRedistribution.HM, "restricted", "HM restricted by default");
+  assert.equal(store.settings.qrRedistribution.SH, "free", "SH free by default");
+  assert.equal(store.settings.qrRedistribution.ST, "free");
+  assert.equal(store.settings.qrRedistribution.FMT, "free");
+});
+
+await test("encodePatientList excludes external patients when redistribution=restricted", async () => {
+  const store = await freshStore();
+  // 2 人配置: 1 人 origin="external" + 1 人 origin=""
+  store.appState.patients[0].name = "外部受信さん";
+  store.appState.patients[0].room = "101";
+  store.appState.patients[0].origin = "external";
+  store.appState.patients[1].name = "ローカルさん";
+  store.appState.patients[1].room = "102";
+  store.appState.patients[1].origin = "";
+
+  const m = await import("../src/features/qr-patient-list.js");
+  // HM = restricted by default → external 患者は除外
+  const restrictedJson = m.encodePatientList({ fieldName: null, includeEmpty: true, kind: "HM" });
+  const restrictedParsed = JSON.parse(restrictedJson);
+  // patientArr[0] は external だったので空 slot、[1] はローカルなので残る
+  const hasLocal = restrictedParsed.p.some(o => o.n === "ローカルさん");
+  const hasExternal = restrictedParsed.p.some(o => o.n === "外部受信さん");
+  assert.ok(hasLocal, "local patient kept in restricted HM");
+  assert.ok(!hasExternal, "external patient excluded in restricted HM");
+
+  // restriction OFF にすれば両方含まれる
+  store.settings.qrRedistribution.HM = "free";
+  const freeJson = m.encodePatientList({ fieldName: null, includeEmpty: true, kind: "HM" });
+  const freeParsed = JSON.parse(freeJson);
+  assert.ok(freeParsed.p.some(o => o.n === "外部受信さん"), "external also included when free");
+});
+
+// ============================
 // Summary
 // ============================
 console.log("");

@@ -58,6 +58,9 @@ function applyRoster(decoded, ctrl) {
       p.room = r.room;
       p.name = r.name;
       p.tags = r.tagIdxs.map(resolveTag).filter(Boolean);
+      // 受信した患者は外部由来としてマーク (qrRedistribution.HM=restricted の時、
+      // 再 export 時にこの患者を除外できる)。空 slot は origin を立てない
+      if (r.room || r.name || r.tagIdxs.length) p.origin = "external";
       if (p.pid) {
         recordOp({ type: "update", pid: p.pid, field: "room", value: p.room });
         recordOp({ type: "update", pid: p.pid, field: "name", value: p.name });
@@ -101,6 +104,8 @@ function applyRoster(decoded, ctrl) {
     p.room = r.room;
     p.name = r.name;
     p.tags = r.tagIdxs.map(resolveTag).filter(Boolean);
+    // 受信した患者は外部由来としてマーク (再配布制限の対象)
+    p.origin = "external";
     const atIdx = appState.patients.length;
     appState.patients.push(p);
     added.push(p);
@@ -130,9 +135,11 @@ const flow = createQrFlow({
     showBtnId: "homeShowQrBtn",
     scanBtnId: "homeQrScanBtn",
   },
-  encodePayload: () => encodePatientList({ fieldName: null, includeEmpty: true }),
+  encodePayload: () => encodePatientList({ fieldName: null, includeEmpty: true, kind: "HM" }),
   decodePayload: (payload) => decodePatientList(payload),
   onApply: applyRoster,
+  // 設定で kind=HM の暗号化が ON なら encrypt
+  shouldEncrypt: () => !!settings.qrEncryption?.HM,
 });
 
 export const initHomeQr = () => flow.init();

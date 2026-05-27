@@ -36,15 +36,26 @@ export function encodePatientList(cfg) {
   // cfg.fieldName: null (HM) | "memo" (MM) | "shared" (SH)
   // cfg.includeEmpty: true (HM) | false (MM/SH)
   // cfg.matchesFilter: 任意フィルタ。指定があれば該当患者だけを対象に
+  // cfg.kind: QR 種別 ("HM" / "MM" / "SH")。再配布制限の判定に使う
   const fieldName = cfg.fieldName || null;
   const includeEmpty = !!cfg.includeEmpty;
   const matchesFilter = cfg.matchesFilter || (() => true);
+
+  // 再配布制限 (settings.qrRedistribution[kind] === "restricted") が ON なら
+  // origin === "external" の患者 = 他端末から QR で受信したデータを送信時に除外。
+  const kind = cfg.kind || "";
+  const restrict = (settings.qrRedistribution && settings.qrRedistribution[kind] === "restricted");
 
   const tagIdxByName = new Map();
   (settings.tags || []).forEach((t, i) => tagIdxByName.set(t, i + 1));
 
   const patientArr = [];
   for (const p of appState.patients) {
+    // restricted な kind では external 患者を除外 (HM では空スロット扱い)
+    if (restrict && p && p.origin === "external") {
+      if (includeEmpty) patientArr.push({});
+      continue;
+    }
     if (!matchesFilter(p)) {
       if (includeEmpty) patientArr.push({});
       continue;

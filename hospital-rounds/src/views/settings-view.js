@@ -1,7 +1,7 @@
 "use strict";
 
 import { settings, appState, rosterState, saveSettings } from "../store.js";
-import { DEFAULT_TAGS, clone } from "../constants.js";
+import { DEFAULT_TAGS, clone, QR_KINDS } from "../constants.js";
 import { recordOp } from "../features/roster.js";
 import { renameTagAt, deleteTagAt, moveTag, isTagGroupingEnabled, getUserGroups, getTagsInGroup, getUnassignedTags, addGroup, renameGroup, setGroupMode, deleteGroup, setTagGroup, getAllTags, getGroupForTag, makeAddTagWidget } from "../features/tags.js";
 import { GROUP_MODE_SINGLE, GROUP_MODE_MULTI } from "../constants.js";
@@ -507,6 +507,76 @@ function renderTagsList() {
   host.appendChild(wrap);
 }
 
+// QR セキュリティ: kind 別 (HM / MM / SH / ST / FMT) に 2 つのチェックボックス
+// (暗号化 / 再配布制限) を出す。デフォルト値は constants.js / store.js を参照。
+function renderQrSecurity() {
+  const host = document.getElementById("qrSecurityBody");
+  if (!host) return;
+  host.textContent = "";
+  if (!settings.qrEncryption || !settings.qrRedistribution) return;
+
+  // ヘッダ行: 説明
+  const header = document.createElement("div");
+  header.className = "qrSecurityHint";
+  header.textContent = t("qrSecurity.hint");
+  host.appendChild(header);
+
+  const tbl = document.createElement("table");
+  tbl.className = "qrSecurityTable";
+  const thead = document.createElement("thead");
+  const trh = document.createElement("tr");
+  for (const key of ["qrSecurity.col.kind", "qrSecurity.col.encrypt", "qrSecurity.col.redistribute"]) {
+    const th = document.createElement("th");
+    th.textContent = t(key);
+    trh.appendChild(th);
+  }
+  thead.appendChild(trh);
+  tbl.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  for (const kind of QR_KINDS) {
+    const tr = document.createElement("tr");
+    // 種別ラベル
+    const tdKind = document.createElement("td");
+    tdKind.textContent = t("qrSecurity.kind." + kind);
+    tr.appendChild(tdKind);
+
+    // 暗号化 toggle
+    const tdEnc = document.createElement("td");
+    const encLbl = document.createElement("label");
+    encLbl.className = "qrSecurityCheck";
+    const encCb = document.createElement("input");
+    encCb.type = "checkbox";
+    encCb.checked = !!settings.qrEncryption[kind];
+    encCb.addEventListener("change", () => {
+      settings.qrEncryption[kind] = encCb.checked;
+      saveSettings();
+    });
+    encLbl.appendChild(encCb);
+    tdEnc.appendChild(encLbl);
+    tr.appendChild(tdEnc);
+
+    // 再配布制限 toggle (restricted = true)
+    const tdRed = document.createElement("td");
+    const redLbl = document.createElement("label");
+    redLbl.className = "qrSecurityCheck";
+    const redCb = document.createElement("input");
+    redCb.type = "checkbox";
+    redCb.checked = settings.qrRedistribution[kind] === "restricted";
+    redCb.addEventListener("change", () => {
+      settings.qrRedistribution[kind] = redCb.checked ? "restricted" : "free";
+      saveSettings();
+    });
+    redLbl.appendChild(redCb);
+    tdRed.appendChild(redLbl);
+    tr.appendChild(tdRed);
+
+    tbody.appendChild(tr);
+  }
+  tbl.appendChild(tbody);
+  host.appendChild(tbl);
+}
+
 export function renderSettings() {
   renderClearTargets();
   renderTagGroupingToggleIcon();
@@ -514,6 +584,7 @@ export function renderSettings() {
   renderTagGroups();
   renderFormatList();
   renderFormatGroupList();
+  renderQrSecurity();
 }
 
 // Callbacks wired by main.js to avoid circular deps

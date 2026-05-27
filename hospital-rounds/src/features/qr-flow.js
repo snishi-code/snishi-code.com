@@ -3,6 +3,7 @@
 import { qrcodegen } from "../libs/qrcodegen.js";
 import { scanQRStream, isScannerSupported } from "./qr-scan.js";
 import { encodePages, decodePage, newBatchId } from "./qr-protocol.js";
+import { encryptPayload, decryptPayload, isEncrypted } from "./crypto-payload.js";
 import { t } from "../i18n.js";
 
 // ============================
@@ -101,8 +102,17 @@ export function createQrFlow(cfg) {
     drawQrToCanvas(cfg.ids.canvasId, text);
   }
 
-  function regenerateAndRender() {
-    const payload = cfg.encodePayload();
+  async function regenerateAndRender() {
+    let payload = cfg.encodePayload();
+    if (payload && typeof cfg.shouldEncrypt === "function" && cfg.shouldEncrypt()) {
+      try {
+        payload = await encryptPayload(payload);
+      } catch (e) {
+        console.error("encryptPayload failed:", e);
+        // 暗号化失敗時は安全側に倒し payload を破棄 (= QR を出さない)
+        payload = "";
+      }
+    }
     qrPages = payload
       ? encodePages({ kind: cfg.kind, payload, batchId: newBatchId(), maxBytes: MAX_BYTES })
       : [];
@@ -163,10 +173,20 @@ export function createQrFlow(cfg) {
           resetRecv();
           ctrl.setStatus(t("qr.recv.complete", { total: recvTotal }));
           // スキャナが閉じてから apply（alert がスキャナの裏に隠れないように）
-          setTimeout(() => {
+          setTimeout(async () => {
+            // 暗号化されている場合は復号してから decodePayload へ
+            let plain = payload;
+            if (isEncrypted(plain)) {
+              try {
+                plain = await decryptPayload(plain);
+              } catch (e) {
+                alert(t("qr.recv.decrypt.failed", { message: e.message || e }));
+                return;
+              }
+            }
             let decodedPayload;
             try {
-              decodedPayload = cfg.decodePayload(payload);
+              decodedPayload = cfg.decodePayload(plain);
             } catch (e) {
               alert(t("qr.recv.parse.failed", { message: e.message || e }));
               return;

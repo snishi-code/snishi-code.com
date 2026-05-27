@@ -32,11 +32,13 @@ export function setFormatToShare(format) { _formatToShare = format || null; }
 //   getKnownTags():        登録済タグ名の配列。未登録タグの除外に使う
 //   addFormat(newFmt):     新フォーマットを永続化する。store / IDB への書き込みは
 //                          adapter の責務 (本モジュールは触らない)
+//   shouldEncrypt():       QR 暗号化フラグ (省略時は false = 平文)
 // adapter 未注入時は no-op フォールバック (テスト時 / 移植先未配線時の安全装置)
 let _adapter = {
   getExistingFormats: () => [],
   getKnownTags: () => [],
   addFormat: () => { console.warn("[qr-format] addFormat called without adapter"); },
+  shouldEncrypt: () => false,
 };
 export function setFormatStoreAdapter(adapter) {
   _adapter = { ..._adapter, ...(adapter || {}) };
@@ -163,6 +165,7 @@ const flow = createQrFlow({
   encodePayload,
   decodePayload,
   onApply: applyReceivedFormat,
+  shouldEncrypt: () => !!(_adapter.shouldEncrypt && _adapter.shouldEncrypt()),
 });
 
 export const initQrFormat = () => flow.init();

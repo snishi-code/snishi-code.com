@@ -117,9 +117,11 @@ const sharedFlow = createQrFlow({
     fieldName: "shared",
     includeEmpty: false,
     matchesFilter: patientMatchesSharedFilter,
+    kind: "SH",
   }),
   decodePayload: (payload) => decodePatientList(payload),
   onApply: makeApplyEntries({ fieldName: "shared", pasteCardId: "sharedPasteCard", pasteAreaId: "sharedPasteArea" }),
+  shouldEncrypt: () => !!settings.qrEncryption?.SH,
 });
 
 const memoFlow = createQrFlow({
@@ -137,11 +139,13 @@ const memoFlow = createQrFlow({
   },
   encodePayload: () => encodePatientList({
     fieldName: "memo",
+    kind: "MM",
     includeEmpty: false,
     matchesFilter: patientMatchesSharedFilter,
   }),
   decodePayload: (payload) => decodePatientList(payload),
   onApply: makeApplyEntries({ fieldName: "memo", pasteCardId: "memoPasteCard", pasteAreaId: "memoPasteArea" }),
+  shouldEncrypt: () => !!settings.qrEncryption?.MM,
 });
 
 export const initSharedQr = () => sharedFlow.init();

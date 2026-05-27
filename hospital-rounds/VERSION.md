@@ -1,6 +1,6 @@
 # Hospital Rounds
 
-現在のバージョン: 7.0.0
+現在のバージョン: 7.1.0
 
 ## バージョニング方針
 
@@ -14,6 +14,14 @@ git tag は `hospital-rounds-v<MAJOR>.<MINOR>.<PATCH>` で打つ。
 
 ## リリース履歴
 
+- **7.1.0**: QR セキュリティ (暗号化 + 再配布制限) を kind 別の設定として導入
+  - **暗号化**: `features/crypto-payload.js` 新設。Web Crypto API (AES-GCM 256bit、IV 12B、認証 tag 16B) でアプリ固定鍵 (32B、ビルドに埋め込み) を使った encrypt/decrypt。wire format は `E1:<base64url(iv ‖ ciphertext)>`。バージョン prefix `E1:` で将来更新に備える
+  - **qr-flow.js**: `cfg.shouldEncrypt: () => boolean` を追加。送信時 encryptPayload で包む。受信時 `isEncrypted` 判定で自動 decrypt → cfg.decodePayload へ。patient detail QR (clinical → 電子カルテ貼付) は元から外部読取前提なので encrypt 対象外
+  - **設定モデル**: `settings.qrEncryption: { HM, MM, SH, ST, FMT }` (boolean) + `settings.qrRedistribution: { HM, MM, SH, ST, FMT }` ("restricted" | "free")。defaults は HM/MM/SH/ST/FMT 全部暗号化 ON、再配布制限は HM/MM のみ ON
+  - **`patient.origin: "" | "external"`**: 受信した患者は `origin="external"` でマーク (qr-home.js の reflect/append 両モード)。`encodePatientList` で `cfg.kind` ベースの再配布判定。restricted な kind で external 患者を除外
+  - **設定画面**: 「QR セキュリティ」セクション (`qrSecurityCard`) 追加。5 kinds × 2 toggle (暗号化 / 再配布制限) のテーブル UI。各 toggle は即時 saveSettings
+  - **i18n**: `settings.title.qrSecurity` / `qrSecurity.{hint,col.*,kind.*}` / `qr.recv.decrypt.failed` 追加
+  - **テスト**: encrypt/decrypt round-trip、平文パススルー、defaults 検証、redistribution フィルタ動作の 4 件追加 (42 → 46 件)。tags.js の top-level `document.addEventListener` を `typeof document !== "undefined"` でガードし Node テスト環境で import 可能に
 - **7.0.0** (**breaking**): 機能整理 + 患者移動を home メニューに統合
   - **印刷機能を完全削除**: `features/print.js` / `views/overview.js` / `createPrintFlow` / 各 view の Print ボタン / ハンバーガーの印刷ボタン / `.overviewPrintHead` / `.overviewTbl*` CSS / `overview.printHead` i18n を撤去。将来必要になった時は再設計予定 (今の電子カルテ普及状況では優先度低)
   - **管理機能を完全削除 (Git 基盤の roster.js は温存)**: `features/admin.js` / `admin-ui.js` / `passphrase-strength.js` を削除。`adminPanelWrap` HTML / 設定画面の管理セクション / `isAdmin*` 呼び出し全て撤去。`settings.adminEnabled` / `adminTerminal` / `rosterPassphrase` を defaultSettings / normalizeSettings から外し、関連 i18n キー 40 個 + `validateAdminTerminal` 関数を削除。**`roster.js` は温存** (Git-like commit history 基盤は将来の sync 機能で再利用)。`recordOp` のゲートを `if (!settings.adminEnabled)` から `if (!FEATURE_ROSTER_OPS)` (現在 false) に変更してドメインから admin を完全切り離し
