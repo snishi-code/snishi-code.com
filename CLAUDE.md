@@ -30,6 +30,16 @@ snishi-code.com のソースリポジトリ。医療・個人向けの PWA / 単
 
 ---
 
+## 状態更新後の再描画 (重要・繰り返しバグの元)
+
+`appState` / `settings` を変更したら、**必ず中央の `refreshPatientUI()`** (`features/renderers.js`) を通して再描画する。これは現在アクティブな view (home / detail / memo / shared) を判定して該当 renderer を走らせ、各 QR も再生成する唯一のディスパッチャ。
+
+- ミューテーション箇所で `doRenderHome()` / `doRenderDetail()` 等を**個別に列挙しない**。列挙すると detail など特定 view が漏れ、「操作したのに画面が自動更新されず、別ページに移動して戻ると直る」バグが繰り返し発生する (実際 `_onDataChange` が detail を列挙し忘れていたのが患者移動の自動更新バグの原因だった)
+- 永続化 (`saveNow` / `scheduleSave` / `saveSettings` / `markUpdated`) は再描画を**しない**。保存と描画は別。変更したら「保存」と「`refreshPatientUI()`」の両方を呼ぶ
+- データ変化の汎用フックは `setDataChangeHandler` (= `_onDataChange`)。これ自体が `refreshPatientUI()` を呼ぶので、ドラッグ並び替え・移動・削除など home 経由のフローはこのフック経由にすれば自動で全 view が更新される
+
+---
+
 ## デザイン方針
 
 ### イメージカラーとフォルダの対応

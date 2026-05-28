@@ -79,7 +79,9 @@
 
     .memoRow textarea {
       resize: vertical;
-      min-height: 48px;
+      /* 共有ページの textarea を メモページの input (border-box 33.5px) と同じ
+         初期高さに揃える (#9)。必要ならユーザーが縦ドラッグで伸ばせる。 */
+      min-height: 34px;
       font-family: inherit;
     }
 

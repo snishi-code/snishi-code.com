@@ -1,7 +1,7 @@
 "use strict";
 
 import { appState, settings, makeDefaultPatient, scheduleSave, isPatientEmpty } from "../store.js";
-import { openMovePatientModal } from "./move-patient.js";
+import { openMovePatientModal, isPatientTransferred } from "./move-patient.js";
 import { formatPatientLabel } from "./room.js";
 import { t } from "../i18n.js";
 
@@ -318,10 +318,15 @@ export function initActionMenu() {
   });
 
   // 移動 ×1 / ×5: 長押し位置から N 件を他ワークスペースへ転送。
-  // 空患者はスキップ (= 「実データを持つ患者だけ」を移す)。
+  // 空患者・移動済 (transferred) 患者はスキップ。移動済を再度移すと移動先で
+  // 増殖する (= 同一患者が複数 WS に存在) ため、一度移したら再移動不可とする。
   // 0 件になったら何もせずメニューを閉じる。
+  const movableAt = (i) => {
+    const p = appState.patients[i];
+    return !isPatientEmpty(p) && !isPatientTransferred(p);
+  };
   if (move1Btn) move1Btn.addEventListener("click", () => {
-    const indices = deletionSliceIndices(1).filter(i => !isPatientEmpty(appState.patients[i]));
+    const indices = deletionSliceIndices(1).filter(movableAt);
     if (indices.length === 0) { closeActionMenu(); return; }
     openMovePatientModal(indices, () => {
       if (_onDataChange) _onDataChange();
@@ -330,7 +335,7 @@ export function initActionMenu() {
   });
 
   if (move5Btn) move5Btn.addEventListener("click", () => {
-    const indices = deletionSliceIndices(5).filter(i => !isPatientEmpty(appState.patients[i]));
+    const indices = deletionSliceIndices(5).filter(movableAt);
     if (indices.length === 0) { closeActionMenu(); return; }
     openMovePatientModal(indices, () => {
       if (_onDataChange) _onDataChange();

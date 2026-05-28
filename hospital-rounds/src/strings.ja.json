@@ -107,6 +107,7 @@
   "import.withSettings": "設定も取り込む",
   "import.patientsOnly": "患者のみ取込",
   "export.failed": "データの出力に失敗しました。",
+  "export.saved": "JSON を保存しました",
   "qr.scanner.unsupported": "このブラウザはカメラ非対応",
   "qr.send.title": "送信",
   "qr.recv.title": "受信",

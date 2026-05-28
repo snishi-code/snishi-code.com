@@ -123,3 +123,27 @@
       background: var(--blue-light);
       border-color: var(--blue-border);
     }
+
+    /* 控えめなトースト通知 (画面下中央)。保存完了など背景処理の合図。 */
+    .appToast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%) translateY(8px);
+      background: rgba(17, 24, 39, 0.92);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 9999;
+    }
+
+    .appToast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }

@@ -23,6 +23,7 @@ import {
   projectBundle, parseBundle, getSection, SECTION,
 } from "../bundle.js";
 import { t } from "../i18n.js";
+import { showToast } from "../toast.js";
 
 // 「設定も取込」「患者のみ」「キャンセル」を返す。データありの時だけ表示する。
 function askImportAction() {
@@ -170,6 +171,8 @@ export function initImportExport(callbacks) {
       const envPrefix = document.documentElement.dataset.env === "test" ? "test_" : "";
       a.download = `${envPrefix}${titleSafe}_${yyyy}_${mm}${dd}_${hh}${min}.json`;
       a.click();
+      // ダウンロードはバックグラウンドで進むため、保存したことを控えめに通知する
+      showToast(t("export.saved"));
     } catch (err) {
       console.error("Export failed:", err);
       alert(t("export.failed"));

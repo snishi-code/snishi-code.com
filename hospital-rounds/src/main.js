@@ -90,15 +90,13 @@ initDetailEvents(doRenderHome);
 initStatusButtons(doRenderHome);
 initQrNavButtons();
 
-// finishDataChange handler: ドラッグ並び替え後など、データ変化のたびに
-// 開いてる view と home QR を refresh
+// finishDataChange handler: ドラッグ並び替え・患者移動・削除などデータ変化のたびに
+// 呼ばれる。中央の refreshPatientUI() に集約する (detail を含む全 view を再描画 +
+// 各 QR を再生成)。個別に view を列挙すると detail 等が漏れて「ミューテーション後に
+// 画面が自動更新されない」バグの温床になるため、必ずこれを通す。
 setDataChangeHandler(() => {
-  const viewId = document.querySelector(".view.active")?.id;
-  if (viewId === "homeView") doRenderHome();
-  else if (viewId === "memoView") doRenderMemo();
-  else if (viewId === "sharedView") doRenderShared();
+  refreshPatientUI();
   updateCountChip();
-  refreshHomeQrIfActive();
 });
 
 // ============================

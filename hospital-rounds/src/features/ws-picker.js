@@ -167,5 +167,10 @@ export function initWsPicker() {
       openWsPicker();
     });
   }
+  // overlay 外 (= 暗幕部分) タップで閉じる。他モーダル共通の挙動に合わせる。
+  const overlay = document.getElementById("wsPickerOverlay");
+  if (overlay) overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeWsPicker();
+  });
   initAddWidget();
 }

@@ -87,6 +87,9 @@ export function renderSharedScreen(renderHomeFn, opts, navigateToPatientFn) {
     }
 
     const inp = document.createElement("textarea");
+    // 既定の rows=2 だとメモページの input (1行) より縦に高くなるため 1 行に揃える (#9)。
+    // resize:vertical は CSS 側で残しているのでユーザーは必要時に伸ばせる。
+    inp.rows = 1;
     inp.value = String(appState.patients[i - 1]?.shared ?? "");
     inp.addEventListener("input", () => {
       appState.patients[i - 1].shared = String(inp.value ?? "");

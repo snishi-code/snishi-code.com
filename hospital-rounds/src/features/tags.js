@@ -57,12 +57,27 @@ const STATUS_TAG_DEFS = [
   { value: STATUS_TAG_PREFIX + STATUS.BLUE,   get label() { return t("tagStatus.blue"); },   color: "#bfdbfe", borderColor: "#2563eb" },
 ];
 
+// 色覚多様性対応: ステータスを「色だけ」でなく形マークでも示す。タグ選択チップ/
+// ピッカーの swatch に重ねる (色＋形の2軸)。形は互いに明確に異なるものを選ぶ
+// (三角/チェック/×/＋)。NONE は無印。i18n 対象外 (形マーク)。
+const STATUS_TAG_MARK = {
+  [STATUS.NONE]: "",
+  [STATUS.YELLOW]: "▲",
+  [STATUS.GREEN]: "✓",
+  [STATUS.GRAY]: "✕",
+  [STATUS.BLUE]: "＋",
+};
+
 export function isStatusTag(value) {
   return typeof value === "string" && value.startsWith(STATUS_TAG_PREFIX);
 }
 
 export function getStatusFromTag(value) {
   return isStatusTag(value) ? value.slice(STATUS_TAG_PREFIX.length) : "";
+}
+
+export function getStatusTagMark(value) {
+  return STATUS_TAG_MARK[getStatusFromTag(value)] || "";
 }
 
 // ============================================================================
@@ -234,7 +249,10 @@ function buildChipsHtml(selected, entriesIndex) {
   const safe = selected.map(v => {
     const e = entriesIndex.get(v) || { label: v };
     if (e.color) {
-      return `<span class="tagChip" style="background:${e.color};border-color:${e.borderColor || e.color};color:${e.color === '#ffffff' ? '#111' : '#fff'};">${escapeHtml(e.label)}</span>`;
+      // ステータスチップ: 文字 (黄/緑…) は出さず、色 + 形マークで示す (色覚対応)
+      const mark = getStatusTagMark(v);
+      const fg = e.color === '#ffffff' ? '#111' : '#fff';
+      return `<span class="tagChip statusChip" title="${escapeHtml(e.label)}" style="background:${e.color};border-color:${e.borderColor || e.color};color:${fg};">${escapeHtml(mark)}</span>`;
     }
     return `<span class="tagChip">${escapeHtml(e.label)}</span>`;
   }).join("");
@@ -464,9 +482,11 @@ export function makeTagPicker(opts) {
       });
       row.appendChild(cb);
       if (e.color) {
-        // Status color: show only the color swatch (no text label, per spec)
+        // Status: 色の swatch に形マークを重ねる (色＋形の2軸で色覚対応)
         const sw = document.createElement("span");
-        sw.style.cssText = `display:inline-block;width:18px;height:18px;border-radius:4px;background:${e.color};border:1px solid ${e.borderColor || "rgba(0,0,0,.2)"};flex-shrink:0;`;
+        const fg = e.color === "#ffffff" ? "#111" : "#fff";
+        sw.style.cssText = `display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;background:${e.color};border:1px solid ${e.borderColor || "rgba(0,0,0,.2)"};flex-shrink:0;font-size:11px;font-weight:700;line-height:1;color:${fg};`;
+        sw.textContent = getStatusTagMark(e.value);
         sw.title = e.label;
         sw.setAttribute("aria-label", e.label);
         row.appendChild(sw);

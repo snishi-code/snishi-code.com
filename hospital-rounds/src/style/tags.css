@@ -80,6 +80,18 @@
       white-space: nowrap;
     }
 
+    /* ステータスチップ: 文字でなく形マーク。色 + 形で示すため小さな正方形に近い形に */
+    .tagChip.statusChip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 4px;
+      border-radius: 5px;
+      line-height: 1;
+    }
+
     .tagPickerPopup {
       position: absolute;
       top: calc(100% + 4px);

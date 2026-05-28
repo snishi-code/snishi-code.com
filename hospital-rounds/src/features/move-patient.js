@@ -95,11 +95,13 @@ export async function movePatients(srcPatientIndices, destId, destLabel) {
   if (destId === getActiveWorkspaceId()) {
     throw new Error("cannot move within the same workspace");
   }
-  // 1) 有効な patient だけを抽出
+  // 1) 有効な patient だけを抽出。移動済 (transferred) は除外 (再移動で移動先に
+  //    増殖するのを防ぐ。一度移したら再移動不可)。UI 側でも除外しているがここでも防御。
   const valid = [];
   for (const idx of srcPatientIndices) {
     const p = appState.patients[idx];
     if (!p) continue;
+    if (isPatientTransferred(p)) continue;
     valid.push({ idx, src: p });
   }
   if (!valid.length) return 0;
@@ -202,8 +204,11 @@ async function renderMovePatientList() {
       if (!confirmed) return;
       try {
         await movePatients(indices, ws.id, destName);
+        // closeMovePatientModal() が _onMoveDoneCb を null にするので、閉じる前に
+        // コールバックを退避してから呼ぶ (退避し忘れると移動後に画面が再描画されない)
+        const done = _onMoveDoneCb;
         closeMovePatientModal();
-        if (_onMoveDoneCb) _onMoveDoneCb();
+        if (done) done();
       } catch (err) {
         console.error("move failed:", err);
         alert(t("move.failed"));
