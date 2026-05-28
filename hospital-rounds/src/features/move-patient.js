@@ -17,7 +17,7 @@
 //   - これは admin 実装時にあらためて考える。今はローカル端末モードなので op は流さない
 // ============================
 
-import { appState, settings, selectedNo, markUpdated, scheduleSave, saveNow, makeDefaultPatient } from "../store.js";
+import { appState, settings, selectedNo, markUpdated, scheduleSave, saveNow, makeDefaultPatient, createWorkspaceWithPatients } from "../store.js";
 import { STATUS } from "../constants.js";
 import {
   listBundles, loadBundle, saveBundle, getActiveWorkspaceId,
@@ -122,6 +122,31 @@ export async function movePatients(srcPatientIndices, destId, destLabel) {
   return valid.length;
 }
 
+// 指定患者を「新規ワークスペース」に移動する。移動先には渡した患者のコピーだけが
+// 入る (空 50 患者は作らない)。失敗時は元 ws を触らず例外を投げる。
+//   srcPatientIndices: 移動対象の patient index (0-based) 配列
+//   label: 新規ワークスペースの表示名
+export async function moveToNewWorkspace(srcPatientIndices, label) {
+  const valid = [];
+  for (const idx of srcPatientIndices) {
+    const p = appState.patients[idx];
+    if (!p) continue;
+    if (isPatientTransferred(p)) continue;
+    valid.push({ idx, src: p });
+  }
+  if (!valid.length) return 0;
+  const copies = valid.map(({ src }) => buildDestCopy(src));
+  // 新規 ws を作成 (コピーのみを内包)。失敗したら例外を caller に投げる
+  await createWorkspaceWithPatients(label, copies);
+  // 元 ws の各患者に移動マーカー
+  for (const { idx, src } of valid) {
+    markPatientTransferred(src, label);
+    markUpdated(idx + 1);
+  }
+  await saveNow();
+  return valid.length;
+}
+
 // 表示用ヘルパ
 // 移動済 = transferredAt > 0 (false な GRAY = ユーザーが手動で付けた灰 (例: 退院済)
 // と区別したいケースで利用)
@@ -162,12 +187,55 @@ function closeMovePatientModal() {
   _targetIndices = [];
 }
 
+// 「＋ 新規ワークスペースへ移動」行を作る。クリックで名前を尋ね、その患者だけを
+// 含む新規ワークスペースを作成して移動する。
+function buildNewWorkspaceRow() {
+  const row = document.createElement("button");
+  row.type = "button";
+  row.className = "ioDbRow moveNewWsRow";
+  const main = document.createElement("div");
+  main.className = "ioDbRowMain";
+  const lbl = document.createElement("div");
+  lbl.className = "ioDbRowLabel";
+  lbl.textContent = t("move.newWs.row");
+  main.appendChild(lbl);
+  row.appendChild(main);
+  row.addEventListener("click", async () => {
+    const indices = _targetIndices.slice();
+    if (!indices.length) return;
+    // 既定名: 単一なら患者名/部屋、複数なら汎用名
+    let def;
+    if (indices.length === 1) {
+      const sp = appState.patients[indices[0]];
+      def = (sp?.name || sp?.room || t("move.newWs.default"));
+    } else {
+      def = t("move.newWs.default");
+    }
+    const input = prompt(t("move.newWs.prompt"), def);
+    if (input === null) return; // キャンセル
+    const label = String(input || "").trim() || def;
+    try {
+      await moveToNewWorkspace(indices, label);
+      const done = _onMoveDoneCb;
+      closeMovePatientModal();
+      if (done) done();
+    } catch (err) {
+      console.error("move to new ws failed:", err);
+      alert(t("move.failed"));
+    }
+  });
+  return row;
+}
+
 async function renderMovePatientList() {
   const host = document.getElementById("movePatientList");
   if (!host) return;
   host.textContent = "";
+  // 先頭に「＋ 新規ワークスペースへ移動」を常に出す
+  host.appendChild(buildNewWorkspaceRow());
   const others = await listOtherWorkspaces();
   if (!others.length) {
+    // 既存 ws が無い場合でも「＋ 新規」は使えるので empty 文言は補助的に
     const empty = document.createElement("div");
     empty.className = "ioDbListEmpty";
     empty.textContent = t("move.list.empty");

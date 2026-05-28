@@ -239,6 +239,19 @@
       border-radius: 8px;
     }
 
+    /* 「＋ 新規ワークスペースへ移動」行: button をリセットして行体裁に揃え、青で強調 */
+    .moveNewWsRow {
+      width: 100%;
+      text-align: left;
+      font: inherit;
+      cursor: pointer;
+      color: var(--blue);
+      border-color: var(--blue-border);
+      background: var(--blue-light);
+    }
+    .moveNewWsRow .ioDbRowLabel { color: var(--blue); }
+    .moveNewWsRow:hover { background: var(--blue-border); }
+
     .ioDbRowMain {
       flex: 1 1 auto;
       min-width: 0;

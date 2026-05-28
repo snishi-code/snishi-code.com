@@ -54,6 +54,7 @@ import {
 //     p  = panel index (PANEL_BY_INDEX への 0-based 参照)
 //     j  = joiner       (default は省略)
 //     ls = labelSep     (default は省略)
+//     tw = titleWrap    (展開時にフォーマット名を囲む括弧ペア。空は省略)
 //     t  = tag indices (td への 1-based 参照、または辞書なしなら文字列配列)
 //     i  = items array
 //     (旧 pn=pinned / d=isDefault は v8 で撤去。クイックアクセス・規定文はグループ側で
@@ -199,6 +200,7 @@ export function formatToWire(format, tagDict) {
     // 「明示されていれば省略しない」シンプルルール。受信側で復元
     o.ls = f.labelSep;
   }
+  if (typeof f.titleWrap === "string" && f.titleWrap) o.tw = f.titleWrap;
   const tWire = tagsToWire(Array.isArray(f.tags) ? f.tags : [], tagDict);
   if (tWire.length) o.t = tWire;
   o.i = (Array.isArray(f.items) ? f.items : []).map(itemToWire);
@@ -216,6 +218,7 @@ export function formatFromWire(wire, tagDict) {
     panel: panelFromIdx(w.p),
     joiner: typeof w.j === "string" ? w.j : ", ",
     labelSep,
+    titleWrap: typeof w.tw === "string" ? w.tw : "",
     tags: tagsFromWire(w.t, tagDict),
     items,
   };

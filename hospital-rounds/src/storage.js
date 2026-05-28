@@ -30,6 +30,11 @@ const STORE_NAME = "bundles";
 // 初回起動時 / v4 系からのマイグレーション時に既定で active になる ID。
 // 既存ユーザの "default" レコードがそのままアクティブになる。
 const DEFAULT_WORKSPACE_ID = "default";
+
+// v8.2+: 設定 (formats / formatGroups / tags / clearTargets / qr 設定) は全ワークスペース
+// 共通 (グローバル) にする。同じ bundles ストア内に予約 ID で 1 レコードだけ置き、
+// listBundles では除外する (= ワークスペース一覧に出さない)。DB スキーマ変更は不要。
+const GLOBAL_SETTINGS_ID = "__settings__";
 // "default" ワークスペースの表示名。i18n 化のため関数経由で参照する。
 // (export const をベタ文字列にすると module 評価時に t() を呼べないため)
 export function getDefaultWorkspaceLabel() {
@@ -199,7 +204,9 @@ export async function listBundles() {
   try {
     const tx = db.transaction(STORE_NAME, "readonly");
     const all = await idbReq(tx.objectStore(STORE_NAME).getAll());
-    return all.map(r => ({
+    return all
+      .filter(r => r.id !== GLOBAL_SETTINGS_ID) // グローバル設定レコードは ws ではない
+      .map(r => ({
       id: r.id,
       label: r.label || (r.id === DEFAULT_WORKSPACE_ID ? getDefaultWorkspaceLabel() : ""),
       title: r.title || "",
@@ -262,6 +269,39 @@ export async function createWorkspaceRecord(label, bundle) {
   const id = newWorkspaceId();
   await saveBundle(bundle, id, String(label || ""));
   return id;
+}
+
+// ============================
+// グローバル設定 (全ワークスペース共通)
+// ============================
+
+// 予約レコードから設定オブジェクトを読む。未保存なら null。
+export async function loadGlobalSettings() {
+  try {
+    const db = await openDb();
+    if (!db) return null;
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const rec = await idbReq(tx.objectStore(STORE_NAME).get(GLOBAL_SETTINGS_ID));
+    if (rec && rec.settings && typeof rec.settings === "object") return rec.settings;
+  } catch (e) {
+    console.warn("idb load global settings failed:", e);
+  }
+  return null;
+}
+
+// 予約レコードへ設定オブジェクトを書く (全ワークスペース共通)。
+export async function saveGlobalSettings(settings) {
+  const db = await openDb();
+  if (!db) return; // IDB 不可環境 (テスト等) は no-op
+  const rec = { id: GLOBAL_SETTINGS_ID, settings, updatedAt: Date.now() };
+  try {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).put(rec);
+    await idbTxDone(tx);
+  } catch (e) {
+    console.error("idb save global settings failed:", e);
+    throw e;
+  }
 }
 
 // ============================

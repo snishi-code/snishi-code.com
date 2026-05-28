@@ -172,6 +172,7 @@ function makeFormatPicker(panel, onChange) {
 
 export function renderFormatStrip(panel, hostEl) {
   if (!hostEl) return;
+  ensureCaretTracker();
   hostEl.textContent = "";
   hostEl.className = "formatStrip";
 
@@ -484,7 +485,19 @@ function applyFormatInput() {
       parts.push(lab ? `${lab}${labelSep}${value}` : value);
     }
   }
-  const out = parts.join(format.joiner || ", ");
+  const body = parts.join(format.joiner || ", ");
+  // タイトル展開: titleWrap が設定されていれば「<左>名前<右>」を先頭行に付ける。
+  // 項目が空でもタイトルだけは展開する (例: CT フォーマット → "（CT）")。
+  const titleWrap = typeof format.titleWrap === "string" ? format.titleWrap : "";
+  let out;
+  if (titleWrap) {
+    const L = titleWrap[0] || "";
+    const R = titleWrap[1] || "";
+    const titleLine = `${L}${format.name}${R}`;
+    out = body ? `${titleLine}\n${body}` : titleLine;
+  } else {
+    out = body;
+  }
   // タグ merge を appendToPanel より前に実行する。appendToPanel が _onTextChanged
   // (= 詳細画面の再描画) を発火するので、その時点で tags も新しい状態になっている
   // ようにしておく (= inline タグ表示が即時更新される)。
@@ -513,6 +526,28 @@ function applyFormatTags(format) {
   if (changed) setPatientTags(idx, Array.from(set));
 }
 
+// 直近にカーソルが置かれていたパネルと、その時の患者 pid。フォーマット展開時に
+// 「同じパネルにカーソルがあればその位置へ、無ければ末尾へ」を判定するのに使う。
+let _lastFocusedPanel = null;
+let _lastFocusedPid = null;
+let _caretTrackerAttached = false;
+
+// 4 つのパネル textarea は index.html で静的。focusin を 1 度だけ document に張り、
+// どのパネルが直近フォーカスされたかを記録する (chip タップで blur しても保持される)。
+function ensureCaretTracker() {
+  if (_caretTrackerAttached) return;
+  _caretTrackerAttached = true;
+  document.addEventListener("focusin", (e) => {
+    const id = e.target && e.target.id;
+    if (!id) return;
+    const panel = Object.keys(PANEL_TEXTAREA_ID).find(k => PANEL_TEXTAREA_ID[k] === id);
+    if (!panel) return;
+    _lastFocusedPanel = panel;
+    const p = appState.patients[selectedNo - 1];
+    _lastFocusedPid = p ? p.pid : null;
+  }, true);
+}
+
 function appendToPanel(panel, text) {
   if (!text) return;
   const p = appState.patients[selectedNo - 1];
@@ -522,14 +557,40 @@ function appendToPanel(panel, text) {
   const ta = document.getElementById(taId);
   const current = (panel === "O") ? String(p.oFree ?? "")
                                   : String(p[field]?.text ?? "");
-  const sep = current && !current.endsWith("\n") ? "\n" : "";
-  const next = current + sep + text;
+
+  // カーソル位置展開: 同じパネルが直近フォーカスされ、かつ同じ患者なら caret 位置へ
+  // 挿入する。別パネルにカーソルがあった / どこにも無い場合は末尾へ。
+  const useCaret = !!ta && _lastFocusedPanel === panel && _lastFocusedPid === p.pid;
+  let next, caretAfter;
+  if (useCaret) {
+    const len = current.length;
+    const start = Math.max(0, Math.min(ta.selectionStart ?? len, len));
+    const end = Math.max(start, Math.min(ta.selectionEnd ?? start, len));
+    const before = current.slice(0, start);
+    const after = current.slice(end);
+    // 前後の行とくっつかないよう必要なら改行を補う
+    const nlBefore = before && !before.endsWith("\n") ? "\n" : "";
+    const nlAfter = after && !after.startsWith("\n") ? "\n" : "";
+    const ins = nlBefore + text + nlAfter;
+    next = before + ins + after;
+    caretAfter = (before + nlBefore + text).length; // 挿入テキスト直後
+  } else {
+    const sep = current && !current.endsWith("\n") ? "\n" : "";
+    next = current + sep + text;
+    caretAfter = next.length;
+  }
+
   if (panel === "O") p.oFree = next;
   else {
     if (!p[field] || typeof p[field] !== "object") p[field] = { text: "" };
     p[field].text = next;
   }
-  if (ta) ta.value = next;
+  if (ta) {
+    ta.value = next;
+    if (useCaret) {
+      try { ta.focus(); ta.selectionStart = ta.selectionEnd = caretAfter; } catch (_) { /* noop */ }
+    }
+  }
   markUpdated(selectedNo);
   scheduleSave();
   if (_onTextChanged) _onTextChanged();
@@ -556,6 +617,7 @@ function openFormatEditModal(target, panel, onSaved) {
       panel: panel || "O",
       joiner: "\n",
       labelSep: DEFAULT_LABEL_SEP_OTHER,
+      titleWrap: "",
       tags: [],
       items: [],
     },
@@ -604,12 +666,14 @@ function renderFormatEditForm() {
   const nameInp = document.getElementById("formatEditName");
   const joinerInp = document.getElementById("formatEditJoiner");
   const labelSepInp = document.getElementById("formatEditLabelSep");
+  const titleWrapInp = document.getElementById("formatEditTitleWrap");
   const itemsHost = document.getElementById("formatEditItems");
   if (!_currentEdit || !nameInp) return;
   const target = _currentEdit.target;
   nameInp.value = target.name;
   if (joinerInp) joinerInp.value = target.joiner;
   if (labelSepInp) labelSepInp.value = typeof target.labelSep === "string" ? target.labelSep : "";
+  if (titleWrapInp) titleWrapInp.value = typeof target.titleWrap === "string" ? target.titleWrap : "";
   renderTagsHost();
   if (itemsHost) renderFormatEditItems(itemsHost);
 }
@@ -701,6 +765,7 @@ function saveFormatEdit() {
   const nameInp = document.getElementById("formatEditName");
   const joinerInp = document.getElementById("formatEditJoiner");
   const labelSepInp = document.getElementById("formatEditLabelSep");
+  const titleWrapInp = document.getElementById("formatEditTitleWrap");
 
   const target = _currentEdit.target;
   const name = String(nameInp?.value || "").trim();
@@ -726,6 +791,8 @@ function saveFormatEdit() {
     const allText = target.items.every(it => it && it.kind === "text");
     target.labelSep = allText ? DEFAULT_LABEL_SEP_TEXT : DEFAULT_LABEL_SEP_OTHER;
   }
+  // titleWrap: 展開時にフォーマット名を囲む括弧ペア (空 = タイトル無し)
+  target.titleWrap = String(titleWrapInp?.value ?? "");
   // tags: 削除済みタグを掃除 (UI で picker を介して付けたが、その後にタグ自体が消された場合に備えて)
   const knownTags = new Set(getAllTags());
   target.tags = (target.tags || []).filter(t => knownTags.has(t));

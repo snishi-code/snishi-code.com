@@ -15,8 +15,10 @@ import {
   loadBundle as storageLoad,
   saveBundle as storageSave,
   createWorkspaceRecord,
+  listBundles,
   setActiveWorkspaceId,
   getDeviceAppTitle, setDeviceAppTitle,
+  loadGlobalSettings, saveGlobalSettings,
 } from "./storage.js";
 
 // ============================
@@ -40,6 +42,7 @@ function makeDefaultFormats() {
     panel: f.panel,
     joiner: f.joiner,
     labelSep: typeof f.labelSep === "string" ? f.labelSep : DEFAULT_LABEL_SEP_OTHER,
+    titleWrap: typeof f.titleWrap === "string" ? f.titleWrap : "",
     tags: Array.isArray(f.tags) ? f.tags.slice() : [],
     items: f.items.map(it => ({ ...it })),
   }));
@@ -137,7 +140,10 @@ function normalizeFormat(raw) {
   const tags = Array.isArray(raw.tags)
     ? raw.tags.filter(t => typeof t === "string" && t.trim()).map(t => String(t))
     : [];
-  return { id, name, panel, joiner, labelSep, tags, items };
+  // titleWrap: 患者画面へ展開する時にフォーマット名を囲む括弧ペア (例 "（）")。
+  // 空文字 = タイトル行を出さない。1 文字目=左括弧 / 2 文字目=右括弧。
+  const titleWrap = typeof raw.titleWrap === "string" ? raw.titleWrap : "";
+  return { id, name, panel, joiner, labelSep, titleWrap, tags, items };
 }
 
 function normalizeSettings(raw) {
@@ -341,16 +347,14 @@ export function setSelectedNo(n) { selectedNo = n; }
 // Persistence
 // ============================
 
+// v8.2+: settings はグローバル管理 (全 ws 共通) になったため、ここでは patients /
+// title (= ワークスペース固有データ) だけを live state へ反映する。settings は
+// initStore() がグローバルストアから読み込む。bundle の settings section は無視。
 function applyBundleToLive(bundle) {
-  if (!bundle) return;
-  const sSettings = getSection(bundle, SECTION.SETTINGS);
-  const sPatients = getSection(bundle, SECTION.PATIENTS);
-
+  const sPatients = bundle ? getSection(bundle, SECTION.PATIENTS) : null;
   // title は端末固定 (localStorage)。bundle.sections.meta.title は出力時の
   // 体裁のためだけに保持される (workspace 切替で title を上書きしない)。
   const deviceTitle = getDeviceAppTitle();
-
-  settings = normalizeSettings(sSettings || {});
   appState = {
     v: 3,
     title: deviceTitle || t("app.title"),
@@ -384,7 +388,21 @@ export function initStore(opts) {
       try { bundle = await storageLoad(); }
       catch (e) { console.warn("initStore: storage load failed:", e); }
     }
+    // patients / title (ws 固有) を適用
     applyBundleToLive(bundle);
+    // settings はグローバル。未保存なら現バンドルの settings から 1 度だけ seed する
+    // (= 既存ユーザーのアクティブ ws 設定をグローバルへ引き継ぐ移行)。
+    let gs = null;
+    try { gs = await loadGlobalSettings(); }
+    catch (e) { console.warn("initStore: load global settings failed:", e); }
+    if (gs) {
+      settings = normalizeSettings(gs);
+    } else {
+      const seed = bundle ? getSection(bundle, SECTION.SETTINGS) : null;
+      settings = normalizeSettings(seed || {});
+      try { await saveGlobalSettings(settings); }
+      catch (e) { console.warn("initStore: seed global settings failed:", e); }
+    }
   })();
   return _initPromise;
 }
@@ -402,12 +420,20 @@ export function scheduleSave() {
   saveTimer = setTimeout(() => { saveNow(); }, 180);
 }
 
+// アクティブ ws の患者データ (bundle) とグローバル設定の両方を永続化する共通処理。
+// v8.2+: settings は ws bundle ではなくグローバルレコードに保存する。ws bundle には
+// 患者 + meta だけを書く (settings section は出さない)。
+async function persistActive() {
+  await storageSave(projectBundle({ appState, settings, sections: [SECTION.META, SECTION.PATIENTS] }));
+  await saveGlobalSettings(settings);
+}
+
 // async になったが「fire and forget」呼び出しが多いので返り値を await する
 // 義務はない。内部 try/catch で失敗は console に出すだけ。
 export async function saveNow() {
   saveTimer = null;
   try {
-    await storageSave(projectBundle({ appState, settings }));
+    await persistActive();
   } catch (e) {
     console.error("save failed:", e);
   }
@@ -439,10 +465,10 @@ export function flushSavePending() {
 // 入れ替わる」体験になる。
 export async function switchWorkspace(targetId) {
   if (!targetId) throw new Error("switchWorkspace: targetId required");
-  // 1) 現アクティブを必ず保存
+  // 1) 現アクティブを必ず保存 (患者 + グローバル設定)
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
   try {
-    await storageSave(projectBundle({ appState, settings }));
+    await persistActive();
   } catch (e) {
     console.error("save before switch failed:", e);
   }
@@ -462,18 +488,20 @@ export async function switchWorkspace(targetId) {
 // 空の新規ワークスペースを作成し、そのワークスペースに切替える。
 // label はユーザが画面で入力した名前。
 export async function createWorkspace(label) {
-  // 1) 現アクティブを保存
+  // 1) 現アクティブを保存 (患者 + グローバル設定)
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
   try {
-    await storageSave(projectBundle({ appState, settings }));
+    await persistActive();
   } catch (e) {
     console.error("save before create failed:", e);
   }
-  // 2) 空の bundle を構築 (default 50 患者 + 既定 settings)
+  // 2) 空の bundle を構築 (default 50 患者)。settings はグローバル共通なので bundle
+  //    には含めない。新 ws は現在のグローバル設定をそのまま継承する。
   const emptyAppState = { v: 3, title: t("app.title"), patients: normalizePatientArray(null) };
   const emptyBundle = projectBundle({
     appState: emptyAppState,
-    settings: defaultSettings(),
+    settings,
+    sections: [SECTION.META, SECTION.PATIENTS],
   });
   // 3) IDB に新規エントリを作成
   const newId = await createWorkspaceRecord(label, emptyBundle);
@@ -484,6 +512,83 @@ export async function createWorkspace(label) {
     try { _onWorkspaceChanged(newId); } catch (_) {}
   }
   return newId;
+}
+
+// 指定患者だけを含む新規ワークスペースを作成して保存する (switch はしない)。
+// 患者移動の「＋ 新規ワークスペースへ」用。空の 50 患者を作らず、渡した患者のみを
+// 入れる (= 移動先で不要な空スロットを消す手間を無くす)。戻り値: 新 workspace id。
+export async function createWorkspaceWithPatients(label, patients) {
+  const appStateForBundle = {
+    v: 3,
+    title: appState.title || t("app.title"),
+    patients: Array.isArray(patients) ? patients : [],
+  };
+  // settings はグローバル共通なので bundle には含めない (META + PATIENTS のみ)
+  const bundle = projectBundle({ appState: appStateForBundle, settings, sections: [SECTION.META, SECTION.PATIENTS] });
+  return await createWorkspaceRecord(label, bundle);
+}
+
+// ============================
+// 全ワークスペース JSON 入出力 (v8.2+)
+// ============================
+//
+// JSON ファイルは「アーカイブ」= グローバル設定 + 全 ws の患者 を 1 ファイルに束ねる。
+// 旧来の単一 ws バンドル (hospital-rounds-bundle) も import では引き続き受け付ける
+// (import-export.js 側で判定)。
+const ARCHIVE_FORMAT = "hospital-rounds-archive";
+const ARCHIVE_SCHEMA = 1;
+
+export function isArchive(obj) {
+  return !!(obj && typeof obj === "object" && obj.format === ARCHIVE_FORMAT && Array.isArray(obj.workspaces));
+}
+
+// 全 ws + グローバル設定をアーカイブオブジェクトとして返す。
+export async function exportArchive() {
+  // 現在の状態を確実に保存してから全 ws を読み出す
+  try { await persistActive(); } catch (e) { console.warn("exportArchive: persist failed:", e); }
+  const list = await listBundles();
+  const workspaces = [];
+  for (const w of list) {
+    let b = null;
+    try { b = await storageLoad(w.id); } catch (_) { /* skip broken */ }
+    const patients = b ? (getSection(b, SECTION.PATIENTS) || []) : [];
+    const meta = b ? (getSection(b, SECTION.META) || {}) : {};
+    workspaces.push({
+      label: w.label || "",
+      title: (meta && typeof meta.title === "string") ? meta.title : (w.title || ""),
+      patients: Array.isArray(patients) ? patients : [],
+    });
+  }
+  return {
+    format: ARCHIVE_FORMAT,
+    schema: ARCHIVE_SCHEMA,
+    exportedAt: new Date().toISOString(),
+    settings,
+    workspaces,
+  };
+}
+
+// アーカイブを取り込む (非破壊)。各 ws を新規作成し、includeSettings ならグローバル
+// 設定を置換する。既存 ws は消さない (= 再取込で重複し得るが、データ消失は避ける)。
+// 戻り値: 作成した ws 数。
+export async function importArchive(archive, opts) {
+  const includeSettings = !!(opts && opts.includeSettings);
+  const wss = Array.isArray(archive && archive.workspaces) ? archive.workspaces : [];
+  let created = 0;
+  for (const w of wss) {
+    const patients = Array.isArray(w && w.patients) ? w.patients : [];
+    // 中身のない (全スロット空) ws はスキップ
+    if (!patients.some(p => !isPatientEmpty(p))) continue;
+    const norm = normalizeLoaded({ title: (w && w.title) || t("app.title"), patients });
+    const bundle = projectBundle({ appState: norm, settings, sections: [SECTION.META, SECTION.PATIENTS] });
+    await createWorkspaceRecord(String((w && w.label) || ""), bundle);
+    created++;
+  }
+  if (includeSettings && archive && archive.settings && typeof archive.settings === "object") {
+    settings = normalizeSettings(archive.settings);
+    try { await saveGlobalSettings(settings); } catch (e) { console.warn("importArchive: settings save failed:", e); }
+  }
+  return created;
 }
 
 let _onWorkspaceChanged = null;

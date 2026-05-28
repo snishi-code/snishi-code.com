@@ -17,10 +17,11 @@ import {
   appState, settings,
   setAppState, setSettings,
   saveNow, normalizeLoaded,
+  exportArchive, importArchive, isArchive,
 } from "../store.js";
 import { STATUS } from "../constants.js";
 import {
-  projectBundle, parseBundle, getSection, SECTION,
+  parseBundle, getSection, SECTION,
 } from "../bundle.js";
 import { t } from "../i18n.js";
 import { showToast } from "../toast.js";
@@ -145,11 +146,12 @@ export function initImportExport(callbacks) {
     if (sharedView && sharedView.classList.contains("active")) renderSharedScreen();
   }
 
-  function downloadCurrentAsJson() {
+  async function downloadCurrentAsJson() {
     try {
       if (lastExportUrl) URL.revokeObjectURL(lastExportUrl);
-      const bundle = projectBundle({ appState, settings });
-      const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
+      // v8.2+: 全ワークスペース + グローバル設定をまとめたアーカイブを書き出す
+      const archive = await exportArchive();
+      const blob = new Blob([JSON.stringify(archive, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       lastExportUrl = url;
 
@@ -177,6 +179,24 @@ export function initImportExport(callbacks) {
       console.error("Export failed:", err);
       alert(t("export.failed"));
     }
+  }
+
+  // アーカイブ (全 ws + グローバル設定) を取り込む。非破壊: 各 ws を新規作成し、
+  // グローバル設定はアーカイブのもので置換する (= フルバックアップ復元の体)。
+  async function importArchiveFlow(archive) {
+    const wsCount = Array.isArray(archive.workspaces) ? archive.workspaces.length : 0;
+    if (!confirm(t("import.archive.confirm", { n: wsCount }))) return;
+    let created = 0;
+    try {
+      created = await importArchive(archive, { includeSettings: true });
+    } catch (err) {
+      console.error("archive import failed:", err);
+      alert(t("import.read.failed"));
+      return;
+    }
+    vibrate();
+    rerenderCurrentView();
+    showToast(t("import.archive.done", { n: created }));
   }
 
   // parsed bundle を取り込む。空ならまるごと差替、データありなら「設定も含めるか?」を聞く。
@@ -238,6 +258,12 @@ export function initImportExport(callbacks) {
       reader.onload = async (ev) => {
         try {
           const parsedRaw = JSON.parse(ev.target.result);
+          // v8.2+: アーカイブ (全 ws) 形式なら専用フローへ。旧来の単一バンドルも互換受付。
+          if (isArchive(parsedRaw)) {
+            await importArchiveFlow(parsedRaw);
+            settingsImportFile.value = "";
+            return;
+          }
           let bundle;
           try {
             bundle = parseBundle(parsedRaw);

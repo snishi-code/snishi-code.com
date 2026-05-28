@@ -116,6 +116,7 @@ function applyReceivedFormat(safe, ctrl) {
     panel: safe.panel,
     joiner: safe.joiner,
     labelSep,
+    titleWrap: typeof safe.titleWrap === "string" ? safe.titleWrap : "",
     tags: safeTags,
     items,
   };
