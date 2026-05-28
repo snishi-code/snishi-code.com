@@ -305,24 +305,37 @@ function buildGroupFormatRow(f, panel) {
   row.appendChild(lab);
 
   if (included) {
-    // 展開(A) / クイックアクセス(B) トグル。on=展開 (本文上に入力欄)、off=チップ
+    // 展開(A) / クイックアクセス(B) の二択セグメント。A=本文上に入力欄を展開、
+    // B=ヘッダーにチップ (タップでモーダル)。included なら必ずどちらか。
     if (!Array.isArray(target.expandFormatIds)) target.expandFormatIds = [];
     const isExpand = target.expandFormatIds.includes(f.id);
-    const expandBtn = document.createElement("button");
-    expandBtn.type = "button";
-    expandBtn.className = "formatGroupExpandToggle" + (isExpand ? " on" : "");
-    expandBtn.textContent = t("formatGroup.expand.toggle");
-    expandBtn.title = t("formatGroup.expand.title");
-    expandBtn.setAttribute("aria-label", t("formatGroup.expand.title"));
-    expandBtn.setAttribute("aria-pressed", isExpand ? "true" : "false");
-    expandBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (isExpand) target.expandFormatIds = target.expandFormatIds.filter(x => x !== f.id);
-      else target.expandFormatIds.push(f.id);
+    const seg = document.createElement("div");
+    seg.className = "formatGroupModeSeg";
+    const aBtn = document.createElement("button");
+    aBtn.type = "button";
+    aBtn.className = "formatGroupModeBtn" + (isExpand ? " active" : "");
+    aBtn.textContent = t("formatGroup.mode.expand");
+    aBtn.title = t("formatGroup.mode.expand.title");
+    aBtn.setAttribute("aria-pressed", isExpand ? "true" : "false");
+    aBtn.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (!target.expandFormatIds.includes(f.id)) target.expandFormatIds.push(f.id);
       renderFormatsCheckList();
     });
-    row.appendChild(expandBtn);
+    const bBtn = document.createElement("button");
+    bBtn.type = "button";
+    bBtn.className = "formatGroupModeBtn" + (!isExpand ? " active" : "");
+    bBtn.textContent = t("formatGroup.mode.quick");
+    bBtn.title = t("formatGroup.mode.quick.title");
+    bBtn.setAttribute("aria-pressed", !isExpand ? "true" : "false");
+    bBtn.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      target.expandFormatIds = target.expandFormatIds.filter(x => x !== f.id);
+      renderFormatsCheckList();
+    });
+    seg.appendChild(aBtn);
+    seg.appendChild(bBtn);
+    row.appendChild(seg);
 
     const isDef = target.defaultFormatIds.includes(f.id);
     const btn = document.createElement("button");

@@ -571,6 +571,34 @@
       height: 18px;
       flex: 0 0 auto;
     }
+    /* 展開(A) / クイック(B) 二択セグメント。included フォーマットの表示方法を選ぶ */
+    .formatGroupModeSeg {
+      flex: 0 0 auto;
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .formatGroupModeBtn {
+      width: auto !important;
+      min-width: 0;
+      min-height: 0;
+      border: 0;
+      background: #fff;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 12px;
+      cursor: pointer;
+    }
+    .formatGroupModeBtn + .formatGroupModeBtn {
+      border-left: 1px solid var(--line);
+    }
+    .formatGroupModeBtn.active {
+      background: var(--blue, #2563eb);
+      color: #fff;
+    }
+
     /* グループ内の「規定文」トグル (パネル毎 1 つ。空欄補完に使う)。
        popup 内ボタンの width:100% 既定を打ち消して content 幅にする */
     .formatGroupDefaultTextToggle {
