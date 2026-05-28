@@ -799,8 +799,8 @@ function saveFormatEdit() {
 
   // 項目の除外ルール:
   //   text:               label / normal どちらか入力があれば保持
-  //   number / fraction:  label が空なら除外 (意味を成さない)
-  //   date:               label が空なら除外
+  //   date:               ラベル無しでも保持 (日付だけ展開する用途。例 抗菌薬の "5/20-")
+  //   number / fraction:  label が空なら除外 (値だけでは意味を成さない)
   target.items = target.items
     .map(it => {
       // kind が壊れていたら text にフォールバック
@@ -813,6 +813,7 @@ function saveFormatEdit() {
         const normal = String(it.normal || "").trim();
         return !!label || !!normal;
       }
+      if (it.kind === "date") return true; // 日付はラベル任意
       return !!label;
     });
 

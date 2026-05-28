@@ -283,6 +283,7 @@
   "move.newWs.row": "＋ 新しいワークスペースへ移動",
   "move.newWs.prompt": "新しいワークスペース名を入力してください",
   "move.newWs.default": "新規",
+  "move.already.transferred": "この患者は既に「{dest}」へ移動済みです。同じ患者を複数のワークスペースに置くことはできません。",
   "move.failed": "移動に失敗しました",
   "move.banner": "{dest} へ転棟済 ({date})",
   "move.namePrefix": "(移)",

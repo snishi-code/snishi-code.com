@@ -325,21 +325,24 @@ export function initActionMenu() {
     const p = appState.patients[i];
     return !isPatientEmpty(p) && !isPatientTransferred(p);
   };
-  if (move1Btn) move1Btn.addEventListener("click", () => {
-    const indices = deletionSliceIndices(1).filter(movableAt);
-    if (indices.length === 0) { closeActionMenu(); return; }
+  const handleMove = (n) => {
+    const raw = deletionSliceIndices(n);
+    const indices = raw.filter(movableAt);
+    if (indices.length === 0) {
+      // 動かせる患者が無い。移動済が含まれていた場合は「再移動不可」を明示する
+      // (空患者だけなら黙って閉じる)。
+      const transferred = raw.map(i => appState.patients[i]).find(p => isPatientTransferred(p));
+      if (transferred) {
+        alert(t("move.already.transferred", { dest: transferred.transferredTo || "" }));
+      }
+      closeActionMenu();
+      return;
+    }
     openMovePatientModal(indices, () => {
       if (_onDataChange) _onDataChange();
     });
     closeActionMenu();
-  });
-
-  if (move5Btn) move5Btn.addEventListener("click", () => {
-    const indices = deletionSliceIndices(5).filter(movableAt);
-    if (indices.length === 0) { closeActionMenu(); return; }
-    openMovePatientModal(indices, () => {
-      if (_onDataChange) _onDataChange();
-    });
-    closeActionMenu();
-  });
+  };
+  if (move1Btn) move1Btn.addEventListener("click", () => handleMove(1));
+  if (move5Btn) move5Btn.addEventListener("click", () => handleMove(5));
 }

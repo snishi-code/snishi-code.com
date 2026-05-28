@@ -388,7 +388,10 @@ titleToggle = createEditToggle({
     const a = document.getElementById("appTitleInput");
     const w = document.getElementById("appWsLabelInput");
     if (a) { a.readOnly = true; a.blur(); }
-    if (w) { w.readOnly = true; w.blur(); }
+    // WS 名は blur で renameBundle を commit する。commitWsLabel は readOnly 時に
+    // 早期 return するため、必ず blur (= commit) してから readOnly=true にする。
+    // (Enter 確定で onExit→readOnly→blur の順だと rename が失われていた)
+    if (w) { w.blur(); w.readOnly = true; }
   },
 });
 initWsPicker();

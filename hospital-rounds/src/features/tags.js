@@ -508,6 +508,28 @@ export function makeTagPicker(opts) {
     popup.appendChild(buildAddWidget(() => { refreshPopup(); refreshTrigger(); }));
   }
 
+  // launcher (= フォーマット ☰) は overflow:hidden の card 内に置かれるため、
+  // position:absolute だと下半分が card にクリップされてスクロールできない。
+  // fixed にして祖先の overflow から抜け出し、trigger 基準で配置する。
+  function positionLauncherPopup() {
+    const tr = trigger.getBoundingClientRect();
+    const vw = window.innerWidth, vh = window.innerHeight;
+    popup.style.position = "fixed";
+    popup.style.left = "auto";
+    popup.style.right = Math.max(8, vw - tr.right) + "px";
+    const below = vh - tr.bottom - 8;
+    const above = tr.top - 8;
+    if (below >= 160 || below >= above) {
+      popup.style.top = (tr.bottom + 4) + "px";
+      popup.style.bottom = "auto";
+      popup.style.maxHeight = Math.max(120, Math.min(360, below)) + "px";
+    } else {
+      popup.style.top = "auto";
+      popup.style.bottom = (vh - tr.top + 4) + "px";
+      popup.style.maxHeight = Math.max(120, Math.min(360, above)) + "px";
+    }
+  }
+
   trigger.addEventListener("click", (e) => {
     e.stopPropagation();
     const showing = popup.style.display !== "none";
@@ -515,6 +537,7 @@ export function makeTagPicker(opts) {
     if (!showing) {
       refreshPopup();
       popup.style.display = "";
+      if (launcher) positionLauncherPopup();
       _openPopup = popup;
     }
   });

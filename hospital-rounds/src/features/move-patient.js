@@ -301,6 +301,12 @@ export function initMovePatient(callbacks) {
     trigger.addEventListener("click", () => {
       const idx = (selectedNo | 0) - 1;
       if (idx < 0) return;
+      // 移動済の患者は再移動不可。黙ってピッカーを開かず、理由をポップアップで知らせる
+      const p = appState.patients[idx];
+      if (isPatientTransferred(p)) {
+        alert(t("move.already.transferred", { dest: p.transferredTo || "" }));
+        return;
+      }
       openMovePatientModal(idx, () => {
         if (callbacks?.renderHome) callbacks.renderHome();
         if (callbacks?.renderDetail) callbacks.renderDetail();

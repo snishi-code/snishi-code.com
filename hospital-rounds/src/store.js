@@ -107,8 +107,9 @@ function normalizeFormatItem(item) {
   const label = String(item.label ?? "").trim();
   const kind = (typeof item.kind === "string" && FORMAT_ITEM_KINDS.includes(item.kind))
     ? item.kind : DEFAULT_ITEM_KIND;
-  // text item は label が空でも正常文だけのケース (規定文「著変なし」など) を許容
-  if (!label && kind !== "text") return null;
+  // text は label 空でも可 (規定文「著変なし」等)。date も label 任意 (日付だけ展開する
+  // 用途。例 抗菌薬の "5/20-")。number / fraction はラベル必須。
+  if (!label && kind !== "text" && kind !== "date") return null;
   const out = { label, kind };
   if (kind === "number" || kind === "fraction") {
     out.unit = String(item.unit ?? "");
