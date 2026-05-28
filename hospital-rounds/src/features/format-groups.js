@@ -21,6 +21,7 @@
 
 import { settings, appState, selectedNo, saveSettings, markUpdated, scheduleSave } from "../store.js";
 import { FORMAT_PANELS } from "../constants.js";
+import { flushGroupExpandedValues } from "./formats.js";
 import { t } from "../i18n.js";
 
 function newGroupId() {
@@ -157,7 +158,15 @@ function buildPickerRow({ id, name, isDefault, selected, sub }) {
     if (p) {
       // デフォルトグループ / 選択中の行を再タップ → "" (= デフォルトに従う)。
       // それ以外は明示選択。
-      p.activeFormatGroupId = (isDefault || selected) ? "" : String(id || "");
+      const newId = (isDefault || selected) ? "" : String(id || "");
+      // 実効グループが変わる時は、旧グループの展開(A)値を各欄の自由記述へ流し込む
+      // (グループを変えても入力済みデータを失わないため)。
+      const oldGroup = resolveActiveGroup(p);
+      const newGroup = newId ? getFormatGroupById(newId) : getDefaultFormatGroup();
+      if (oldGroup && (!newGroup || oldGroup.id !== newGroup.id)) {
+        flushGroupExpandedValues(p, oldGroup);
+      }
+      p.activeFormatGroupId = newId;
       markUpdated(selectedNo);
       scheduleSave();
     }
@@ -176,7 +185,7 @@ let _currentEdit = null; // { isNew, target, onSaved }
 export function startNewFormatGroup(onSaved) {
   _currentEdit = {
     isNew: true,
-    target: { id: newGroupId(), name: "", isDefault: false, formatIds: [], defaultFormatIds: [] },
+    target: { id: newGroupId(), name: "", isDefault: false, formatIds: [], defaultFormatIds: [], expandFormatIds: [] },
     onSaved,
   };
   openEditModal();
@@ -191,6 +200,7 @@ export function startEditFormatGroup(group, onSaved) {
       isDefault: !!group.isDefault,
       formatIds: Array.isArray(group.formatIds) ? group.formatIds.slice() : [],
       defaultFormatIds: Array.isArray(group.defaultFormatIds) ? group.defaultFormatIds.slice() : [],
+      expandFormatIds: Array.isArray(group.expandFormatIds) ? group.expandFormatIds.slice() : [],
     },
     onSaved,
   };
@@ -284,6 +294,7 @@ function buildGroupFormatRow(f, panel) {
     } else {
       target.formatIds = target.formatIds.filter(x => x !== f.id);
       target.defaultFormatIds = target.defaultFormatIds.filter(x => x !== f.id);
+      target.expandFormatIds = (target.expandFormatIds || []).filter(x => x !== f.id);
     }
     renderFormatsCheckList();
   });
@@ -294,6 +305,25 @@ function buildGroupFormatRow(f, panel) {
   row.appendChild(lab);
 
   if (included) {
+    // 展開(A) / クイックアクセス(B) トグル。on=展開 (本文上に入力欄)、off=チップ
+    if (!Array.isArray(target.expandFormatIds)) target.expandFormatIds = [];
+    const isExpand = target.expandFormatIds.includes(f.id);
+    const expandBtn = document.createElement("button");
+    expandBtn.type = "button";
+    expandBtn.className = "formatGroupExpandToggle" + (isExpand ? " on" : "");
+    expandBtn.textContent = t("formatGroup.expand.toggle");
+    expandBtn.title = t("formatGroup.expand.title");
+    expandBtn.setAttribute("aria-label", t("formatGroup.expand.title"));
+    expandBtn.setAttribute("aria-pressed", isExpand ? "true" : "false");
+    expandBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isExpand) target.expandFormatIds = target.expandFormatIds.filter(x => x !== f.id);
+      else target.expandFormatIds.push(f.id);
+      renderFormatsCheckList();
+    });
+    row.appendChild(expandBtn);
+
     const isDef = target.defaultFormatIds.includes(f.id);
     const btn = document.createElement("button");
     btn.type = "button";
@@ -333,8 +363,9 @@ function saveEdit() {
   // デフォルト指定 (disabled で来る = 現デフォルトは true 固定)
   const defChk = document.getElementById("formatGroupEditIsDefault");
   target.isDefault = !!defChk?.checked;
-  // defaultFormatIds は formatIds の部分集合に正規化 (UI 上はパネル毎 1 を担保済み)
+  // defaultFormatIds / expandFormatIds は formatIds の部分集合に正規化
   target.defaultFormatIds = (target.defaultFormatIds || []).filter(id => target.formatIds.includes(id));
+  target.expandFormatIds = (target.expandFormatIds || []).filter(id => target.formatIds.includes(id));
   // 同名チェック
   const all = Array.isArray(settings.formatGroups) ? settings.formatGroups : [];
   const dup = all.find(g => g.id !== target.id && g.name === name);

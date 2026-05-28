@@ -34,7 +34,9 @@ export const FORMAT_PANELS = Object.freeze(["S", "O", "A", "P"]);
 //   number   : label + 単位 (unit) + 数値入力 + memo。labelSep は既定で " "
 //   fraction : label + 単位 (unit) + 数値2つを "/" で結合 (例 BP 120/53)
 //   date     : label + 月日のみのカレンダー入力 + memo (規定文 normal が prefill される)
-export const FORMAT_ITEM_KINDS = Object.freeze(["text", "number", "fraction", "date"]);
+// v8.3+: 旧 "date" (カレンダー入力) は廃止し、数字分数 (fraction) に統合した
+// (例 "5/20" は分数で入力)。旧 date item は normalizeFormatItem で fraction に移行。
+export const FORMAT_ITEM_KINDS = Object.freeze(["text", "number", "fraction"]);
 export const DEFAULT_ITEM_KIND = "text";
 // labelSep を未指定でフォーマットを新規作成する時のフォールバック。
 // (全 item が kind=text なら "："、それ以外は " " を migration / 新規作成 UI で割り当てる)

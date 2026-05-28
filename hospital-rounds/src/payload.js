@@ -2,6 +2,7 @@
 
 import { appState, settings } from "./store.js";
 import { resolveActiveGroup } from "./features/format-groups.js";
+import { composeExpandedForPanel } from "./features/formats.js";
 
 export function oneLineText(s) {
   return String(s ?? "")
@@ -42,7 +43,7 @@ function renderDefaultForPanel(panel, group) {
   const parts = [];
   for (const item of (def.items || [])) {
     const kind = item.kind || "text";
-    if (kind !== "text" && kind !== "date") continue;
+    if (kind !== "text") continue; // normal を持つのは text のみ (date は廃止)
     const label = String(item.label ?? "").trim();
     const normal = String(item.normal ?? "").trim();
     if (!normal) continue;
@@ -51,32 +52,34 @@ function renderDefaultForPanel(panel, group) {
   return parts.join(def.joiner || ", ");
 }
 
-function buildOOutput(p, group) {
-  // v2: O 欄は oFree (自由記述) のみ。バイタル/構造化所見はフォーマットで挿入された
-  // テキストとしてここに含まれる
-  const t = multiLineText(p?.oFree ?? "");
-  return t.trim() ? t : renderDefaultForPanel("O", group);
+// パネルの自由記述テキスト (S/O は直接フィールド、A/P は {text})。
+function panelFreeText(p, panel) {
+  if (panel === "O") return multiLineText(p?.oFree ?? "");
+  if (panel === "S") return multiLineText(p?.s ?? "");
+  if (panel === "A") return multiLineText(p?.a?.text ?? "");
+  if (panel === "P") return multiLineText(p?.p?.text ?? "");
+  return "";
 }
 
-function buildAOutput(p, group) {
-  const t = multiLineText(p.a.text);
-  return t.trim() ? t : renderDefaultForPanel("A", group);
-}
-
-function buildPOutput(p, group) {
-  const t = multiLineText(p.p.text);
-  return t.trim() ? t : renderDefaultForPanel("P", group);
+// パネル出力 = 展開(A)フォーマットの値 + 自由記述。両方空なら規定文 fallback。
+function buildPanelOut(p, panel, group) {
+  const aText = composeExpandedForPanel(panel, group, p?.formatValues || {});
+  const free = panelFreeText(p, panel);
+  const parts = [];
+  if (aText && aText.trim()) parts.push(aText.trim());
+  if (free) parts.push(free);
+  if (parts.length) return parts.join("\n");
+  return renderDefaultForPanel(panel, group);
 }
 
 export function buildSoapParts(no) {
   const p = appState.patients[no - 1];
-  // 規定文は患者の実効グループ (active 指定 or デフォルト) が指定したものを使う
+  // 実効グループ (active 指定 or デフォルト): 展開(A)値の合成と規定文 fallback に使う
   const group = resolveActiveGroup(p);
-  const sTyped = multiLineText(p.s);
-  const sOut = sTyped.trim() ? sTyped : renderDefaultForPanel("S", group);
-  const oOut = buildOOutput(p, group);
-  const aOut = buildAOutput(p, group);
-  const pOut = buildPOutput(p, group);
+  const sOut = buildPanelOut(p, "S", group);
+  const oOut = buildPanelOut(p, "O", group);
+  const aOut = buildPanelOut(p, "A", group);
+  const pOut = buildPanelOut(p, "P", group);
   return { sOut, oOut, aOut, pOut };
 }
 

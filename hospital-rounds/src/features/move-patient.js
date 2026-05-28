@@ -71,6 +71,9 @@ function buildDestCopy(src) {
     tags: Array.isArray(src.tags) ? src.tags.slice() : [],
     a: { text: String(src.a?.text ?? "") },
     p: { text: String(src.p?.text ?? "") },
+    // 展開(A)値は参照共有を避けてディープコピー (移動先で別個に編集できるように)
+    formatValues: (src.formatValues && typeof src.formatValues === "object")
+      ? JSON.parse(JSON.stringify(src.formatValues)) : {},
   };
 }
 

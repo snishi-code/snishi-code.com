@@ -33,13 +33,14 @@
     }
   ],
 
-  "_formatGroups_comment": "起動時に必ず 1 つ存在するデフォルトグループ。formatIndexes は上の formats 配列への index 参照 (ID は実行時生成のため index で束ねる)。defaultFormatIndexes は空欄補完に使う規定文フォーマットの index (パネル毎 最大 1)。",
+  "_formatGroups_comment": "起動時に必ず 1 つ存在するデフォルトグループ。formatIndexes は上の formats 配列への index 参照 (ID は実行時生成のため index で束ねる)。defaultFormatIndexes は空欄補完に使う規定文 (パネル毎 最大 1)。expandFormatIndexes は本文上に展開(A)するフォーマット (残りはチップ=B)。",
   "formatGroups": [
     {
       "name": "標準",
       "isDefault": true,
       "formatIndexes": [0, 1],
-      "defaultFormatIndexes": []
+      "defaultFormatIndexes": [],
+      "expandFormatIndexes": [0]
     }
   ],
 

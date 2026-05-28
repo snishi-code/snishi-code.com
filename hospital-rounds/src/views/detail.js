@@ -1,7 +1,7 @@
 "use strict";
 
 import { appState, settings, selectedNo, markUpdated, scheduleSave } from "../store.js";
-import { renderFormatStrip } from "../features/formats.js";
+import { renderFormatStrip, renderExpandedFormats } from "../features/formats.js";
 import { refreshFormatGroupToggle } from "../features/format-groups.js";
 import { STATUS } from "../constants.js";
 import { buildTabPayload } from "../payload.js";
@@ -312,11 +312,15 @@ export function renderDetail(syncDetailMemoDisplay) {
   if (detailSharedText) detailSharedText.value = p.shared || "";
   if (oFreeText) oFreeText.value = String(p.oFree ?? "");
 
-  // 各パネル右肩の [+] [pin...] [≡] ボタン strip を描画
+  // 各パネル: ヘッダーに ☰ ランチャー、本文上に実効グループの展開入力欄
   renderFormatStrip("S", document.getElementById("sFormatStrip"));
   renderFormatStrip("O", document.getElementById("oFormatStrip"));
   renderFormatStrip("A", document.getElementById("aFormatStrip"));
   renderFormatStrip("P", document.getElementById("pFormatStrip"));
+  renderExpandedFormats("S", document.getElementById("sExpanded"));
+  renderExpandedFormats("O", document.getElementById("oExpanded"));
+  renderExpandedFormats("A", document.getElementById("aExpanded"));
+  renderExpandedFormats("P", document.getElementById("pExpanded"));
 
   renderQrIfNeeded();
 }

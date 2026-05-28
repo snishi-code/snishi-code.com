@@ -59,7 +59,10 @@ function makeDefaultFormatGroups(formats) {
       .map(idxToId).filter(Boolean);
     const defaultFormatIds = (Array.isArray(g.defaultFormatIndexes) ? g.defaultFormatIndexes : [])
       .map(idxToId).filter(id => formatIds.includes(id));
-    return { id: newGroupId(), name: String(g.name || ""), isDefault: !!g.isDefault, formatIds, defaultFormatIds };
+    // expandFormatIds = グループ内で「展開(A)」にするフォーマット。残りは「クイックアクセス(B)」
+    const expandFormatIds = (Array.isArray(g.expandFormatIndexes) ? g.expandFormatIndexes : [])
+      .map(idxToId).filter(id => formatIds.includes(id));
+    return { id: newGroupId(), name: String(g.name || ""), isDefault: !!g.isDefault, formatIds, defaultFormatIds, expandFormatIds };
   });
   return ensureOneDefaultGroup(groups);
 }
@@ -100,16 +103,17 @@ export function defaultSettings() {
 // item は kind ごとに必要なフィールドだけ持つ:
 //   text     : { label, kind:"text",     normal }
 //   number   : { label, kind:"number",   unit   }
-//   fraction : { label, kind:"fraction", unit   }
-//   date     : { label, kind:"date",     normal }   // normal = memo prefill
+//   fraction : { label, kind:"fraction", unit   }   // 日付 "5/20" もこれで入力
 function normalizeFormatItem(item) {
   if (!item || typeof item !== "object") return null;
   const label = String(item.label ?? "").trim();
-  const kind = (typeof item.kind === "string" && FORMAT_ITEM_KINDS.includes(item.kind))
-    ? item.kind : DEFAULT_ITEM_KIND;
-  // text は label 空でも可 (規定文「著変なし」等)。date も label 任意 (日付だけ展開する
-  // 用途。例 抗菌薬の "5/20-")。number / fraction はラベル必須。
-  if (!label && kind !== "text" && kind !== "date") return null;
+  const rawKind = typeof item.kind === "string" ? item.kind : "";
+  // 旧 "date" (カレンダー) は fraction に移行統合
+  let kind;
+  if (rawKind === "date") kind = "fraction";
+  else kind = FORMAT_ITEM_KINDS.includes(rawKind) ? rawKind : DEFAULT_ITEM_KIND;
+  // text / fraction は label 任意 (text=規定文、fraction=日付 "5/20" 等)。number のみ必須。
+  if (!label && kind === "number") return null;
   const out = { label, kind };
   if (kind === "number" || kind === "fraction") {
     out.unit = String(item.unit ?? "");
@@ -190,11 +194,14 @@ function normalizeSettings(raw) {
         const formatIds = Array.isArray(g.formatIds)
           ? g.formatIds.filter(x => typeof x === "string").map(String)
           : [];
-        // defaultFormatIds (規定文) は formatIds の部分集合に正規化
+        // defaultFormatIds (規定文) / expandFormatIds (展開=A) は formatIds の部分集合に正規化
         const defaultFormatIds = Array.isArray(g.defaultFormatIds)
           ? g.defaultFormatIds.filter(x => typeof x === "string" && formatIds.includes(x)).map(String)
           : [];
-        return { id: String(g.id), name: String(g.name || ""), isDefault: !!g.isDefault, formatIds, defaultFormatIds };
+        const expandFormatIds = Array.isArray(g.expandFormatIds)
+          ? g.expandFormatIds.filter(x => typeof x === "string" && formatIds.includes(x)).map(String)
+          : [];
+        return { id: String(g.id), name: String(g.name || ""), isDefault: !!g.isDefault, formatIds, defaultFormatIds, expandFormatIds };
       });
     // 「ちょうど 1 つ」が default の不変条件を担保。全件 malformed で空になったら再投入
     const fixed = ensureOneDefaultGroup(groups);
@@ -252,6 +259,10 @@ export function makeDefaultPatient() {
     // が見える)。設定されている場合、各パネルの strip はそのグループに属する
     // フォーマットだけを表示する (= 患者固有の「お気に入り切替」)。
     activeFormatGroupId: "",
+    // 展開(A)フォーマットの入力値。{ [formatId]: { [itemIndex]: 値文字列 } }。
+    // fraction は "numer/denom" の文字列で保持。非揮発 (欄に出しっぱなしで再編集可)。
+    // グループ切替時に各欄の自由記述へ流し込んでクリアする。
+    formatValues: {},
     // 患者識別データの出所マーカー。"external" = 他端末から QR で受信 = 再配布禁止。
     // 空文字 = この端末で作成された = 再配布可。settings.qrRedistribution.HM/MM が
     // "restricted" の時、QR 送信時に external 患者を除外する判定に使う。
@@ -276,6 +287,13 @@ export function isPatientEmpty(p) {
   if (p.oFree) return false;
   if (p.a && p.a.text) return false;
   if (p.p && p.p.text) return false;
+  // 展開(A)フォーマットに入力値があれば空ではない
+  if (p.formatValues && typeof p.formatValues === "object") {
+    for (const fid of Object.keys(p.formatValues)) {
+      const vals = p.formatValues[fid];
+      if (vals && typeof vals === "object" && Object.values(vals).some(v => String(v ?? "").replace("/", "").trim())) return false;
+    }
+  }
   // 「移動済」マーカーが立っているスロットは履歴として残してあるので空ではない
   if (p.transferredAt) return false;
   return true;
@@ -314,6 +332,7 @@ function normalizePatientArray(arr) {
       transferredAt: (r && typeof r.transferredAt === "number") ? r.transferredAt : 0,
       transferredTo: (r && typeof r.transferredTo === "string") ? r.transferredTo : "",
       activeFormatGroupId: (r && typeof r.activeFormatGroupId === "string") ? r.activeFormatGroupId : "",
+      formatValues: (r && r.formatValues && typeof r.formatValues === "object") ? r.formatValues : {},
       origin: (r && r.origin === "external") ? "external" : "",
     };
   }

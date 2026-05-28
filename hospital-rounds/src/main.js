@@ -26,7 +26,7 @@ import { initAppTitle, refreshAppWsLabel } from "./features/app-title.js";
 import { initWsPicker } from "./features/ws-picker.js";
 import { DOCS_BUNDLE } from "./docs-bundle.js";
 import { setDataChangeHandler, initActionMenu } from "./features/drag.js";
-import { initFormats, setOnTextChanged as setOnFormatTextChanged, setFormatStoreAdapter } from "./features/formats.js";
+import { initFormats, setOnTextChanged as setOnFormatTextChanged, setOnExpandedInput, setFormatStoreAdapter } from "./features/formats.js";
 import { initMovePatient } from "./features/move-patient.js";
 import { initQrFormat, closeQrFormatOverlay, setOnFormatApplied, setFormatStoreAdapter as setQrFormatStoreAdapter } from "./features/qr-format.js";
 import { getAllTags as _getAllTagsForQr } from "./features/tags.js";
@@ -212,6 +212,10 @@ setQrFormatStoreAdapter({
 initFormats();
 setOnFormatTextChanged(() => {
   doRenderDetail();
+  if (typeof renderQrIfNeeded === "function") renderQrIfNeeded();
+});
+// 展開(A)欄の入力毎: 再描画せず QR プレビューだけ軽く更新 (フォーカス維持のため)
+setOnExpandedInput(() => {
   if (typeof renderQrIfNeeded === "function") renderQrIfNeeded();
 });
 

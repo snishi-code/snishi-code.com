@@ -114,19 +114,6 @@ export function formatsForPanel(panel) {
   return settings.formats.filter(f => f.panel === panel);
 }
 
-// 指定グループに属する、指定 panel のフォーマットを「グループ内の順序」で返す。
-// strip はこの結果をチップとして並べる。group が無ければ空配列。
-export function formatsInGroupForPanel(panel, group) {
-  if (!group) return [];
-  const byId = new Map(formatsForPanel(panel).map(f => [f.id, f]));
-  const out = [];
-  for (const fid of group.formatIds || []) {
-    const f = byId.get(fid);
-    if (f) out.push(f);
-  }
-  return out;
-}
-
 // ============================
 // 患者画面: 各パネル右肩のボタン strip 描画
 // ============================
@@ -153,8 +140,34 @@ function makeAddFormatWidget(panel, onAdded) {
   return wrap;
 }
 
-// パネルごとに 1 つ作る format ランチャー (☰)。グループに入っていないフォーマットにも
-// アクセスできる入口。タップで入力モーダルを開く (お気に入りトグルは廃止)。
+// 実効グループの「展開(A)」フォーマット (panel フィルタ済、expandFormatIds 順)。
+export function expandedFormatsForPanel(panel, group) {
+  if (!group) return [];
+  const byId = new Map(formatsForPanel(panel).map(f => [f.id, f]));
+  const out = [];
+  for (const fid of group.expandFormatIds || []) {
+    const f = byId.get(fid);
+    if (f) out.push(f);
+  }
+  return out;
+}
+
+// 実効グループの「クイックアクセス(B)」= グループ内かつ展開でない (チップ表示)。
+export function quickAccessFormatsForPanel(panel, group) {
+  if (!group) return [];
+  const expand = new Set(group.expandFormatIds || []);
+  const byId = new Map(formatsForPanel(panel).map(f => [f.id, f]));
+  const out = [];
+  for (const fid of group.formatIds || []) {
+    if (expand.has(fid)) continue;
+    const f = byId.get(fid);
+    if (f) out.push(f);
+  }
+  return out;
+}
+
+// パネルごとに 1 つ作る format ランチャー (☰)。グループ外 (C) も含む全フォーマットへの
+// 入口。タップで入力モーダルを開く (カーソル位置に挿入)。
 function makeFormatPicker(panel, onChange) {
   return makeTagPicker({
     launcher: true,
@@ -176,20 +189,17 @@ export function renderFormatStrip(panel, hostEl) {
   hostEl.textContent = "";
   hostEl.className = "formatStrip";
 
-  // strip のチップは「実効グループ (active 指定 or デフォルト)」のフォーマットを並べる。
-  // デフォルト以外を明示選択している時 (= 上書き中) はチップに目印スタイルを当てる。
   const p = appState.patients[selectedNo - 1];
   const group = resolveActiveGroup(p);
-  const visible = formatsInGroupForPanel(panel, group);
-  const isGroupMode = !!group && !group.isDefault;
 
-  // 1) 実効グループのチップ。横スクロール領域。
+  // 1) クイックアクセス(B) チップ。タップ → モーダル → カーソル位置に挿入。
+  const bFormats = quickAccessFormatsForPanel(panel, group);
   const chips = document.createElement("div");
-  chips.className = "formatStripChips" + (isGroupMode ? " inGroup" : "");
-  for (const f of visible) {
+  chips.className = "formatStripChips";
+  for (const f of bFormats) {
     const chip = document.createElement("button");
     chip.type = "button";
-    chip.className = "formatStripBtn formatStripPinned" + (isGroupMode ? " formatStripGroupChip" : "");
+    chip.className = "formatStripBtn formatStripPinned";
     chip.textContent = f.name;
     chip.title = t("format.chip.input.title", { name: f.name });
     chip.addEventListener("click", () => openFormatInputModal(f, panel));
@@ -197,11 +207,93 @@ export function renderFormatStrip(panel, hostEl) {
   }
   hostEl.appendChild(chips);
 
-  // 2) ハンバーガーピッカー (右端固定)。
+  // 2) ☰ ランチャー (グループ外含む全フォーマット)。
   const picker = makeFormatPicker(panel, () => {
     renderFormatStrip(panel, hostEl);
+    renderExpandedFormats(panel, document.getElementById(EXPANDED_HOST_ID[panel]));
   });
   hostEl.appendChild(picker);
+}
+
+// ============================
+// インライン展開フォーマット (A・非揮発) (v8.3+)
+//
+// 実効グループの「展開(A)」フォーマットを、パネル本文の上に展開入力欄として並べる。
+// 値は patient.formatValues に構造保存 (非揮発)。欄に出しっぱなしで再編集可。入力毎に
+// formatValues を更新するだけで再描画はしない (フォーカス維持)。グループ切替時に
+// flushGroupExpandedValues() で各欄の自由記述へ流し込んでクリアする。
+// 出力 (payload) は「現グループの A 値合成 + 自由記述」。
+// ============================
+const EXPANDED_HOST_ID = { S: "sExpanded", O: "oExpanded", A: "aExpanded", P: "pExpanded" };
+
+let _onExpandedInput = null;
+export function setOnExpandedInput(fn) { _onExpandedInput = fn; }
+
+export function renderExpandedFormats(panel, hostEl) {
+  if (!hostEl) return;
+  hostEl.textContent = "";
+  const p = appState.patients[selectedNo - 1];
+  if (!p) return;
+  const group = resolveActiveGroup(p);
+  const formats = expandedFormatsForPanel(panel, group);
+  for (const format of formats) hostEl.appendChild(buildExpandedWidget(format, p));
+}
+
+function buildExpandedWidget(format, patient) {
+  if (!patient.formatValues || typeof patient.formatValues !== "object") patient.formatValues = {};
+  const stored = (patient.formatValues[format.id] && typeof patient.formatValues[format.id] === "object")
+    ? patient.formatValues[format.id] : {};
+
+  const wrap = document.createElement("div");
+  wrap.className = "formatExpanded";
+
+  const head = document.createElement("div");
+  head.className = "formatExpandedName";
+  head.textContent = format.name;
+  wrap.appendChild(head);
+
+  const allText = (format.items || []).every(it => it && it.kind === "text");
+  const body = document.createElement("div");
+  body.className = "formatInputBody " + (allText ? "text" : "mixed");
+  wrap.appendChild(body);
+
+  const items = format.items || [];
+  items.forEach((item, i) => {
+    const kind = item.kind || DEFAULT_ITEM_KIND;
+    const onInput = (v) => {
+      if (!patient.formatValues[format.id] || typeof patient.formatValues[format.id] !== "object") {
+        patient.formatValues[format.id] = {};
+      }
+      patient.formatValues[format.id][i] = v;
+      markUpdated(selectedNo);
+      scheduleSave();
+      if (_onExpandedInput) _onExpandedInput(); // QR プレビュー等の軽量更新 (再描画はしない)
+    };
+    const opts = { value: stored[i], onInput };
+    if (kind === "number") buildNumberRow(body, item, opts);
+    else if (kind === "fraction") buildFractionRow(body, item, opts);
+    else buildTextRow(body, item, opts);
+  });
+
+  return wrap;
+}
+
+// グループ切替時: 旧グループの展開(A)値を、各欄の自由記述へ流し込んでクリアする。
+// (グループを変えても入力済みのデータを失わないため)。caller (format-groups) が
+// activeFormatGroupId を変更する「前」に呼ぶ。
+export function flushGroupExpandedValues(patient, group) {
+  if (!patient || !group) return;
+  const fv = (patient.formatValues && typeof patient.formatValues === "object") ? patient.formatValues : {};
+  for (const panel of FORMAT_PANELS) {
+    const aFormats = expandedFormatsForPanel(panel, group);
+    const pieces = [];
+    for (const f of aFormats) {
+      const { text, hasValue } = composeFormatFromValues(f, fv[f.id] || {});
+      if (hasValue) pieces.push(text);
+      delete fv[f.id]; // 流し込んだら (空でも) クリア
+    }
+    if (pieces.length) appendTextToPanelData(patient, panel, pieces.join("\n"));
+  }
 }
 
 // ============================
@@ -227,7 +319,6 @@ function openFormatInputModal(format, panel) {
     const kind = item.kind || DEFAULT_ITEM_KIND;
     if (kind === "number") _currentInput.rowEls.push(buildNumberRow(body, item));
     else if (kind === "fraction") _currentInput.rowEls.push(buildFractionRow(body, item));
-    else if (kind === "date") _currentInput.rowEls.push(buildDateRow(body, item));
     else _currentInput.rowEls.push(buildTextRow(body, item));
   }
 
@@ -273,7 +364,9 @@ function setupTextInput(inp) {
   });
 }
 
-function buildNumberRow(host, item) {
+// opts: { value, onInput } — value は初期値、onInput(現在値) は入力毎コールバック
+// (インライン展開 A の formatValues バインド用)。省略時は従来のモーダル挙動。
+function buildNumberRow(host, item, opts = {}) {
   const row = document.createElement("div");
   row.className = "formatInputRow number";
 
@@ -285,6 +378,8 @@ function buildNumberRow(host, item) {
   const val = document.createElement("input");
   val.className = "formatInputValue";
   setupNumericInput(val, "decimal");
+  if (opts.value != null) val.value = String(opts.value);
+  if (opts.onInput) val.addEventListener("input", () => opts.onInput(val.value));
   row.appendChild(val);
 
   // unit セルは常に出す (空 unit でも grid 列を揃える)
@@ -303,7 +398,7 @@ function buildNumberRow(host, item) {
   return { item, kind: "number", val };
 }
 
-function buildFractionRow(host, item) {
+function buildFractionRow(host, item, opts = {}) {
   const row = document.createElement("div");
   row.className = "formatInputRow fraction";
 
@@ -332,6 +427,19 @@ function buildFractionRow(host, item) {
   setupNumericInput(denom, "decimal");
   fracGroup.appendChild(denom);
 
+  // 初期値 "a/b" を numer / denom に分解 (最初の "/" で分割)
+  if (opts.value != null) {
+    const s = String(opts.value);
+    const slash = s.indexOf("/");
+    if (slash >= 0) { numer.value = s.slice(0, slash); denom.value = s.slice(slash + 1); }
+    else numer.value = s;
+  }
+  if (opts.onInput) {
+    const emit = () => opts.onInput(`${numer.value}/${denom.value}`);
+    numer.addEventListener("input", emit);
+    denom.addEventListener("input", emit);
+  }
+
   row.appendChild(fracGroup);
 
   const unit = document.createElement("span");
@@ -348,42 +456,7 @@ function buildFractionRow(host, item) {
   return { item, kind: "fraction", numer, denom };
 }
 
-function buildDateRow(host, item) {
-  const row = document.createElement("div");
-  row.className = "formatInputRow date";
-
-  const label = document.createElement("div");
-  label.className = "formatInputLabel";
-  label.textContent = item.label;
-  row.appendChild(label);
-
-  // native <input type="date"> を使い、出力時に年を捨てて MM/DD だけ書く。
-  // type=date は inputMode に依存しない (OS のカレンダー UI が出る) ので setup 不要。
-  const val = document.createElement("input");
-  val.type = "date";
-  val.className = "formatInputValue formatInputDate";
-  row.appendChild(val);
-
-  // unit は date には無いが、grid 列を揃えるため空 span を出す
-  const unit = document.createElement("span");
-  unit.className = "formatInputUnit";
-  unit.textContent = "";
-  row.appendChild(unit);
-
-  const memo = document.createElement("input");
-  memo.type = "text";
-  memo.className = "formatInputMemo";
-  memo.placeholder = t("format.placeholder.dateMemo");
-  setupTextInput(memo);
-  // normal は date item では「memo の prefill」として扱う (Labo / CT など)
-  if (item.normal) memo.value = String(item.normal);
-  row.appendChild(memo);
-
-  host.appendChild(row);
-  return { item, kind: "date", val, memo };
-}
-
-function buildTextRow(host, item) {
+function buildTextRow(host, item, opts = {}) {
   const row = document.createElement("div");
   row.className = "formatInputRow text";
 
@@ -396,6 +469,8 @@ function buildTextRow(host, item) {
   val.className = "formatInputValue formatInputText";
   val.rows = 1;
   setupTextInput(val);
+  if (opts.value != null) val.value = String(opts.value);
+  if (opts.onInput) val.addEventListener("input", () => opts.onInput(val.value));
   row.appendChild(val);
 
   // 正常文がある場合に勧める小さなチェックアイコンボタン (旧 v6.0.0 同様、行内右端)
@@ -410,6 +485,7 @@ function buildTextRow(host, item) {
   normalBtn.addEventListener("click", () => {
     val.value = item.normal || "";
     val.focus();
+    if (opts.onInput) opts.onInput(val.value);
   });
   row.appendChild(normalBtn);
 
@@ -437,72 +513,102 @@ function combineLabelValueMemo(label, labelSep, value, memo) {
   return body;
 }
 
-// HTML <input type="date"> の value は "YYYY-MM-DD"。年を捨てて "MM/DD" だけ返す。
-// 空 / 不正値なら "" 。
-function formatDateMonthDay(rawValue) {
-  const s = String(rawValue || "").trim();
-  // YYYY-MM-DD
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!m) return "";
-  // 先頭 0 を保つかは UX 次第。ここでは M/D 風に先頭 0 を取る (例 "11/2")。
-  // ただし「11/02」が見たい人もいるので保守的に 0 つきのままにする。
-  return `${m[2]}/${m[3]}`;
-}
-
-function applyFormatInput() {
-  if (!_currentInput) { closeFormatInputModal(); return; }
-  const { format, panel, rowEls } = _currentInput;
+// rowEls (build*Row が返す行参照) から展開テキストを組み立てる。モーダルとインライン
+// 展開の両方で共用。戻り値: { text, hasValue }。hasValue=実際に値が入った item があるか
+// (titleWrap だけのタイトル行は hasValue=false 扱い → インライン自動反映で空タブ抜けでは
+//  挿入しないために使う)。
+function composeFormatText(format, rowEls) {
   const labelSep = typeof format.labelSep === "string" ? format.labelSep : DEFAULT_LABEL_SEP_OTHER;
   const parts = [];
   for (const row of rowEls) {
     if (row.kind === "number") {
-      // v6.10+ : 備考欄を撤去。値が空ならスキップ。値があれば「ラベル <labelSep> 値<unit>」
       const value = String(row.val.value || "").trim();
       if (!value) continue;
       const unit = row.item.unit || "";
-      const valueWithUnit = `${value}${unit}`;
-      parts.push(combineLabelValueMemo(row.item.label, labelSep, valueWithUnit, ""));
+      parts.push(combineLabelValueMemo(row.item.label, labelSep, `${value}${unit}`, ""));
     } else if (row.kind === "fraction") {
-      // v6.10+ : 備考欄を撤去。"120/53" / "/53" / "120/" を許容 (片側だけ入力可)
+      // "120/53" / "/53" / "120/" を許容 (片側だけ入力可)。日付 "5/20" もここ
       const a = String(row.numer.value || "").trim();
       const b = String(row.denom.value || "").trim();
       if (!a && !b) continue;
       const unit = row.item.unit || "";
-      const valueWithUnit = `${a}/${b}${unit}`;
-      parts.push(combineLabelValueMemo(row.item.label, labelSep, valueWithUnit, ""));
-    } else if (row.kind === "date") {
-      // date は memo を残す (Labo/CT 等の prefill を活かす)
-      const md = formatDateMonthDay(row.val.value);
-      const memo = String(row.memo.value || "").trim();
-      if (!md && !memo) continue;
-      parts.push(combineLabelValueMemo(row.item.label, labelSep, md, memo));
+      parts.push(combineLabelValueMemo(row.item.label, labelSep, `${a}/${b}${unit}`, ""));
     } else {
-      // text
       const value = String(row.val.value || "").trim();
       if (!value) continue;
-      // label が空ならコロンを付けず値だけ出す (規定文「著変なし」など)
       const lab = String(row.item.label || "").trim();
       parts.push(lab ? `${lab}${labelSep}${value}` : value);
     }
   }
   const body = parts.join(format.joiner || ", ");
-  // タイトル展開: titleWrap が設定されていれば「<左>名前<右>」を先頭行に付ける。
-  // 項目が空でもタイトルだけは展開する (例: CT フォーマット → "（CT）")。
   const titleWrap = typeof format.titleWrap === "string" ? format.titleWrap : "";
-  let out;
+  let text = body;
   if (titleWrap) {
     const L = titleWrap[0] || "";
     const R = titleWrap[1] || "";
     const titleLine = `${L}${format.name}${R}`;
-    out = body ? `${titleLine}\n${body}` : titleLine;
-  } else {
-    out = body;
+    text = body ? `${titleLine}\n${body}` : titleLine;
   }
+  return { text, hasValue: parts.length > 0 };
+}
+
+// composeFormatText の「保存値 (formatValues[fid] = {itemIndex: 値}) から組み立てる」版。
+// 展開(A)フォーマットの出力・流し込みで使う。fraction 値は "a/b" 文字列。
+function composeFormatFromValues(format, values) {
+  const vals = (values && typeof values === "object") ? values : {};
+  const labelSep = typeof format.labelSep === "string" ? format.labelSep : DEFAULT_LABEL_SEP_OTHER;
+  const parts = [];
+  (format.items || []).forEach((item, i) => {
+    const kind = item.kind || DEFAULT_ITEM_KIND;
+    const raw = String(vals[i] ?? "");
+    if (kind === "number") {
+      const value = raw.trim();
+      if (!value) return;
+      parts.push(combineLabelValueMemo(item.label, labelSep, `${value}${item.unit || ""}`, ""));
+    } else if (kind === "fraction") {
+      // "a/b" 文字列。両側空 ("" or "/") はスキップ
+      if (!raw.replace("/", "").trim()) return;
+      parts.push(combineLabelValueMemo(item.label, labelSep, `${raw}${item.unit || ""}`, ""));
+    } else {
+      const value = raw.trim();
+      if (!value) return;
+      const lab = String(item.label || "").trim();
+      parts.push(lab ? `${lab}${labelSep}${value}` : value);
+    }
+  });
+  const body = parts.join(format.joiner || ", ");
+  const titleWrap = typeof format.titleWrap === "string" ? format.titleWrap : "";
+  let text = body;
+  if (titleWrap) {
+    const L = titleWrap[0] || "";
+    const R = titleWrap[1] || "";
+    const titleLine = `${L}${format.name}${R}`;
+    text = body ? `${titleLine}\n${body}` : titleLine;
+  }
+  return { text, hasValue: parts.length > 0 };
+}
+
+// payload.js から呼ぶ: 実効グループの展開(A)値を panel 別に合成して返す (再エクスポート用)。
+export function composeExpandedForPanel(panel, group, formatValues) {
+  if (!group) return "";
+  const fv = (formatValues && typeof formatValues === "object") ? formatValues : {};
+  const pieces = [];
+  for (const f of expandedFormatsForPanel(panel, group)) {
+    const { text, hasValue } = composeFormatFromValues(f, fv[f.id] || {});
+    if (hasValue) pieces.push(text);
+  }
+  return pieces.join("\n");
+}
+
+function applyFormatInput() {
+  if (!_currentInput) { closeFormatInputModal(); return; }
+  const { format, panel, rowEls } = _currentInput;
+  const { text } = composeFormatText(format, rowEls);
   // タグ merge を appendToPanel より前に実行する。appendToPanel が _onTextChanged
   // (= 詳細画面の再描画) を発火するので、その時点で tags も新しい状態になっている
   // ようにしておく (= inline タグ表示が即時更新される)。
   applyFormatTags(format);
-  appendToPanel(panel, out);
+  appendToPanel(panel, text);
   closeFormatInputModal();
 }
 
@@ -548,15 +654,36 @@ function ensureCaretTracker() {
   }, true);
 }
 
+// パネル本文テキストの読み書き。S/O は直接の文字列フィールド (p.s / p.oFree)、
+// A/P は {text} オブジェクト (p.a.text / p.p.text)。この差を吸収する。
+function getPanelText(p, panel) {
+  if (panel === "O") return String(p.oFree ?? "");
+  if (panel === "S") return String(p.s ?? "");
+  const key = PANEL_FIELD_KEY[panel]; // "a" | "p"
+  return String(p[key]?.text ?? "");
+}
+function setPanelText(p, panel, val) {
+  if (panel === "O") { p.oFree = val; return; }
+  if (panel === "S") { p.s = val; return; }
+  const key = PANEL_FIELD_KEY[panel];
+  if (!p[key] || typeof p[key] !== "object") p[key] = { text: "" };
+  p[key].text = val;
+}
+// データのみ末尾追加 (DOM 非依存)。グループ切替の流し込み用。
+function appendTextToPanelData(p, panel, text) {
+  if (!text) return;
+  const cur = getPanelText(p, panel);
+  const sep = cur && !cur.endsWith("\n") ? "\n" : "";
+  setPanelText(p, panel, cur + sep + text);
+}
+
 function appendToPanel(panel, text) {
   if (!text) return;
   const p = appState.patients[selectedNo - 1];
   if (!p) return;
   const taId = PANEL_TEXTAREA_ID[panel];
-  const field = PANEL_FIELD_KEY[panel];
   const ta = document.getElementById(taId);
-  const current = (panel === "O") ? String(p.oFree ?? "")
-                                  : String(p[field]?.text ?? "");
+  const current = getPanelText(p, panel);
 
   // カーソル位置展開: 同じパネルが直近フォーカスされ、かつ同じ患者なら caret 位置へ
   // 挿入する。別パネルにカーソルがあった / どこにも無い場合は末尾へ。
@@ -580,11 +707,7 @@ function appendToPanel(panel, text) {
     caretAfter = next.length;
   }
 
-  if (panel === "O") p.oFree = next;
-  else {
-    if (!p[field] || typeof p[field] !== "object") p[field] = { text: "" };
-    p[field].text = next;
-  }
+  setPanelText(p, panel, next);
   if (ta) {
     ta.value = next;
     if (useCaret) {
@@ -715,7 +838,7 @@ function renderFormatEditItems(host) {
     });
     row.appendChild(kindSel);
 
-    // 3) kind ごとの補助入力 (unit / normal)。date / text は normal、number / fraction は unit
+    // 3) kind ごとの補助入力 (unit / normal)。text は normal、number / fraction は unit
     if (item.kind === "number" || item.kind === "fraction") {
       const unit = document.createElement("input");
       unit.type = "text";
@@ -724,14 +847,6 @@ function renderFormatEditItems(host) {
       unit.value = item.unit || "";
       unit.addEventListener("input", () => { item.unit = String(unit.value || ""); });
       row.appendChild(unit);
-    } else if (item.kind === "date") {
-      const normal = document.createElement("input");
-      normal.type = "text";
-      normal.className = "formatEditItemNormal";
-      normal.placeholder = t("format.placeholder.dateMemo");
-      normal.value = item.normal || "";
-      normal.addEventListener("input", () => { item.normal = String(normal.value || ""); });
-      row.appendChild(normal);
     } else {
       // text
       const normal = document.createElement("input");
@@ -813,8 +928,8 @@ function saveFormatEdit() {
         const normal = String(it.normal || "").trim();
         return !!label || !!normal;
       }
-      if (it.kind === "date") return true; // 日付はラベル任意
-      return !!label;
+      if (it.kind === "fraction") return true; // 分数はラベル任意 (日付 "5/20" 等)
+      return !!label; // number はラベル必須
     });
 
   adapterSaveFormat(target, _currentEdit.isNew);
