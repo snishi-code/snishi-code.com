@@ -8,8 +8,6 @@
       "joiner": ", ",
       "labelSep": " ",
       "tags": [],
-      "pinned": true,
-      "isDefault": false,
       "items": [
         { "label": "BP",   "kind": "fraction", "unit": "mmHg" },
         { "label": "P",    "kind": "number",   "unit": "bpm"  },
@@ -24,8 +22,6 @@
       "joiner": "\n",
       "labelSep": "：",
       "tags": [],
-      "pinned": true,
-      "isDefault": false,
       "items": [
         { "label": "General",  "kind": "text", "normal": "良好" },
         { "label": "肺音",     "kind": "text", "normal": "明らかなラ音なし" },
@@ -34,6 +30,16 @@
         { "label": "食事",     "kind": "text", "normal": "摂取良好" },
         { "label": "排泄",     "kind": "text", "normal": "尿・便ともに特記なし" }
       ]
+    }
+  ],
+
+  "_formatGroups_comment": "起動時に必ず 1 つ存在するデフォルトグループ。formatIndexes は上の formats 配列への index 参照 (ID は実行時生成のため index で束ねる)。defaultFormatIndexes は空欄補完に使う規定文フォーマットの index (パネル毎 最大 1)。",
+  "formatGroups": [
+    {
+      "name": "標準",
+      "isDefault": true,
+      "formatIndexes": [0, 1],
+      "defaultFormatIndexes": []
     }
   ],
 

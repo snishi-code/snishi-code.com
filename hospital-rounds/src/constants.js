@@ -19,10 +19,14 @@ export const STATUS = {
 // type: "numeric" | "text"
 // panel: "S" | "O" | "A" | "P"  (内部フィールド。UI では SOAP セクション帰属で自動推定)
 // joiner: 項目間の区切り
-// pinned: 患者画面で 1-tap クイックアクセスボタンとして並ぶか
-// isDefault: 患者画面の対象パネルが空欄の時に QR/出力で fallback として使う規定文か
 // items: numeric は {label,unit}, text は {label,normal}
+// (旧 pinned / isDefault は v8 で撤去。クイックアクセス・規定文はフォーマットグループ側で管理)
 export const DEFAULT_FORMATS = APP_DEFAULTS.formats;
+
+// 起動時に必ず 1 つ存在するデフォルトフォーマットグループの種。
+// formatIndexes / defaultFormatIndexes は DEFAULT_FORMATS への index 参照
+// (実 ID は実行時生成のため、defaultSettings() で index → 生成 ID に解決する)。
+export const DEFAULT_FORMAT_GROUPS = APP_DEFAULTS.formatGroups;
 
 export const FORMAT_PANELS = Object.freeze(["S", "O", "A", "P"]);
 // item ごとに kind を持つ

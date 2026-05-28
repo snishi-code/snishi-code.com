@@ -2,7 +2,7 @@
 
 import {
   DEFAULT_PATIENT_COUNT, STATUS,
-  DEFAULT_FORMATS, FORMAT_PANELS,
+  DEFAULT_FORMATS, DEFAULT_FORMAT_GROUPS, FORMAT_PANELS,
   FORMAT_ITEM_KINDS, DEFAULT_ITEM_KIND,
   DEFAULT_LABEL_SEP_TEXT, DEFAULT_LABEL_SEP_OTHER,
   DEFAULT_CLEAR_TARGETS, DEFAULT_TAGS,
@@ -28,6 +28,11 @@ function newFormatId() {
   return "fmt_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 }
 
+function newGroupId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return "grp_" + crypto.randomUUID().slice(0, 8);
+  return "grp_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
 function makeDefaultFormats() {
   return DEFAULT_FORMATS.map(f => ({
     id: newFormatId(),
@@ -36,21 +41,46 @@ function makeDefaultFormats() {
     joiner: f.joiner,
     labelSep: typeof f.labelSep === "string" ? f.labelSep : DEFAULT_LABEL_SEP_OTHER,
     tags: Array.isArray(f.tags) ? f.tags.slice() : [],
-    pinned: !!f.pinned,
-    isDefault: !!f.isDefault,
     items: f.items.map(it => ({ ...it })),
   }));
 }
 
+// 既定フォーマットグループを、生成済み formats 配列の ID で組み立てる。
+// defaults.json は formatIndexes / defaultFormatIndexes で formats を index 参照
+// しているので (ID は実行時生成)、ここで index → 生成 ID に解決する。
+function makeDefaultFormatGroups(formats) {
+  const seeds = Array.isArray(DEFAULT_FORMAT_GROUPS) ? DEFAULT_FORMAT_GROUPS : [];
+  const groups = seeds.map(g => {
+    const idxToId = (i) => (formats[i] ? formats[i].id : null);
+    const formatIds = (Array.isArray(g.formatIndexes) ? g.formatIndexes : [])
+      .map(idxToId).filter(Boolean);
+    const defaultFormatIds = (Array.isArray(g.defaultFormatIndexes) ? g.defaultFormatIndexes : [])
+      .map(idxToId).filter(id => formatIds.includes(id));
+    return { id: newGroupId(), name: String(g.name || ""), isDefault: !!g.isDefault, formatIds, defaultFormatIds };
+  });
+  return ensureOneDefaultGroup(groups);
+}
+
+// formatGroups の不変条件: 1 つ以上あるなら「ちょうど 1 つ」が isDefault=true。
+// 0 個 / 複数 true なら先頭を default に昇格 (残りは false)。空配列はそのまま返す。
+function ensureOneDefaultGroup(groups) {
+  if (!Array.isArray(groups) || !groups.length) return groups || [];
+  const firstDefault = groups.findIndex(g => g.isDefault);
+  const keep = firstDefault >= 0 ? firstDefault : 0;
+  groups.forEach((g, i) => { g.isDefault = (i === keep); });
+  return groups;
+}
+
 export function defaultSettings() {
+  const formats = makeDefaultFormats();
   return {
     v: 1,
-    formats: makeDefaultFormats(),
-    // フォーマットの「束」。患者ごとに 1 つ active group を設定すると、
-    // 各パネルの pin チップがそのグループに属するフォーマットだけに切り替わる
-    // (= お気に入りを切り替える感覚)。例: 「発熱対応」グループに 血液 / エコー /
-    // CT / Xp を束ねておけば、発熱患者を開いた時に一気にそれらをワンタップで開ける。
-    formatGroups: [],
+    formats,
+    // フォーマットの「束」。患者ごとに 1 つ active group を設定すると、各パネルの
+    // strip チップがそのグループに属するフォーマットだけに切り替わる。active 未指定の
+    // 患者は isDefault=true のグループ (= デフォルトグループ) に解決される。
+    // デフォルトグループは起動時に必ず 1 つ存在する (defaults.json の formatGroups)。
+    formatGroups: makeDefaultFormatGroups(formats),
     clearTargets: clone(DEFAULT_CLEAR_TARGETS),
     tags: clone(DEFAULT_TAGS),
     deviceId: "",
@@ -107,7 +137,7 @@ function normalizeFormat(raw) {
   const tags = Array.isArray(raw.tags)
     ? raw.tags.filter(t => typeof t === "string" && t.trim()).map(t => String(t))
     : [];
-  return { id, name, panel, joiner, labelSep, tags, pinned: !!raw.pinned, isDefault: !!raw.isDefault, items };
+  return { id, name, panel, joiner, labelSep, tags, items };
 }
 
 function normalizeSettings(raw) {
@@ -146,16 +176,26 @@ function normalizeSettings(raw) {
   // v7.7+: tagGroupingEnabled / tagGroups / tagGroupAssign は撤去。
   // 旧 bundle のフィールドは forward compat の未知フィールド温存ループ (loop の
   // 先頭で out に無いキーは raw からコピー) で残るので、ここでは validation 不要
-  if (Array.isArray(raw.formatGroups)) {
-    out.formatGroups = raw.formatGroups
+  if (Array.isArray(raw.formatGroups) && raw.formatGroups.length) {
+    const groups = raw.formatGroups
       .filter(g => g && typeof g === "object" && typeof g.id === "string")
-      .map(g => ({
-        id: String(g.id),
-        name: String(g.name || ""),
-        formatIds: Array.isArray(g.formatIds)
+      .map(g => {
+        const formatIds = Array.isArray(g.formatIds)
           ? g.formatIds.filter(x => typeof x === "string").map(String)
-          : [],
-      }));
+          : [];
+        // defaultFormatIds (規定文) は formatIds の部分集合に正規化
+        const defaultFormatIds = Array.isArray(g.defaultFormatIds)
+          ? g.defaultFormatIds.filter(x => typeof x === "string" && formatIds.includes(x)).map(String)
+          : [];
+        return { id: String(g.id), name: String(g.name || ""), isDefault: !!g.isDefault, formatIds, defaultFormatIds };
+      });
+    // 「ちょうど 1 つ」が default の不変条件を担保。全件 malformed で空になったら再投入
+    const fixed = ensureOneDefaultGroup(groups);
+    out.formatGroups = fixed.length ? fixed : makeDefaultFormatGroups(out.formats);
+  } else {
+    // raw に formatGroups が無い / 空 → 正規化済みの out.formats に対して
+    // デフォルトグループを再構築 (= 必ず 1 つ存在の不変条件)。
+    out.formatGroups = makeDefaultFormatGroups(out.formats);
   }
   // QR セキュリティ: known kind だけ拾い、未指定はデフォルト維持
   if (raw.qrEncryption && typeof raw.qrEncryption === "object") {

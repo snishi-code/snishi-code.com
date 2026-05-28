@@ -101,8 +101,10 @@ function applyReceivedFormat(safe, ctrl) {
 
   if (!confirm(t("qrFormat.import.confirm", { name: finalName, summary }))) return;
 
-  // 構築 (formatFromWire で得たオブジェクトをそのまま使うが、id と name と
-  // tags / isDefault を case-by-case で調整)
+  // 構築 (formatFromWire で得たオブジェクトをそのまま使うが、id と name と tags を
+  // case-by-case で調整)。クイックアクセス・規定文はグループ側の管理に移行したため、
+  // 受信フォーマットはどのグループにも属さない素の状態で入る (必要なら受信後に
+  // 設定画面でグループへ追加する)。
   const items = Array.isArray(safe.items) ? safe.items : [];
   const labelSep = safe.labelSep || (
     items.length && items.every(it => it && it.kind === "text")
@@ -115,10 +117,6 @@ function applyReceivedFormat(safe, ctrl) {
     joiner: safe.joiner,
     labelSep,
     tags: safeTags,
-    pinned: !!safe.pinned,
-    // isDefault は受信時は無効化 (元端末の運用にすぎない。受信側で勝手に既定文に
-    // すり替わると混乱するため。必要なら受信後に手動でチェック)
-    isDefault: false,
     items,
   };
 

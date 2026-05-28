@@ -340,6 +340,8 @@ export function makeTagPicker(opts) {
     addWidget = null,          // (onAddedCb) => element. 省略時は makeAddTagWidget
     onItemClick = null,        // (entry) => void. 指定時は名前タップで popup を閉じてこれを呼ぶ
                                //                  (checkbox はそのままお気に入りトグル)
+    launcher = false,          // launcher モード: checkbox 無し。行全体タップで popup を
+                               //                  閉じて onItemClick。getSelected/setSelected 不要
   } = opts;
 
   // 追加ウィジェット (タグ用は makeAddTagWidget、フォーマット用は外から差し替え可能)
@@ -361,10 +363,10 @@ export function makeTagPicker(opts) {
   popup.style.display = "none";
 
   function refreshTrigger() {
-    const selected = getSelected();
+    const selected = launcher ? [] : (getSelected() || []);
     const list = (typeof entries === "function" ? entries() : entries) || [];
     if (iconOnly) {
-      const hasAny = selected.length > 0;
+      const hasAny = !launcher && selected.length > 0;
       const svg = iconHtml || TAG_SVG;
       trigger.innerHTML = `<span class="tagPickerIcon" style="color:${hasAny ? '#2563eb' : 'var(--muted)'};">${svg}</span>`;
       trigger.classList.toggle("hasSelected", hasAny);
@@ -420,6 +422,26 @@ export function makeTagPicker(opts) {
     if (!list.length) {
       // 既存タグが無い場合も「タグ未登録」のような空状態文言は出さず、
       // 設定画面と同じく「+」だけ並べる
+      popup.appendChild(buildAddWidget(() => { refreshPopup(); refreshTrigger(); }));
+      return;
+    }
+    // launcher モード: checkbox 無しの一覧。行全体タップで onItemClick。
+    if (launcher) {
+      for (const e of list) {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "tagPickerOpt tagPickerLauncherOpt";
+        const txt = document.createElement("span");
+        txt.className = "tagPickerOptName";
+        txt.textContent = e.label;
+        row.appendChild(txt);
+        row.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          closeOpenPopup();
+          if (onItemClick) onItemClick(e);
+        });
+        popup.appendChild(row);
+      }
       popup.appendChild(buildAddWidget(() => { refreshPopup(); refreshTrigger(); }));
       return;
     }

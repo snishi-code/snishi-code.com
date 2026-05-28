@@ -37,6 +37,24 @@ export function getFormatGroupById(id) {
   return getAllFormatGroups().find(g => g.id === id) || null;
 }
 
+// 起動時に必ず 1 つ存在するデフォルトグループ (isDefault=true)。万一見つからない
+// (壊れたデータ等) 場合は先頭グループ、無ければ null。
+export function getDefaultFormatGroup() {
+  const groups = getAllFormatGroups();
+  return groups.find(g => g.isDefault) || groups[0] || null;
+}
+
+// 患者に適用される実効グループ: activeFormatGroupId があればそれ、無ければ
+// (= 通常状態) デフォルトグループに解決する。strip / 規定文 の両方がこれを使う。
+export function resolveActiveGroup(patient) {
+  const id = String(patient?.activeFormatGroupId || "");
+  if (id) {
+    const g = getFormatGroupById(id);
+    if (g) return g;
+  }
+  return getDefaultFormatGroup();
+}
+
 // 現在開いている患者の active group に応じて、ヘッダー上のトグルボタンの
 // 表示 (グループ名 or 「通常」) と active styling を更新する。
 // 詳細画面の renderDetail から呼ばれる。
@@ -45,22 +63,21 @@ export function refreshFormatGroupToggle() {
   const lbl = document.getElementById("detailFormatGroupLabel");
   if (!btn || !lbl) return;
   const p = appState.patients[selectedNo - 1];
-  const activeId = String(p?.activeFormatGroupId || "");
-  if (activeId) {
-    const g = getFormatGroupById(activeId);
-    if (g) {
-      lbl.textContent = g.name;
-      btn.classList.add("active");
-      btn.title = t("formatGroup.toggle.active.title", { name: g.name });
-      return;
-    }
-    // active group が削除されていた場合は通常モードへフォールバック
+  const g = resolveActiveGroup(p);
+  if (!g) {
+    // グループが 1 つも無い異常時のみ (通常はデフォルトグループが必ず存在)
+    lbl.textContent = t("formatGroup.option.none.label");
     btn.classList.remove("active");
-  } else {
-    btn.classList.remove("active");
+    btn.title = t("formatGroup.toggle.title");
+    return;
   }
-  lbl.textContent = t("formatGroup.option.none.label");
-  btn.title = t("formatGroup.toggle.title");
+  lbl.textContent = g.name;
+  // デフォルト以外を明示選択している時だけ「上書き中」スタイルを当てる
+  const override = !g.isDefault;
+  btn.classList.toggle("active", override);
+  btn.title = override
+    ? t("formatGroup.toggle.active.title", { name: g.name })
+    : t("formatGroup.toggle.title");
 }
 
 // ============================
@@ -87,12 +104,9 @@ function renderPickerList() {
   if (!host) return;
   host.textContent = "";
   const p = appState.patients[selectedNo - 1];
-  const current = String(p?.activeFormatGroupId || "");
   const groups = getAllFormatGroups();
 
   if (!groups.length) {
-    // グループ未登録なら、設定画面への誘導メッセージのみ。「通常」ボタンは
-    // そもそも選択肢ではない (= 通常状態は「何も選んでいない」状態そのもの)。
     const empty = document.createElement("div");
     empty.className = "formatGroupPickerEmpty";
     empty.textContent = t("formatGroup.picker.empty");
@@ -100,26 +114,38 @@ function renderPickerList() {
     return;
   }
 
-  // 選択中のグループを再タップすると解除されて通常状態 (activeFormatGroupId="")
-  // に戻る。「通常」を選ぶための専用エントリは置かない。
+  // 実効選択 = activeFormatGroupId、未指定ならデフォルトグループ。デフォルト or
+  // 選択中の行を再タップすると "" (= デフォルトに従う) に戻る。
+  const defaultGroup = getDefaultFormatGroup();
+  const currentId = String(p?.activeFormatGroupId || "") || (defaultGroup ? defaultGroup.id : "");
   for (const g of groups) {
     host.appendChild(buildPickerRow({
       id: g.id,
       name: g.name,
-      selected: g.id === current,
+      isDefault: !!g.isDefault,
+      selected: g.id === currentId,
       sub: t("formatGroup.option.formats", { n: (g.formatIds || []).length }),
     }));
   }
 }
 
-function buildPickerRow({ id, name, selected, sub }) {
+function buildPickerRow({ id, name, isDefault, selected, sub }) {
   const row = document.createElement("button");
   row.type = "button";
-  row.className = "formatGroupPickerRow" + (selected ? " selected" : "");
+  row.className = "formatGroupPickerRow" + (selected ? " selected" : "") + (isDefault ? " isDefault" : "");
+  const head = document.createElement("div");
+  head.className = "formatGroupPickerHead";
   const lbl = document.createElement("div");
   lbl.className = "formatGroupPickerName";
   lbl.textContent = name;
-  row.appendChild(lbl);
+  head.appendChild(lbl);
+  if (isDefault) {
+    const badge = document.createElement("span");
+    badge.className = "formatGroupDefaultBadge";
+    badge.textContent = t("formatGroup.defaultBadge");
+    head.appendChild(badge);
+  }
+  row.appendChild(head);
   if (sub) {
     const s = document.createElement("div");
     s.className = "formatGroupPickerSub";
@@ -129,8 +155,9 @@ function buildPickerRow({ id, name, selected, sub }) {
   row.addEventListener("click", () => {
     const p = appState.patients[selectedNo - 1];
     if (p) {
-      // 選択中の行を再タップ → 解除 (通常へ)。それ以外は新規選択
-      p.activeFormatGroupId = selected ? "" : String(id || "");
+      // デフォルトグループ / 選択中の行を再タップ → "" (= デフォルトに従う)。
+      // それ以外は明示選択。
+      p.activeFormatGroupId = (isDefault || selected) ? "" : String(id || "");
       markUpdated(selectedNo);
       scheduleSave();
     }
@@ -149,7 +176,7 @@ let _currentEdit = null; // { isNew, target, onSaved }
 export function startNewFormatGroup(onSaved) {
   _currentEdit = {
     isNew: true,
-    target: { id: newGroupId(), name: "", formatIds: [] },
+    target: { id: newGroupId(), name: "", isDefault: false, formatIds: [], defaultFormatIds: [] },
     onSaved,
   };
   openEditModal();
@@ -161,21 +188,28 @@ export function startEditFormatGroup(group, onSaved) {
     target: {
       id: group.id,
       name: String(group.name || ""),
+      isDefault: !!group.isDefault,
       formatIds: Array.isArray(group.formatIds) ? group.formatIds.slice() : [],
+      defaultFormatIds: Array.isArray(group.defaultFormatIds) ? group.defaultFormatIds.slice() : [],
     },
     onSaved,
   };
   openEditModal();
 }
 
+// デフォルトグループは削除不可 (必ず 1 つ存在の不変条件)。呼び出し側 (settings-view)
+// は default 行の削除ボタンを無効化するが、防御的にここでも弾く。削除できたら true。
 export function deleteFormatGroupById(id) {
-  if (!Array.isArray(settings.formatGroups)) return;
-  settings.formatGroups = settings.formatGroups.filter(g => g.id !== id);
-  // 各患者の activeFormatGroupId からも掃除
+  if (!Array.isArray(settings.formatGroups)) return false;
+  const g = settings.formatGroups.find(x => x.id === id);
+  if (!g || g.isDefault) return false;
+  settings.formatGroups = settings.formatGroups.filter(x => x.id !== id);
+  // 各患者の activeFormatGroupId からも掃除 ("" = デフォルトに従う)
   for (const p of appState.patients) {
     if (p.activeFormatGroupId === id) p.activeFormatGroupId = "";
   }
   saveSettings();
+  return true;
 }
 
 function openEditModal() {
@@ -187,6 +221,13 @@ function openEditModal() {
   }
   const nameInp = document.getElementById("formatGroupEditName");
   if (nameInp) nameInp.value = _currentEdit.target.name;
+  const defChk = document.getElementById("formatGroupEditIsDefault");
+  if (defChk) {
+    defChk.checked = !!_currentEdit.target.isDefault;
+    // 現在のデフォルトは直接「外す」ことはできない (別グループを default にすると
+    // 自動的に外れる)。誤って唯一の default を消さないよう disabled にする。
+    defChk.disabled = !!_currentEdit.target.isDefault;
+  }
   renderFormatsCheckList();
   overlay.classList.add("active");
   if (nameInp) setTimeout(() => nameInp.focus(), 50);
@@ -203,7 +244,6 @@ function renderFormatsCheckList() {
   if (!host || !_currentEdit) return;
   host.textContent = "";
   const all = Array.isArray(settings.formats) ? settings.formats : [];
-  const selected = new Set(_currentEdit.target.formatIds);
   // panel ごとにグルーピングして見せる (S/O/A/P)
   for (const panel of FORMAT_PANELS) {
     const inPanel = all.filter(f => f.panel === panel);
@@ -214,25 +254,7 @@ function renderFormatsCheckList() {
     head.className = "formatGroupEditSectionHead";
     head.textContent = t("panel." + panel) + " 欄";
     sec.appendChild(head);
-    for (const f of inPanel) {
-      const row = document.createElement("label");
-      row.className = "formatGroupEditOpt";
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = selected.has(f.id);
-      cb.addEventListener("change", () => {
-        if (cb.checked) {
-          if (!_currentEdit.target.formatIds.includes(f.id)) _currentEdit.target.formatIds.push(f.id);
-        } else {
-          _currentEdit.target.formatIds = _currentEdit.target.formatIds.filter(x => x !== f.id);
-        }
-      });
-      const lbl = document.createElement("span");
-      lbl.textContent = f.name;
-      row.appendChild(cb);
-      row.appendChild(lbl);
-      sec.appendChild(row);
-    }
+    for (const f of inPanel) sec.appendChild(buildGroupFormatRow(f, panel));
     host.appendChild(sec);
   }
   if (!host.children.length) {
@@ -241,6 +263,61 @@ function renderFormatsCheckList() {
     empty.textContent = t("formatGroup.edit.noFormats");
     host.appendChild(empty);
   }
+}
+
+// グループ編集内の 1 フォーマット行: 左に「束ねる」チェック、include 時は右に
+// 「規定文」トグル (空欄補完に使う。パネル毎 最大 1 つ = 排他)。
+function buildGroupFormatRow(f, panel) {
+  const target = _currentEdit.target;
+  const included = target.formatIds.includes(f.id);
+  const row = document.createElement("div");
+  row.className = "formatGroupEditOpt" + (included ? " included" : "");
+
+  const lab = document.createElement("label");
+  lab.className = "formatGroupEditOptMain";
+  const cb = document.createElement("input");
+  cb.type = "checkbox";
+  cb.checked = included;
+  cb.addEventListener("change", () => {
+    if (cb.checked) {
+      if (!target.formatIds.includes(f.id)) target.formatIds.push(f.id);
+    } else {
+      target.formatIds = target.formatIds.filter(x => x !== f.id);
+      target.defaultFormatIds = target.defaultFormatIds.filter(x => x !== f.id);
+    }
+    renderFormatsCheckList();
+  });
+  const nm = document.createElement("span");
+  nm.textContent = f.name;
+  lab.appendChild(cb);
+  lab.appendChild(nm);
+  row.appendChild(lab);
+
+  if (included) {
+    const isDef = target.defaultFormatIds.includes(f.id);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "formatGroupDefaultTextToggle" + (isDef ? " on" : "");
+    btn.textContent = t("formatGroup.defaultText.toggle");
+    btn.title = t("formatGroup.defaultText.title");
+    btn.setAttribute("aria-label", t("formatGroup.defaultText.title"));
+    btn.setAttribute("aria-pressed", isDef ? "true" : "false");
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isDef) {
+        target.defaultFormatIds = target.defaultFormatIds.filter(x => x !== f.id);
+      } else {
+        // 同じ panel の既存規定文を外してから自分を on (パネル毎 1 つ)
+        const samePanel = new Set((settings.formats || []).filter(x => x.panel === panel).map(x => x.id));
+        target.defaultFormatIds = target.defaultFormatIds.filter(x => !samePanel.has(x));
+        target.defaultFormatIds.push(f.id);
+      }
+      renderFormatsCheckList();
+    });
+    row.appendChild(btn);
+  }
+  return row;
 }
 
 function saveEdit() {
@@ -253,6 +330,11 @@ function saveEdit() {
   }
   const target = _currentEdit.target;
   target.name = name;
+  // デフォルト指定 (disabled で来る = 現デフォルトは true 固定)
+  const defChk = document.getElementById("formatGroupEditIsDefault");
+  target.isDefault = !!defChk?.checked;
+  // defaultFormatIds は formatIds の部分集合に正規化 (UI 上はパネル毎 1 を担保済み)
+  target.defaultFormatIds = (target.defaultFormatIds || []).filter(id => target.formatIds.includes(id));
   // 同名チェック
   const all = Array.isArray(settings.formatGroups) ? settings.formatGroups : [];
   const dup = all.find(g => g.id !== target.id && g.name === name);
@@ -267,6 +349,13 @@ function saveEdit() {
     const idx = all.findIndex(g => g.id === target.id);
     if (idx >= 0) settings.formatGroups[idx] = target;
     else settings.formatGroups.push(target);
+  }
+  // 「ちょうど 1 つ default」を担保: target が default なら他を全て解除。
+  // 解除操作で default が 0 件になった場合は先頭を昇格。
+  if (target.isDefault) {
+    for (const g of settings.formatGroups) if (g.id !== target.id) g.isDefault = false;
+  } else if (!settings.formatGroups.some(g => g.isDefault) && settings.formatGroups.length) {
+    settings.formatGroups[0].isDefault = true;
   }
   saveSettings();
   const cb = _currentEdit.onSaved;

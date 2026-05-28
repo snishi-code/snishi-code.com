@@ -47,12 +47,6 @@ function renderFormatListForPanel(panel) {
   for (const f of list) {
     const row = document.createElement("div");
     row.className = "formatListRow";
-    // 行背景色で状態を示す (チップで重ねずシンプルに):
-    //   pinned (お気に入り) = 緑
-    //   isDefault (規定文)  = 青
-    //   両方 = 左ストライプを上半分=青/下半分=緑に分割 + 薄い混色背景
-    if (f.pinned) row.classList.add("pinned");
-    if (f.isDefault) row.classList.add("isDefault");
 
     const name = document.createElement("span");
     name.className = "formatListName";
@@ -125,11 +119,17 @@ function renderFormatGroupList() {
   }
   for (const g of groups) {
     const row = document.createElement("div");
-    row.className = "formatListRow";
+    row.className = "formatListRow" + (g.isDefault ? " formatGroupDefaultRow" : "");
     const name = document.createElement("span");
     name.className = "formatListName";
     name.textContent = g.name;
     row.appendChild(name);
+    if (g.isDefault) {
+      const badge = document.createElement("span");
+      badge.className = "formatGroupDefaultBadge";
+      badge.textContent = t("formatGroup.defaultBadge");
+      row.appendChild(badge);
+    }
     const meta = document.createElement("span");
     meta.className = "formatListMeta";
     meta.textContent = t("formatGroup.option.formats", { n: (g.formatIds || []).length });
@@ -154,15 +154,22 @@ function renderFormatGroupList() {
     const del = document.createElement("button");
     del.type = "button";
     del.className = "iconBtn";
-    del.title = t("common.delete");
-    del.setAttribute("aria-label", t("common.delete"));
     del.innerHTML = TRASH_SVG;
-    del.addEventListener("click", () => {
-      if (!confirm(t("formatGroup.delete.confirm", { name: g.name }))) return;
-      deleteFormatGroupById(g.id);
-      renderFormatGroupList();
-      if (_renderDetailFn) _renderDetailFn();
-    });
+    if (g.isDefault) {
+      // デフォルトグループは削除不可 (必ず 1 つ存在の不変条件)
+      del.disabled = true;
+      del.title = t("formatGroup.delete.defaultBlocked");
+      del.setAttribute("aria-label", t("formatGroup.delete.defaultBlocked"));
+    } else {
+      del.title = t("common.delete");
+      del.setAttribute("aria-label", t("common.delete"));
+      del.addEventListener("click", () => {
+        if (!confirm(t("formatGroup.delete.confirm", { name: g.name }))) return;
+        deleteFormatGroupById(g.id);
+        renderFormatGroupList();
+        if (_renderDetailFn) _renderDetailFn();
+      });
+    }
     actions.appendChild(del);
 
     row.appendChild(actions);

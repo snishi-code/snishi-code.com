@@ -629,14 +629,6 @@
               <input type="text" id="formatEditLabelSep" data-i18n-placeholder="format.placeholder.labelSep" placeholder="：">
             </label>
           </div>
-          <label class="formatEditCheckRow">
-            <input type="checkbox" id="formatEditPinned">
-            <span data-i18n="format.checkbox.pinned">パネルにクイックアクセスを表示する</span>
-          </label>
-          <label class="formatEditCheckRow">
-            <input type="checkbox" id="formatEditIsDefault">
-            <span data-i18n="format.checkbox.isDefault">このフォーマットを規定文にする (空欄時の fallback)</span>
-          </label>
           <div class="formatEditItemsHead" data-i18n="format.field.items">項目</div>
           <div id="formatEditItems"></div>
           <button class="secondary" id="formatEditAddItemBtn" type="button" data-i18n="format.addItem" style="width:100%;margin-top:8px;">＋ 項目追加</button>
@@ -706,6 +698,11 @@
             <input type="text" id="formatGroupEditName" data-i18n-placeholder="formatGroup.edit.namePlaceholder" placeholder="例: 発熱対応" />
           </label>
         </div>
+        <label class="formatEditCheckRow">
+          <input type="checkbox" id="formatGroupEditIsDefault">
+          <span data-i18n="formatGroup.edit.isDefault">このグループをデフォルトにする</span>
+        </label>
+        <div class="formatGroupEditHint" data-i18n="formatGroup.edit.isDefault.hint">デフォルトは患者でグループ未選択のときに使われます。「規定文」を付けたフォーマットは、その欄が空のとき出力に補完されます。</div>
         <div class="formatEditItemsHead" data-i18n="formatGroup.edit.formatsLabel">含めるフォーマット</div>
         <div id="formatGroupEditFormats"></div>
         <div class="formatEditActions">

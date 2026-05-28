@@ -55,9 +55,9 @@ import {
 //     j  = joiner       (default は省略)
 //     ls = labelSep     (default は省略)
 //     t  = tag indices (td への 1-based 参照、または辞書なしなら文字列配列)
-//     pn = pinned       (false は省略)
-//     d  = isDefault    (false は省略)
 //     i  = items array
+//     (旧 pn=pinned / d=isDefault は v8 で撤去。クイックアクセス・規定文はグループ側で
+//      管理するようになり、フォーマット単体の wire には含めない)
 //
 //   フォーマット項目 (f[i].i[j]):
 //     l  = label
@@ -201,8 +201,6 @@ export function formatToWire(format, tagDict) {
   }
   const tWire = tagsToWire(Array.isArray(f.tags) ? f.tags : [], tagDict);
   if (tWire.length) o.t = tWire;
-  if (f.pinned) o.pn = 1;
-  if (f.isDefault) o.d = 1;
   o.i = (Array.isArray(f.items) ? f.items : []).map(itemToWire);
   return o;
 }
@@ -219,8 +217,6 @@ export function formatFromWire(wire, tagDict) {
     joiner: typeof w.j === "string" ? w.j : ", ",
     labelSep,
     tags: tagsFromWire(w.t, tagDict),
-    pinned: !!w.pn,
-    isDefault: !!w.d,
     items,
   };
 }

@@ -132,6 +132,17 @@
       color: var(--status-blue-text);
     }
 
+    /* launcher モード行 (= format ランチャー ☰): checkbox 無し。<button> の既定装飾を
+       打ち消して通常行と同じ見た目にする。行全体タップで onItemClick。 */
+    .tagPickerLauncherOpt {
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: 0;
+      font: inherit;
+      min-height: 0;
+    }
+
     .tagPickerEmpty {
       padding: 8px 10px;
       color: var(--muted);

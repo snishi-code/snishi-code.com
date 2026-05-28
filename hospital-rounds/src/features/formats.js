@@ -9,7 +9,6 @@
 //     joiner,       // 項目間の区切り (例 ", " / "\n")
 //     labelSep,     // ラベルと値の間の区切り (例 "：" / " ")
 //     tags: [],     // 反映時に患者へ merge されるタグ名一覧 (重複追加はしない、外す処理は無し)
-//     pinned, isDefault,
 //     items: [
 //       { label, kind:"text",     normal },        // ラベル + 規定文 (textarea)
 //       { label, kind:"number",   unit   },        // ラベル + 数値 + 単位 + memo
@@ -32,6 +31,7 @@ import {
 } from "../constants.js";
 import { makeTagPicker, getAllTags, getPatientTags, setPatientTags } from "./tags.js";
 import { openQrFormatOverlay } from "./qr-format.js";
+import { resolveActiveGroup } from "./format-groups.js";
 import { t, applyI18n } from "../i18n.js";
 
 // strip 右端のハンバーガー (パネルごとの「全フォーマット一覧 = お気に入りトグル popup」を開く)
@@ -114,23 +114,13 @@ export function formatsForPanel(panel) {
   return settings.formats.filter(f => f.panel === panel);
 }
 
-export function pinnedFormatsForPanel(panel) {
-  return formatsForPanel(panel).filter(f => f.pinned);
-}
-
-// 現在の患者で active なフォーマットグループに属する、指定 panel のフォーマット。
-// activeGroupId が無い / グループが見つからない場合は null を返す。caller は null
-// なら通常の pinnedFormatsForPanel にフォールバックする。
-export function groupFormatsForPanel(panel, activeGroupId) {
-  if (!activeGroupId) return null;
-  const groups = Array.isArray(settings.formatGroups) ? settings.formatGroups : [];
-  const g = groups.find(x => x.id === activeGroupId);
-  if (!g) return null;
-  const idSet = new Set(g.formatIds || []);
-  // グループ内の順序を保つため、g.formatIds 順に取り出す
+// 指定グループに属する、指定 panel のフォーマットを「グループ内の順序」で返す。
+// strip はこの結果をチップとして並べる。group が無ければ空配列。
+export function formatsInGroupForPanel(panel, group) {
+  if (!group) return [];
   const byId = new Map(formatsForPanel(panel).map(f => [f.id, f]));
   const out = [];
-  for (const fid of g.formatIds || []) {
+  for (const fid of group.formatIds || []) {
     const f = byId.get(fid);
     if (f) out.push(f);
   }
@@ -163,15 +153,11 @@ function makeAddFormatWidget(panel, onAdded) {
   return wrap;
 }
 
-// パネルごとに 1 つ作る format picker (タグピッカーと同じ UI = makeTagPicker を再利用)。
+// パネルごとに 1 つ作る format ランチャー (☰)。グループに入っていないフォーマットにも
+// アクセスできる入口。タップで入力モーダルを開く (お気に入りトグルは廃止)。
 function makeFormatPicker(panel, onChange) {
   return makeTagPicker({
-    getSelected: () => formatsForPanel(panel).filter(f => f.pinned).map(f => f.id),
-    setSelected: (ids) => {
-      const set = new Set(ids);
-      for (const f of formatsForPanel(panel)) f.pinned = set.has(f.id);
-      saveSettings();
-    },
+    launcher: true,
     entries: () => formatsForPanel(panel).map(f => ({ value: f.id, label: f.name })),
     onChange,
     iconOnly: true,
@@ -189,15 +175,14 @@ export function renderFormatStrip(panel, hostEl) {
   hostEl.textContent = "";
   hostEl.className = "formatStrip";
 
-  // active なフォーマットグループがあれば、そのグループのフォーマット (panel
-  // フィルタ済) を pin の代わりに使う。グループ未指定の時は通常の pinned を使う。
+  // strip のチップは「実効グループ (active 指定 or デフォルト)」のフォーマットを並べる。
+  // デフォルト以外を明示選択している時 (= 上書き中) はチップに目印スタイルを当てる。
   const p = appState.patients[selectedNo - 1];
-  const activeGroupId = String(p?.activeFormatGroupId || "");
-  const groupFormats = groupFormatsForPanel(panel, activeGroupId);
-  const visible = groupFormats || pinnedFormatsForPanel(panel);
-  const isGroupMode = !!groupFormats;
+  const group = resolveActiveGroup(p);
+  const visible = formatsInGroupForPanel(panel, group);
+  const isGroupMode = !!group && !group.isDefault;
 
-  // 1) お気に入り (pinned) または active group のチップ。横スクロール領域。
+  // 1) 実効グループのチップ。横スクロール領域。
   const chips = document.createElement("div");
   chips.className = "formatStripChips" + (isGroupMode ? " inGroup" : "");
   for (const f of visible) {
@@ -572,8 +557,6 @@ function openFormatEditModal(target, panel, onSaved) {
       joiner: "\n",
       labelSep: DEFAULT_LABEL_SEP_OTHER,
       tags: [],
-      pinned: true,
-      isDefault: false,
       items: [],
     },
     onSaved,
@@ -621,16 +604,12 @@ function renderFormatEditForm() {
   const nameInp = document.getElementById("formatEditName");
   const joinerInp = document.getElementById("formatEditJoiner");
   const labelSepInp = document.getElementById("formatEditLabelSep");
-  const pinnedChk = document.getElementById("formatEditPinned");
-  const defaultChk = document.getElementById("formatEditIsDefault");
   const itemsHost = document.getElementById("formatEditItems");
   if (!_currentEdit || !nameInp) return;
   const target = _currentEdit.target;
   nameInp.value = target.name;
   if (joinerInp) joinerInp.value = target.joiner;
   if (labelSepInp) labelSepInp.value = typeof target.labelSep === "string" ? target.labelSep : "";
-  if (pinnedChk) pinnedChk.checked = !!target.pinned;
-  if (defaultChk) defaultChk.checked = !!target.isDefault;
   renderTagsHost();
   if (itemsHost) renderFormatEditItems(itemsHost);
 }
@@ -722,8 +701,6 @@ function saveFormatEdit() {
   const nameInp = document.getElementById("formatEditName");
   const joinerInp = document.getElementById("formatEditJoiner");
   const labelSepInp = document.getElementById("formatEditLabelSep");
-  const pinnedChk = document.getElementById("formatEditPinned");
-  const defaultChk = document.getElementById("formatEditIsDefault");
 
   const target = _currentEdit.target;
   const name = String(nameInp?.value || "").trim();
@@ -749,8 +726,6 @@ function saveFormatEdit() {
     const allText = target.items.every(it => it && it.kind === "text");
     target.labelSep = allText ? DEFAULT_LABEL_SEP_TEXT : DEFAULT_LABEL_SEP_OTHER;
   }
-  target.pinned = !!pinnedChk?.checked;
-  target.isDefault = !!defaultChk?.checked;
   // tags: 削除済みタグを掃除 (UI で picker を介して付けたが、その後にタグ自体が消された場合に備えて)
   const knownTags = new Set(getAllTags());
   target.tags = (target.tags || []).filter(t => knownTags.has(t));
@@ -773,15 +748,6 @@ function saveFormatEdit() {
       }
       return !!label;
     });
-
-  // 同一パネル内に isDefault は 1 つだけ。他はクリア
-  // (注: isDefault の排他制御は読み取り側 (settings.formats) で行う。adapter 経由でも
-  //  settings 自体は共有されているため、この場での mutation は移植先でも安全)
-  if (target.isDefault) {
-    for (const f of all) {
-      if (f.id !== target.id && f.panel === target.panel) f.isDefault = false;
-    }
-  }
 
   adapterSaveFormat(target, _currentEdit.isNew);
   const cb = _currentEdit.onSaved;
