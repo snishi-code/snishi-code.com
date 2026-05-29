@@ -7,6 +7,7 @@ import { bindLongPressAndDrag } from "../features/drag.js";
 import { startNewFormat, startEditFormat, deleteFormatById } from "../features/formats.js";
 import { getAllFormatGroups, startNewFormatGroup, startEditFormatGroup, deleteFormatGroupById } from "../features/format-groups.js";
 import { listBundles, renameBundle, deleteBundle, getActiveWorkspaceId } from "../storage.js";
+import { updateAppTitle, refreshAppTitle } from "../features/app-title.js";
 import { t } from "../i18n.js";
 
 const STATUS_SWATCHES = { statusYellow: "#f59e0b", statusGreen: "#14b8a6", statusGray: "#6b7280", statusBlue: "#2563eb" };
@@ -483,6 +484,8 @@ function buildWorkspaceRow(r, isActive) {
 }
 
 export function renderSettings() {
+  const titleInp = document.getElementById("settingsTitleInput");
+  if (titleInp) titleInp.value = appState.title;
   renderClearTargets();
   renderTagsList();
   renderFormatList();
@@ -501,6 +504,15 @@ export function initSettingsView(renderDetailFn, renderQrFn, renderPatientUIFn, 
   _renderQrFn = renderQrFn;
   _renderPatientUIFn = renderPatientUIFn;
   _refreshHeaderWsLabelFn = refreshHeaderWsLabelFn || null;
+
+  // アプリ名 (端末固定タイトル) の編集 → updateAppTitle で保存 + ヘッダー反映
+  const settingsTitleInput = document.getElementById("settingsTitleInput");
+  if (settingsTitleInput) {
+    settingsTitleInput.addEventListener("input", () => {
+      updateAppTitle(settingsTitleInput.value);
+      refreshAppTitle();
+    });
+  }
 
   const addTagBtn = document.getElementById("addTagBtn");
   const resetTagsBtn = document.getElementById("resetTagsBtn");

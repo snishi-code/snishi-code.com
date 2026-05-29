@@ -40,20 +40,34 @@
     /* ── ヘッダー共通 (本番/テストともに白) ──
        環境色はロゴバッジ (左上の丸) にだけ残す。
        PWA テーマカラーも合わせて白に変更し、ステータスバーとの段差を消す。 */
+    /* ホームボタン (家)。旧ブランドロゴ枠を転用。button だが円形バッジ見た目を維持 */
     .appLogo {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       width: 32px;
       height: 32px;
+      padding: 0;
+      border: 0;
       background: var(--blue);
       color: #ffffff;
       border-radius: 50%;
       flex-shrink: 0;
+      cursor: pointer;
     }
+    .appLogo:hover { filter: brightness(1.08); }
 
+    /* テスト版はグレー (本番=青)。取り違え防止の本命は黄色バナー、これは二次的目印 */
     html[data-env="test"] .appLogo {
       background: #475569;
+    }
+
+    /* WS 名の「切替可」を示す chevron */
+    .appWsChevron {
+      flex-shrink: 0;
+      color: var(--muted);
+      cursor: pointer;
+      margin-left: -2px;
     }
 
     header .appTitleInput,

@@ -363,33 +363,12 @@ setOnWorkspaceChanged(() => {
 // Boot 11: タイトル + WS 名 (header)
 // ============================
 // タイトル: 普段は readonly。タップ → ホーム遷移、鉛筆で編集可。
-// WS 名:   普段は readonly でタップ → WS picker (切替/新規作成)。
-//          鉛筆で editable に切替 → blur/Enter で renameBundle 発火。
-//          rename は設定画面でも可能 (こちらは複数 WS を続けて編集する用途)。
-let titleToggle = null;
-initAppTitle({
-  getTitleToggle: () => titleToggle,
-  navToHome,
-});
-titleToggle = createEditToggle({
-  triggerBtn: document.getElementById("headerEditTitleBtn"),
-  container: document.querySelector(".appTitleRow"),
-  onEnter: () => {
-    const a = document.getElementById("appTitleInput");
-    const w = document.getElementById("appWsLabelInput");
-    if (a) { a.readOnly = false; a.focus(); a.select(); }
-    if (w) w.readOnly = false;
-  },
-  onExit: () => {
-    const a = document.getElementById("appTitleInput");
-    const w = document.getElementById("appWsLabelInput");
-    if (a) { a.readOnly = true; a.blur(); }
-    // WS 名は blur で renameBundle を commit する。commitWsLabel は readOnly 時に
-    // 早期 return するため、必ず blur (= commit) してから readOnly=true にする。
-    // (Enter 確定で onExit→readOnly→blur の順だと rename が失われていた)
-    if (w) { w.blur(); w.readOnly = true; }
-  },
-});
+// WS 名: readonly でタップ → WS picker (切替/新規作成/リネーム)。
+// タイトル: ただのラベル (編集は設定画面)。
+initAppTitle();
+// v8.9: ヘッダーの鉛筆 (タイトル/WS編集トグル) は撤去。タイトル編集は設定画面、
+// WS リネームは WS ピッカー内に移動。ホームへはヘッダー左の家ボタンで戻る。
+document.getElementById("homeNavBtn")?.addEventListener("click", navToHome);
 initWsPicker();
 
 // ============================

@@ -157,29 +157,37 @@
       max-width: 360px;
       box-sizing: border-box;
     }
+    /* 行 = 切替ボタン(主) + リネーム鉛筆 の横並び (div コンテナ) */
     .wsPickerRow {
-      width: 100% !important;
-      margin: 4px 0 !important;
-      padding: 10px 12px !important;
-      text-align: left;
+      margin: 4px 0;
+      padding: 4px 6px 4px 12px;
       background: #fff;
       border: 1px solid var(--line);
       border-radius: 8px;
-      cursor: pointer;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
+    }
+    .wsPickerRow.selected {
+      border-color: var(--status-blue-bd);
+      background: var(--status-blue-bg);
+    }
+    /* 切替ボタン (label + meta)。透明・左寄せでリストっぽく */
+    .wsPickerMain {
+      flex: 1 1 auto;
+      min-width: 0;
+      width: auto;
+      text-align: left;
+      background: transparent;
+      border: 0;
+      padding: 6px 0;
       display: flex;
       flex-direction: column;
       gap: 2px;
+      cursor: pointer;
     }
-    .wsPickerRow:hover:not(:disabled) {
-      background: #f3f4f6;
-    }
-    .wsPickerRow.selected,
-    .wsPickerRow:disabled {
-      border-color: var(--status-blue-bd);
-      background: var(--status-blue-bg);
-      cursor: default;
-      opacity: 1;
-    }
+    .wsPickerMain:disabled { cursor: default; }
     .wsPickerLabel {
       font-weight: 700;
       font-size: 14px;
@@ -188,6 +196,33 @@
     .wsPickerMeta {
       font-size: 11px;
       color: var(--muted);
+    }
+    /* リネーム鉛筆 */
+    .wsPickerEdit {
+      flex: 0 0 auto;
+      width: 36px;
+      height: 36px;
+      min-width: 0;
+      padding: 0;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .wsPickerEdit:hover { background: #f3f4f6; color: var(--text); }
+    /* インラインリネーム input */
+    .wsPickerRenameInput {
+      flex: 1 1 auto;
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--status-blue-bd);
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 700;
     }
 
     .ioPanel {

@@ -18,8 +18,9 @@
 //   破壊的操作 (delete) や detail 管理は設定画面に隔離する。
 // ============================================================================
 
-import { listBundles, getActiveWorkspaceId } from "../storage.js";
+import { listBundles, getActiveWorkspaceId, renameBundle } from "../storage.js";
 import { switchWorkspace, createWorkspace } from "../store.js";
+import { refreshAppWsLabel } from "./app-title.js";
 import { t } from "../i18n.js";
 
 function vibrate() { try { navigator.vibrate?.(60); } catch (_) {} }
@@ -74,24 +75,26 @@ async function renderList() {
 }
 
 function buildRow(r, isActive) {
-  const row = document.createElement("button");
-  row.type = "button";
+  // 行 = 切替ボタン(主) + リネーム鉛筆。button のネストを避けるため div で包む。
+  const row = document.createElement("div");
   row.className = "wsPickerRow" + (isActive ? " selected" : "");
 
+  const main = document.createElement("button");
+  main.type = "button";
+  main.className = "wsPickerMain";
   const label = document.createElement("div");
   label.className = "wsPickerLabel";
   label.textContent = r.label || r.title || t("io.ws.untitled");
-  row.appendChild(label);
-
+  main.appendChild(label);
   const meta = document.createElement("div");
   meta.className = "wsPickerMeta";
   meta.textContent = `${fmtTimestamp(r.updatedAt)}${r.title ? " ・ " + r.title : ""}`;
-  row.appendChild(meta);
+  main.appendChild(meta);
 
   if (isActive) {
-    row.disabled = true;
+    main.disabled = true; // 現在のWSへは切替不可 (リネームは可)
   } else {
-    row.addEventListener("click", async () => {
+    main.addEventListener("click", async () => {
       try {
         await switchWorkspace(r.id);
         vibrate();
@@ -102,7 +105,54 @@ function buildRow(r, isActive) {
       }
     });
   }
+  row.appendChild(main);
+
+  // リネーム鉛筆: タップで label をインライン input に差し替え → blur/Enter で commit
+  const editBtn = document.createElement("button");
+  editBtn.type = "button";
+  editBtn.className = "wsPickerEdit";
+  editBtn.title = t("common.edit");
+  editBtn.setAttribute("aria-label", t("common.edit"));
+  editBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+  editBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    startRename(row, r, isActive);
+  });
+  row.appendChild(editBtn);
   return row;
+}
+
+// WS 行をインラインリネーム editor に切り替える。commit で renameBundle → 再描画。
+function startRename(row, r, isActive) {
+  row.textContent = "";
+  const inp = document.createElement("input");
+  inp.type = "text";
+  inp.className = "wsPickerRenameInput";
+  inp.value = r.label || r.title || "";
+  row.appendChild(inp);
+
+  let done = false;
+  async function finalize(commit) {
+    if (done) return;
+    done = true;
+    const next = String(inp.value || "").trim();
+    if (commit && next && next !== r.label) {
+      try {
+        await renameBundle(r.id, next);
+        if (isActive) refreshAppWsLabel(); // 現WSのリネームはヘッダー表示も更新
+      } catch (err) {
+        console.error("ws rename failed:", err);
+        alert(t("io.ws.switch.failed"));
+      }
+    }
+    renderList();
+  }
+  inp.addEventListener("blur", () => finalize(true));
+  inp.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); finalize(true); }
+    else if (e.key === "Escape") { e.preventDefault(); finalize(false); }
+  });
+  setTimeout(() => { inp.focus(); inp.select(); }, 0);
 }
 
 // 「+ 新規」ボタン: クリックで input に展開 → Enter/blur で commit
@@ -158,15 +208,16 @@ function initAddWidget() {
 }
 
 export function initWsPicker() {
-  // ヘッダーの WS 名表示をタップで起動
+  // ヘッダーの WS 名表示 / ▾ chevron をタップで起動
   const wsLabel = document.getElementById("appWsLabelInput");
   if (wsLabel) {
     wsLabel.addEventListener("click", () => {
-      // readonly でない (= edit モード) 時は通常の input として扱う
       if (!wsLabel.readOnly) return;
       openWsPicker();
     });
   }
+  const wsChevron = document.getElementById("appWsChevron");
+  if (wsChevron) wsChevron.addEventListener("click", openWsPicker);
   // overlay 外 (= 暗幕部分) タップで閉じる。他モーダル共通の挙動に合わせる。
   const overlay = document.getElementById("wsPickerOverlay");
   if (overlay) overlay.addEventListener("click", (e) => {
