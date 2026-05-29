@@ -5,13 +5,7 @@ import { STATUS } from "../constants.js";
 import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
 import { makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
 import { formatPatientLabel, isRoomSortActive } from "../features/room.js";
-import { openStatusPicker } from "./detail.js";
 import { t } from "../i18n.js";
-
-let _editMode = false;
-
-export function setHomeEditMode(val) { _editMode = !!val; }
-export function getHomeEditMode() { return _editMode; }
 
 export function statusClass(status) {
   if (status === STATUS.YELLOW) return "status-yellow";
@@ -64,22 +58,10 @@ export function renderHome(onPatientClick) {
     const displayName = formatPatientLabel(p, String(i));
     btn.textContent = displayName;
     btn.setAttribute("aria-label", displayName);
-    if (_editMode) {
-      // 編集モード: タップでステータス選択ポップアップ (患者画面と同仕様に統一)
-      btn.addEventListener("click", () => {
-        const idx = appState.patients.indexOf(p);
-        if (idx < 0) return;
-        openStatusPicker(idx, (s) => {
-          btn.className = "patientBtn " + statusClass(s);
-          updateCountChip();
-        });
-      });
-    } else {
-      if (onPatientClick) {
-        btn.addEventListener("click", () => onPatientClick(i));
-      }
-      bindLongPressAndDrag(btn, () => appState.patients.indexOf(p), onPatientDrop, openActionMenu);
+    if (onPatientClick) {
+      btn.addEventListener("click", () => onPatientClick(i));
     }
+    bindLongPressAndDrag(btn, () => appState.patients.indexOf(p), onPatientDrop, openActionMenu);
     frag.appendChild(btn);
   }
   homeGrid.appendChild(frag);

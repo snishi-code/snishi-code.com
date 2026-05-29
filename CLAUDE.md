@@ -183,6 +183,7 @@ v7.7.0 で以下の機能を一時撤去した。再実装するときは `git t
 
 1. **タグ・カテゴリ機能 (グループタグ)**: タグを複数のグループに分類し、グループ内で AND/OR 切替できる機能。`settings.tagGroups` / `settings.tagGroupAssign` / `settings.tagGroupingEnabled` のフィールドと、tags.js §3 + settings-view.js のグループカード描画 + qr-protocol.js の tagGroupToWire 系。利用シーン (タグ数 20+) が薄く、複雑度の割に未使用だったため
 2. **roster.js (Git-like ops 履歴)**: `recordOp` / `compactHistory` / `flushCommit` / rosterState の 325 行。admin 撤去 (v7.0.0) 以降 `FEATURE_ROSTER_OPS=false` で dormant のまま使われず、bundle の history section も死蔵していたため。**将来 sync 機能を作る時の土台になる可能性が高いが、現時点では UI なし**
+3. **ホームのステータス一括編集 (色パレット)** — v8.7.0 で撤去。ホームヘッダー左端の「色パレット」鉛筆 (`homeEditBtn`) をタップすると home が編集モードに入り、各患者ボタンをタップすると `openStatusPicker` (detail.js) が開いて詳細画面に行かずにステータスを連続変更できた。実装は home.js の `_editMode` / `setHomeEditMode` / `getHomeEditMode` + `renderHome` 内の `if (_editMode)` 分岐、main.js の home 向け `createEditToggle`、`home.edit.tooltip` 文言。**撤去理由**: (a) 詳細画面の `openStatusPicker` と機能重複、一括クリアは `clearAllBtn` でカバー済みで実用シーンが薄かった、(b) ステータスピッカーが `homeView` の外にある overlay のため、色選択タップが edit-toggle.js のグローバル「外側タップで編集解除」(document click ハンドラ) に拾われ、1 件変更すると編集モードが即解除されるバグがあった。**再実装する場合**: ピッカー由来のクリックを外側判定から除外する (overlay を home の編集 container 扱いにする等) 必要がある。空いた左端枠には clear アイコン (`clearAllBtn`) を移設済み (memo/shared の編集鉛筆と同じ左端位置に揃え、右側 actions を help+QR に統一)
 
 ### QR Wire Format (端末間データ交換時の規約)
 

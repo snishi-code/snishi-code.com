@@ -13,7 +13,7 @@ import {
   initStore, flushSavePending, setOnWorkspaceChanged,
 } from "./store.js";
 
-import { renderHome, updateCountChip, setHomeEditMode } from "./views/home.js";
+import { renderHome, updateCountChip } from "./views/home.js";
 import { renderDetail, renderQrIfNeeded, initDetailEvents, initStatusButtons, initQrNavButtons } from "./views/detail.js";
 import { renderMemoScreen, setMemoEditMode } from "./views/memo.js";
 import { renderSharedScreen, setSharedEditMode } from "./views/shared-list.js";
@@ -136,12 +136,8 @@ window.addEventListener("message", (e) => {
 // Boot 4: Edit toggles (home / memo / shared)
 // ============================
 // 鉛筆 → 編集モード / 外側クリック or ビュー遷移で表示モードに戻る。
-createEditToggle({
-  triggerBtn: document.getElementById("homeEditBtn"),
-  container: document.getElementById("homeView"),
-  onEnter: () => { setHomeEditMode(true); doRenderHome(); },
-  onExit: () => { setHomeEditMode(false); doRenderHome(); },
-});
+// home はステータス一括編集 (色パレット) を v8.7 で撤去したため編集トグルなし。
+// クリアは clearAllBtn (Boot 9) が担う。
 createEditToggle({
   triggerBtn: document.getElementById("memoEditBtn"),
   container: document.getElementById("memoView"),
