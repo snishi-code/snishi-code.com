@@ -125,7 +125,6 @@ function renderPickerList() {
       name: g.name,
       isDefault: !!g.isDefault,
       selected: g.id === currentId,
-      sub: t("formatGroup.option.formats", { n: (g.formatIds || []).length }),
     }));
   }
 }
@@ -305,60 +304,38 @@ function buildGroupFormatRow(f, panel) {
   row.appendChild(lab);
 
   if (included) {
-    // 展開(A) / クイックアクセス(B) の二択セグメント。A=本文上に入力欄を展開、
-    // B=ヘッダーにチップ (タップでモーダル)。included なら必ずどちらか。
+    // 表示方法を 3 択セグメントで選ぶ: 展開(A) / クイック(B) / 規定文。
+    //   展開   = expandFormatIds に入れる (本文上に入力欄)
+    //   クイック = どちらにも入れない (ヘッダーのチップ)
+    //   規定文  = defaultFormatIds に入れる (欄が空のとき出力に補完)
+    // 排他 (1 つの表示方法のみ)。規定文はパネル毎 1 つ制限を撤去 (複数可 = 全て補完)。
     if (!Array.isArray(target.expandFormatIds)) target.expandFormatIds = [];
-    const isExpand = target.expandFormatIds.includes(f.id);
+    const mode = target.expandFormatIds.includes(f.id) ? "expand"
+               : target.defaultFormatIds.includes(f.id) ? "default" : "quick";
+    const setMode = (next) => {
+      target.expandFormatIds = target.expandFormatIds.filter(x => x !== f.id);
+      target.defaultFormatIds = target.defaultFormatIds.filter(x => x !== f.id);
+      if (next === "expand") target.expandFormatIds.push(f.id);
+      else if (next === "default") target.defaultFormatIds.push(f.id);
+      renderFormatsCheckList();
+    };
     const seg = document.createElement("div");
     seg.className = "formatGroupModeSeg";
-    const aBtn = document.createElement("button");
-    aBtn.type = "button";
-    aBtn.className = "formatGroupModeBtn" + (isExpand ? " active" : "");
-    aBtn.textContent = t("formatGroup.mode.expand");
-    aBtn.title = t("formatGroup.mode.expand.title");
-    aBtn.setAttribute("aria-pressed", isExpand ? "true" : "false");
-    aBtn.addEventListener("click", (e) => {
-      e.preventDefault(); e.stopPropagation();
-      if (!target.expandFormatIds.includes(f.id)) target.expandFormatIds.push(f.id);
-      renderFormatsCheckList();
-    });
-    const bBtn = document.createElement("button");
-    bBtn.type = "button";
-    bBtn.className = "formatGroupModeBtn" + (!isExpand ? " active" : "");
-    bBtn.textContent = t("formatGroup.mode.quick");
-    bBtn.title = t("formatGroup.mode.quick.title");
-    bBtn.setAttribute("aria-pressed", !isExpand ? "true" : "false");
-    bBtn.addEventListener("click", (e) => {
-      e.preventDefault(); e.stopPropagation();
-      target.expandFormatIds = target.expandFormatIds.filter(x => x !== f.id);
-      renderFormatsCheckList();
-    });
-    seg.appendChild(aBtn);
-    seg.appendChild(bBtn);
+    for (const [key, label, title] of [
+      ["expand", t("formatGroup.mode.expand"), t("formatGroup.mode.expand.title")],
+      ["quick",  t("formatGroup.mode.quick"),  t("formatGroup.mode.quick.title")],
+      ["default", t("formatGroup.mode.default"), t("formatGroup.mode.default.title")],
+    ]) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "formatGroupModeBtn" + (mode === key ? " active" : "");
+      b.textContent = label;
+      b.title = title;
+      b.setAttribute("aria-pressed", mode === key ? "true" : "false");
+      b.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); setMode(key); });
+      seg.appendChild(b);
+    }
     row.appendChild(seg);
-
-    const isDef = target.defaultFormatIds.includes(f.id);
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "formatGroupDefaultTextToggle" + (isDef ? " on" : "");
-    btn.textContent = t("formatGroup.defaultText.toggle");
-    btn.title = t("formatGroup.defaultText.title");
-    btn.setAttribute("aria-label", t("formatGroup.defaultText.title"));
-    btn.setAttribute("aria-pressed", isDef ? "true" : "false");
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (isDef) {
-        target.defaultFormatIds = target.defaultFormatIds.filter(x => x !== f.id);
-      } else {
-        // 同じ panel の既存規定文を外してから自分を on (パネル毎 1 つ)
-        const samePanel = new Set((settings.formats || []).filter(x => x.panel === panel).map(x => x.id));
-        target.defaultFormatIds = target.defaultFormatIds.filter(x => !samePanel.has(x));
-        target.defaultFormatIds.push(f.id);
-      }
-      renderFormatsCheckList();
-    });
-    row.appendChild(btn);
   }
   return row;
 }

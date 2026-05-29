@@ -29,27 +29,30 @@ export function utf8ByteLength(text) {
   return unescape(encodeURIComponent(String(text ?? ""))).length;
 }
 
-// 実効グループが対象パネルに指定した「規定文」フォーマットの中身を text として描画する。
-// 空欄パネルの fallback テキスト生成。グループの defaultFormatIds (パネル毎最大1) を参照し、
-// 未指定なら空文字を返す。描画対象は normal を持つ kind (text / date)。number / fraction は
-// 値が無い状態では意味のある fallback にならないのでスキップする。
-function renderDefaultForPanel(panel, group) {
-  if (!group) return "";
-  const fmts = (settings && Array.isArray(settings.formats)) ? settings.formats : [];
-  const defIds = Array.isArray(group.defaultFormatIds) ? group.defaultFormatIds : [];
-  const def = fmts.find(f => f.panel === panel && defIds.includes(f.id));
-  if (!def) return "";
+// 1 つの規定文フォーマットを text 化する (normal を持つ text item を結合)。
+function renderOneDefault(def) {
   const labelSep = typeof def.labelSep === "string" ? def.labelSep : "：";
   const parts = [];
   for (const item of (def.items || [])) {
-    const kind = item.kind || "text";
-    if (kind !== "text") continue; // normal を持つのは text のみ (date は廃止)
+    if ((item.kind || "text") !== "text") continue; // normal を持つのは text のみ
     const label = String(item.label ?? "").trim();
     const normal = String(item.normal ?? "").trim();
     if (!normal) continue;
     parts.push(label ? `${label}${labelSep}${normal}` : normal);
   }
   return parts.join(def.joiner || ", ");
+}
+
+// 実効グループが対象パネルに指定した「規定文」フォーマットの中身を text として描画する。
+// 空欄パネルの fallback テキスト生成。グループの defaultFormatIds を参照 (パネル内に
+// 複数あれば全て補完 = 改行結合)。未指定なら空文字。
+function renderDefaultForPanel(panel, group) {
+  if (!group) return "";
+  const fmts = (settings && Array.isArray(settings.formats)) ? settings.formats : [];
+  const defIds = Array.isArray(group.defaultFormatIds) ? group.defaultFormatIds : [];
+  // group 内の順序を保つため defaultFormatIds 順に取り出す
+  const defs = defIds.map(id => fmts.find(f => f.id === id)).filter(f => f && f.panel === panel);
+  return defs.map(renderOneDefault).filter(Boolean).join("\n");
 }
 
 // パネルの自由記述テキスト (S/O は直接フィールド、A/P は {text})。

@@ -124,10 +124,7 @@ function renderFormatGroupList() {
       badge.textContent = t("formatGroup.defaultBadge");
       row.appendChild(badge);
     }
-    const meta = document.createElement("span");
-    meta.className = "formatListMeta";
-    meta.textContent = t("formatGroup.option.formats", { n: (g.formatIds || []).length });
-    row.appendChild(meta);
+    // フォーマット数の表示は撤去 (重要でないため)
 
     const actions = document.createElement("span");
     actions.className = "formatListActions";

@@ -563,23 +563,29 @@
       flex: 0 0 auto;
     }
     /* 展開(A) / クイック(B) 二択セグメント。included フォーマットの表示方法を選ぶ */
+    /* 展開/クイック/規定文 の 3 択。等幅セルで正中分割 (歪み防止) */
     .formatGroupModeSeg {
       flex: 0 0 auto;
-      display: inline-flex;
+      display: flex;
+      width: 180px;
       border: 1px solid var(--line);
-      border-radius: 999px;
+      border-radius: 8px;
       overflow: hidden;
     }
     .formatGroupModeBtn {
+      flex: 1 1 0;
       width: auto !important;
       min-width: 0;
       min-height: 0;
+      margin-bottom: 0 !important;
       border: 0;
+      border-radius: 0;
       background: #fff;
       color: var(--muted);
       font-size: 12px;
       font-weight: 700;
-      padding: 5px 12px;
+      padding: 6px 4px;
+      text-align: center;
       cursor: pointer;
     }
     .formatGroupModeBtn + .formatGroupModeBtn {
@@ -588,28 +594,6 @@
     .formatGroupModeBtn.active {
       background: var(--blue, #2563eb);
       color: #fff;
-    }
-
-    /* グループ内の「規定文」トグル (パネル毎 1 つ。空欄補完に使う)。
-       popup 内ボタンの width:100% 既定を打ち消して content 幅にする */
-    .formatGroupDefaultTextToggle {
-      flex: 0 0 auto;
-      width: auto !important;
-      font-size: 12px;
-      font-weight: 700;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      background: #fff;
-      color: var(--muted);
-      cursor: pointer;
-      min-height: 0;
-      min-width: 0;
-    }
-    .formatGroupDefaultTextToggle.on {
-      background: var(--status-blue-bg, #bfdbfe);
-      border-color: var(--status-blue-bd, #2563eb);
-      color: var(--status-blue-text, #1e3a8a);
     }
     /* デフォルト切替チェックの下に出す補足説明 */
     .formatGroupEditHint {

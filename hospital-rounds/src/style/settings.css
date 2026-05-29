@@ -326,10 +326,12 @@
       height: 20px;
     }
 
-    /* 全データ消去 (設定画面最下部) */
+    /* 全データ消去 (設定画面最下部)。card は overflow:hidden + 角丸なので、中身が
+       縁に接すると角が削れる。内側 padding でインセットする */
     .settingsDangerCard {
       border: 1px solid #fecaca;
       background: #fef2f2;
+      padding: 14px 16px;
     }
     .settingsFullResetBtn {
       width: 100%;
