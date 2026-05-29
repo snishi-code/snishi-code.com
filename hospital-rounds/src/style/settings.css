@@ -343,3 +343,11 @@
       color: #b91c1c;
       line-height: 1.4;
     }
+
+    /* クリア対象セクションの説明文 (見出し下) */
+    .clearSectionHint {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin: 0 0 8px;
+    }

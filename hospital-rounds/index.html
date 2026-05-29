@@ -330,7 +330,10 @@
       <!-- フォーマットグループ: 患者ごとに pin の代わりに表示できる束 -->
       <div class="card">
         <div class="cardHead">
-          <div class="label" data-i18n="formatGroup.section.title">フォーマットグループ</div>
+          <div class="label" data-i18n-title="formatGroup.section.title" data-i18n-aria="formatGroup.section.title" title="フォーマットグループ" aria-label="フォーマットグループ" style="display:flex;align-items:center;">
+            <!-- lucide: layers (フォーマットグループ。アプリ内のグループ表現と統一) -->
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          </div>
           <button class="iconBtn" id="addFormatGroupBtn" type="button" data-i18n-title="formatGroup.add" data-i18n-aria="formatGroup.add" title="グループ追加" aria-label="グループ追加">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
@@ -342,10 +345,9 @@
 
       <div class="card">
         <div class="cardHead">
-          <div class="label" title="クリア対象" aria-label="クリア対象" style="display:flex;align-items:center;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
-          </div>
+          <div class="label" data-i18n="clear.section.title">診察開始でクリアする項目</div>
         </div>
+        <div class="clearSectionHint" data-i18n="clear.section.hint">ホームの「診察開始」を押すと、ここで選んだ項目が消えます。患者ごとの記録を残したい欄は外してください。</div>
         <div class="cardBody" id="clearTargetsBody"></div>
       </div>
 

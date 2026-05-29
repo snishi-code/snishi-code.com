@@ -246,6 +246,8 @@
   "home.start.btn": "診察開始",
   "home.start.tooltip": "新しい診察を開始（記録をクリア）",
   "home.start.confirm": "新しい診察を開始します。前回の記録をクリアしてよろしいですか？\n（クリアする項目は設定画面で選べます）",
+  "clear.section.title": "診察開始でクリアする項目",
+  "clear.section.hint": "ホームの「診察開始」を押すと、ここで選んだ項目が消えます。患者ごとの記録を残したい欄は外してください。",
   "settings.fullReset.btn": "全データを消去する",
   "settings.fullReset.hint": "全ワークスペース・設定を完全に削除します。元に戻せません。",
   "settings.fullReset.confirm": "全ワークスペースのデータと設定をすべて消去します。この操作は元に戻せません。本当に消去しますか？",
