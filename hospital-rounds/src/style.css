@@ -5,7 +5,7 @@
  * 集中。順序は specificity の上書き関係を保つため:
  *   1. base   — :root variables, body, button base, iconBtn
  *   2. header — webWarningBanner, header common, qrScan overlay, headerInner
- *   3. views  — .view, docsView, docsDemoBar, grid, patientBtn, detailHeaderRow
+ *   3. views  — .view, docsView, grid, patientBtn, detailHeaderRow
  *   4. detail — detailTop / statusPick / statusBtn / detailTransferredBanner
  *   5. formats — formatStrip / formatInput / formatEdit / formatListRow /
  *                formatGroupToggle / qrFormatMenu

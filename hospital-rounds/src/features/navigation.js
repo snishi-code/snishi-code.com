@@ -100,7 +100,7 @@ export function createNavigators(deps) {
 // `import.meta.env.BASE_URL` は vite-plugin-singlefile が `./` に上書き
 // するので使わず、document.baseURI から導出する。
 export function createDocsOpener(deps) {
-  const { docsBundle, renderDocsDemo } = deps;
+  const { docsBundle } = deps;
   const docsBase = new URL("./", document.baseURI).pathname;
 
   return function openDocsPage(pageName) {
@@ -111,6 +111,5 @@ export function createDocsOpener(deps) {
       .replaceAll("__BASE__/", docsBase);
     iframe.srcdoc = html;
     showView("docs");
-    if (typeof renderDocsDemo === "function") renderDocsDemo();
   };
 }

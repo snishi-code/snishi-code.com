@@ -39,7 +39,7 @@ import { initSettingsQr, refreshSettingsQrIfActive, setOnSettingsApplied } from 
 import { createEditToggle } from "./features/edit-toggle.js";
 // room.js の手動ソート (sortPatientsByRoom/invalidateSortSnapshot) は v8.7 で廃止 (自動ソート化)
 import { wireScanButton } from "./features/qr-scan.js";
-import { initDocsDemo, renderDocsDemo, resetDocsDemo } from "./docs/docs-demo.js";
+// docs-demo.js (説明書のインタラクティブデモ) は v8.9.4 で撤去
 import { initNoAutofill } from "./features/no-autofill.js";
 import { maybeShowPwaInitDialog } from "./features/pwa-init.js";
 import { maybeShowDisclaimer } from "./features/splash-disclaimer.js";
@@ -80,7 +80,7 @@ const { navToHome, navToMemo, navToShared, navToSettings } = createNavigators({
   doRenderHome, doRenderMemo, doRenderShared, renderSettings,
 });
 
-const openDocsPage = createDocsOpener({ docsBundle: DOCS_BUNDLE, renderDocsDemo });
+const openDocsPage = createDocsOpener({ docsBundle: DOCS_BUNDLE });
 
 // ============================
 // Boot 2: Settings / Detail wiring
@@ -393,23 +393,10 @@ requestStoragePersistence();
 }
 
 // ============================
-// Boot 14: Docs demo + ヘッダー高さ measurement
+// Boot 14: ヘッダー高さ measurement
 // ============================
-// 説明書ビューのインタラクティブデモバーを初期化 (リロード btn 紐づけ)。
-// state は docs-demo.js 内のメモリのみ。実患者・実 settings に影響なし。
-initDocsDemo();
-
-// 説明書 (data-view="docs") を抜けた瞬間にデモ state をリセット。
-// MutationObserver で疎結合に検知 (showView や navToXxx を改造せずに済む)。
-{
-  let _prevView = document.documentElement.dataset.view;
-  const obs = new MutationObserver(() => {
-    const cur = document.documentElement.dataset.view;
-    if (_prevView === "docs" && cur !== "docs") resetDocsDemo();
-    _prevView = cur;
-  });
-  obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-view"] });
-}
+// (説明書のインタラクティブデモ docs-demo.js は v8.9.4 で撤去。説明書は純粋な
+//  HTML を iframe 表示するのみ)
 
 // ヘッダー高さを CSS 変数化。.detailTop の sticky 用 top オフセットに使う。
 {
