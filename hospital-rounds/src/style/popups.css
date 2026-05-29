@@ -173,11 +173,13 @@
       border-color: var(--status-blue-bd);
       background: var(--status-blue-bg);
     }
-    /* 切替ボタン (label + meta)。透明・左寄せでリストっぽく */
+    /* 切替ボタン (label + meta)。透明・左寄せでリストっぽく。
+       .popupMenu button { width:100% } を打ち消す (!important) */
     .wsPickerMain {
       flex: 1 1 auto;
       min-width: 0;
-      width: auto;
+      width: auto !important;
+      margin-bottom: 0 !important;
       text-align: left;
       background: transparent;
       border: 0;
@@ -197,12 +199,13 @@
       font-size: 11px;
       color: var(--muted);
     }
-    /* リネーム鉛筆 */
+    /* リネーム鉛筆。.popupMenu button { width:100% } を打ち消す (!important) */
     .wsPickerEdit {
       flex: 0 0 auto;
-      width: 36px;
+      width: 36px !important;
       height: 36px;
       min-width: 0;
+      margin-bottom: 0 !important;
       padding: 0;
       border: 1px solid var(--line);
       background: #fff;
