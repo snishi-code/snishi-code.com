@@ -53,14 +53,7 @@ function renderFormatListForPanel(panel) {
     name.textContent = f.name;
     row.appendChild(name);
 
-    const meta = document.createElement("span");
-    meta.className = "formatListMeta";
-    // 項目の kind を要約: ユニークな kind を i18n ラベルで列挙 (1 種なら 1 つ、混在なら複数)
-    const kindsInFmt = Array.from(new Set((f.items || []).map(it => it.kind || "text")));
-    meta.textContent = kindsInFmt.length
-      ? kindsInFmt.map(k => t("format.itemKind." + k)).join(" / ")
-      : "";
-    row.appendChild(meta);
+    // (kind 要約メタは撤去: 設定一覧では不要)
 
     const actions = document.createElement("span");
     actions.className = "formatListActions";

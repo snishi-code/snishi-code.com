@@ -356,12 +356,14 @@
       color: var(--text);
     }
 
+    /* 全行で列を揃えるため grid。列: ラベル | 様式 | 補助欄(単位/正常文) | 削除。
+       kind 以外は fr でレスポンシブ。kind は「分数 (a/b)」が入る固定幅。 */
     .formatEditItemRow {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1.3fr) 32px;
       align-items: center;
       gap: 6px;
       margin-bottom: 6px;
-      min-width: 0;
     }
 
     .formatEditItemLabel,
@@ -372,24 +374,13 @@
       border-radius: 6px;
       font-size: 13px;
       min-width: 0;
+      width: 100%;
       box-sizing: border-box;
     }
 
-    .formatEditItemLabel {
-      flex: 1 1 80px;
-    }
-
-    .formatEditItemUnit {
-      flex: 0 1 70px;
-    }
-
-    .formatEditItemNormal {
-      flex: 2 1 100px;
-    }
-
-    /* 様式 (kind) セレクタ。ラベルと補助欄の間に挟む */
+    /* 様式 (kind) セレクタ。ラベルと補助欄の間 (固定幅列) */
     .formatEditItemKind {
-      flex: 0 0 auto;
+      width: 100%;
       padding: 6px 4px;
       border: 1px solid var(--line);
       border-radius: 6px;

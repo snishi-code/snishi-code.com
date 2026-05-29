@@ -1,11 +1,11 @@
 "use strict";
 
-import { appState, markUpdated, scheduleSave } from "../store.js";
+import { appState } from "../store.js";
 import { STATUS } from "../constants.js";
 import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
 import { makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
 import { formatPatientLabel, isRoomSortActive } from "../features/room.js";
-import { bindTapOrLongPress, nextStatusInCycle, statusOnLongPress } from "./detail.js";
+import { openStatusPicker } from "./detail.js";
 import { t } from "../i18n.js";
 
 let _editMode = false;
@@ -65,21 +65,15 @@ export function renderHome(onPatientClick) {
     btn.textContent = displayName;
     btn.setAttribute("aria-label", displayName);
     if (_editMode) {
-      // 編集モード: タップ＝ステータスサイクル / 長押し＝白へリセット（詳細画面の名前ボタンと同仕様）
-      const setStatus = (next) => {
+      // 編集モード: タップでステータス選択ポップアップ (患者画面と同仕様に統一)
+      btn.addEventListener("click", () => {
         const idx = appState.patients.indexOf(p);
         if (idx < 0) return;
-        p.status = next;
-        markUpdated(idx + 1);
-        btn.className = "patientBtn " + statusClass(next);
-        scheduleSave();
-        updateCountChip();
-      };
-      bindTapOrLongPress(
-        btn,
-        () => setStatus(nextStatusInCycle(p.status)),
-        () => setStatus(statusOnLongPress(p.status))
-      );
+        openStatusPicker(idx, (s) => {
+          btn.className = "patientBtn " + statusClass(s);
+          updateCountChip();
+        });
+      });
     } else {
       if (onPatientClick) {
         btn.addEventListener("click", () => onPatientClick(i));

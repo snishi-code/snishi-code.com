@@ -36,6 +36,37 @@ export function statusOnLongPress(current) {
   return current === STATUS.NONE ? STATUS.BLUE : STATUS.NONE;
 }
 
+// ステータス選択ポップアップ (患者画面・ホーム編集モード共用)。色＋形マークの
+// 大きいボックスを横1行で出す。単一選択なので「選んだら閉じる」(close-on-select)。
+//   patientIdx: 0-based。onChange(newStatus): 選択後の view 再描画 (caller 責務)。
+export function openStatusPicker(patientIdx, onChange) {
+  const p = appState.patients[patientIdx];
+  const overlay = document.getElementById("statusPickerOverlay");
+  const list = document.getElementById("statusPickerList");
+  if (!p || !overlay || !list) return;
+  list.textContent = "";
+  // 色名テキスト/タイトルは出さず色＋形マークのみ。ラベルは aria-label で SR 対応。
+  for (const opt of getStatusOptions()) {
+    const box = document.createElement("button");
+    box.type = "button";
+    box.className = "statusPickerBox" + (p.status === opt.status ? " selected" : "");
+    const fg = opt.color === "#ffffff" ? "#111827" : "#fff";
+    box.style.cssText = `background:${opt.color};border:2px solid ${opt.borderColor};color:${fg};`;
+    box.textContent = opt.mark; // 無印(白)は空
+    box.title = opt.label;
+    box.setAttribute("aria-label", opt.label);
+    box.addEventListener("click", () => {
+      p.status = opt.status;
+      markUpdated(patientIdx + 1);
+      scheduleSave();
+      overlay.classList.remove("active");
+      if (onChange) onChange(opt.status);
+    });
+    list.appendChild(box);
+  }
+  overlay.classList.add("active");
+}
+
 // シンプルな「タップ vs 長押し」判定。長押し閾値 600ms。
 export function bindTapOrLongPress(el, onTap, onLongPress, longMs = 600) {
   let timer = null;
@@ -486,50 +517,15 @@ export function initStatusButtons(renderHomeFn) {
   const editBtn = document.getElementById("detailEditBtn");
   const container = document.querySelector("#detailView .detailTop");
 
-  const setStatus = (next) => {
-    const p = appState.patients[selectedNo - 1];
-    if (!p) return;
-    p.status = next;
-    markUpdated(selectedNo);
-    setSelectedStatusButtons(next);
-    scheduleSave();
-    if (renderHomeFn) renderHomeFn();
-    renderQrIfNeeded();
-  };
-
-  // ステータス選択ポップアップ: 色＋形マーク＋文字の大きい行から選ぶ。
-  // 小さいボタンの巡回タップより色盲/老眼に優しく、青(★)も選択肢として可視化。
-  const openStatusPicker = () => {
-    const p = appState.patients[selectedNo - 1];
-    const overlay = document.getElementById("statusPickerOverlay");
-    const list = document.getElementById("statusPickerList");
-    if (!p || !overlay || !list) return;
-    list.textContent = "";
-    // 色名テキスト/タイトルは出さず、色＋形マークの大きいボックスを横1行で並べる。
-    // ラベルは title/aria-label に残しスクリーンリーダー対応 (視覚は色＋形のみ)。
-    for (const opt of getStatusOptions()) {
-      const box = document.createElement("button");
-      box.type = "button";
-      box.className = "statusPickerBox" + (p.status === opt.status ? " selected" : "");
-      const fg = opt.color === "#ffffff" ? "#111827" : "#fff";
-      box.style.cssText = `background:${opt.color};border:2px solid ${opt.borderColor};color:${fg};`;
-      box.textContent = opt.mark; // 無印(白)は空
-      box.title = opt.label;
-      box.setAttribute("aria-label", opt.label);
-      box.addEventListener("click", () => {
-        setStatus(opt.status);
-        overlay.classList.remove("active");
-      });
-      list.appendChild(box);
-    }
-    overlay.classList.add("active");
-  };
-
   if (nameBtn) {
     // タップでステータス選択ポップアップを開く (旧: タップ巡回/長押し青)。
     nameBtn.addEventListener("click", () => {
       if (nameToggle?.isEditing()) return; // 編集中は開かない
-      openStatusPicker();
+      openStatusPicker(selectedNo - 1, (s) => {
+        setSelectedStatusButtons(s);
+        if (renderHomeFn) renderHomeFn();
+        renderQrIfNeeded();
+      });
     });
   }
 
