@@ -9,7 +9,7 @@ import {
   setAppState, setSelectedNo,
   saveNow, saveSettings,
   normalizeLoaded,
-  setMarkUpdatedHandler, requestStoragePersistence,
+  requestStoragePersistence,
   initStore, flushSavePending, setOnWorkspaceChanged,
 } from "./store.js";
 
@@ -37,7 +37,7 @@ import { initSharedQr, refreshSharedQrIfActive, initMemoQr, refreshMemoQrIfActiv
 import { initHomeQr, refreshHomeQrIfActive } from "./features/qr-home.js";
 import { initSettingsQr, refreshSettingsQrIfActive, setOnSettingsApplied } from "./features/qr-settings.js";
 import { createEditToggle } from "./features/edit-toggle.js";
-import { sortPatientsByRoom, invalidateSortSnapshot } from "./features/room.js";
+// room.js の手動ソート (sortPatientsByRoom/invalidateSortSnapshot) は v8.7 で廃止 (自動ソート化)
 import { wireScanButton } from "./features/qr-scan.js";
 import { initDocsDemo, renderDocsDemo, resetDocsDemo } from "./docs/docs-demo.js";
 import { initNoAutofill } from "./features/no-autofill.js";
@@ -278,24 +278,7 @@ initHomeQr();
 initSettingsQr();
 setOnSettingsApplied(() => refreshPatientUI());
 
-// 部屋番号でソート (home/memo/shared 共通)。現在開いている view を再描画。
-function doSortByRoom() {
-  if (!confirm(t("main.sortByRoom.confirm"))) return;
-  const cur = appState.patients[selectedNo - 1];
-  sortPatientsByRoom();
-  if (cur) {
-    const idx = appState.patients.indexOf(cur);
-    if (idx >= 0) setSelectedNo(idx + 1);
-  }
-  doRenderHome();
-  doRenderDetail();
-  const viewId = document.querySelector(".view.active")?.id;
-  if (viewId === "memoView") doRenderMemo();
-  else if (viewId === "sharedView") doRenderShared();
-}
-document.getElementById("homeRoomSortBtn")?.addEventListener("click", doSortByRoom);
-document.getElementById("memoRoomSortBtn")?.addEventListener("click", doSortByRoom);
-document.getElementById("sharedRoomSortBtn")?.addEventListener("click", doSortByRoom);
+// v8.7+: 部屋番号順は自動 (各 view の描画時に ensureRoomOrder)。手動ソートボタンは撤去。
 
 // 共有画面：×でそのまま閉じる（受信内容を続きでスキャンするケースに備え確認なし）
 document.getElementById("sharedPasteCloseBtn")?.addEventListener("click", () => {
@@ -335,7 +318,7 @@ document.getElementById("resetBtn")?.addEventListener("click", async () => {
 });
 
 document.getElementById("clearAllBtn")?.addEventListener("click", () => {
-  if (!confirm(t("clear.confirm"))) return;
+  if (!confirm(t("home.start.confirm"))) return;
   const ct = settings.clearTargets;
   const now = Date.now();
   for (const p of appState.patients) {
@@ -358,10 +341,6 @@ document.getElementById("clearAllBtn")?.addEventListener("click", () => {
 
 // ============================
 // Boot 10: Lifecycle hooks (save flush / workspace switch)
-// ============================
-// 患者編集のたびに room-sort のキャッシュを破棄
-setMarkUpdatedHandler(() => invalidateSortSnapshot());
-
 // ページ離脱・バックグラウンド化時に op-batch + 保存待ちを即時フラッシュ
 window.addEventListener("beforeunload", () => {
   try { flushSavePending(); } catch (_) {}

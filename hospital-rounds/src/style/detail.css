@@ -82,6 +82,23 @@
       outline-offset: 3px;
     }
 
+    /* ステータススウォッチ (患者名の隣)。色+記号でステータスを示し、タップで選択 */
+    .detailStatusBtn {
+      flex: 0 0 auto;
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      padding: 0;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+    }
+
     .detailTopActions {
       display: flex;
       gap: 8px;
@@ -89,6 +106,21 @@
       justify-content: flex-end;
       align-items: center;
       min-width: 100px;
+    }
+
+    /* 文字ボタン (診察開始 / 編集): タッチしやすい幅・高さを確保 */
+    .homeStartBtn,
+    .editTextBtn {
+      min-height: 40px;
+      padding: 8px 16px;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    .homeStartBtn {
+      /* 診察開始は主要操作。少し強調 (青系) */
+      border-color: var(--blue-border);
+      background: var(--blue-light);
+      color: var(--blue);
     }
 
     /* 患者画面の「(移)転棟済」表示バナー (患者ヘッダ直下) */

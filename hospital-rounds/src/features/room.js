@@ -63,49 +63,18 @@ function patientRoomCompare(a, b) {
   return 0;
 }
 
-// True if a transient pre-sort snapshot exists (sort button is "active/colored")
-export function isRoomSortActive() {
-  return Array.isArray(appState._sortSnapshot) && appState._sortSnapshot.length > 0;
-}
-
-// Drop the snapshot (called when any data mutation invalidates the prior order)
-export function invalidateSortSnapshot() {
-  if (appState._sortSnapshot) {
-    appState._sortSnapshot = null;
-  }
-}
-
-// Toggle: 1st tap = sort and remember order. 2nd tap (no edits between) = restore.
-export function toggleSortByRoom() {
-  // Restore
-  if (isRoomSortActive()) {
-    const pids = appState._sortSnapshot;
-    const byPid = new Map(appState.patients.map(p => [p.pid, p]));
-    const restored = [];
-    for (const pid of pids) {
-      const p = byPid.get(pid);
-      if (p) { restored.push(p); byPid.delete(pid); }
-    }
-    // Anything not in the snapshot (added since) goes at the end
-    for (const p of byPid.values()) restored.push(p);
-    const before = appState.patients.slice();
-    appState.patients = restored;
-    appState._sortSnapshot = null;
-    for (let i = 0; i < appState.patients.length; i++) {
-      const p = appState.patients[i];
-    }
-    saveNow();
-    return;
-  }
-  // Apply sort
-  appState._sortSnapshot = appState.patients.map(p => p.pid);
-  const before = appState.patients.slice();
+// v8.7+: 部屋番号順は「自動」。手動トグルは廃止。各 view の入室時 (描画前) に
+// ensureRoomOrder() を呼び、appState.patients を部屋番号順に in-place ソートする。
+// 「表示中に動く」気持ち悪さを避けるため、描画前にだけ並べ替える (描画後は動かさない)。
+// 移動済 (transferred) は末尾、部屋番号なしも末尾グループ。
+//
+// 戻り値: 並びが変わったら true (保存要否の判定に使える)。
+export function ensureRoomOrder() {
+  const before = appState.patients.map(p => p.pid);
   appState.patients.sort(patientRoomCompare);
+  let changed = false;
   for (let i = 0; i < appState.patients.length; i++) {
-    const p = appState.patients[i];
+    if (appState.patients[i].pid !== before[i]) { changed = true; break; }
   }
-  saveNow();
+  return changed;
 }
-
-// Back-compat alias used by main.js
-export const sortPatientsByRoom = toggleSortByRoom;

@@ -2,10 +2,10 @@
 
 import { appState } from "../store.js";
 import { STATUS } from "../constants.js";
-import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
+import { openActionMenu } from "../features/drag.js";
 import { makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
-import { formatPatientLabel, isRoomSortActive } from "../features/room.js";
-import { openStatusPicker } from "./detail.js";
+import { formatPatientLabel, ensureRoomOrder } from "../features/room.js";
+import { openStatusPicker, bindTapOrLongPress } from "./detail.js";
 import { t } from "../i18n.js";
 
 let _editMode = false;
@@ -41,16 +41,10 @@ function renderHomeTagFilter(onChange) {
   slot.appendChild(picker);
 }
 
-function renderHomeSortBtn() {
-  const btn = document.getElementById("homeRoomSortBtn");
-  if (!btn) return;
-  btn.style.display = "";
-  btn.classList.toggle("editActive", isRoomSortActive());
-}
-
 export function renderHome(onPatientClick) {
+  // 自動部屋番号順 (描画前に in-place ソート。表示中は動かさない)
+  ensureRoomOrder();
   renderHomeTagFilter(() => renderHome(onPatientClick));
-  renderHomeSortBtn();
   const homeGrid = document.getElementById("homeGrid");
   if (!homeGrid) return;
   homeGrid.textContent = "";
@@ -75,10 +69,12 @@ export function renderHome(onPatientClick) {
         });
       });
     } else {
-      if (onPatientClick) {
-        btn.addEventListener("click", () => onPatientClick(i));
-      }
-      bindLongPressAndDrag(btn, () => appState.patients.indexOf(p), onPatientDrop, openActionMenu);
+      // タップ=開く / 長押し=操作メニュー (ドラッグ並べ替えは自動ソート化で撤去)
+      bindTapOrLongPress(
+        btn,
+        () => { if (onPatientClick) onPatientClick(i); },
+        () => openActionMenu(appState.patients.indexOf(p))
+      );
     }
     frag.appendChild(btn);
   }
