@@ -196,7 +196,8 @@
       color: var(--focus);
     }
     .tagPickerClearBtn {
-      flex: 0 0 auto;
+      flex: 1;
+      width: 100%;
       padding: 6px 8px;
       border: 1px solid var(--line);
       background: #fff;
@@ -206,7 +207,8 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      margin-left: auto;
+      font-size: 12px;
+      font-weight: 700;
     }
     .tagPickerClearBtn:hover {
       border-color: #b91c1c;

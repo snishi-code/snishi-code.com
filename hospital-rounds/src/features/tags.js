@@ -54,18 +54,18 @@ const STATUS_TAG_DEFS = [
   { value: STATUS_TAG_PREFIX + STATUS.YELLOW, get label() { return t("tagStatus.yellow"); }, color: "#f59e0b", borderColor: "#b45309" },
   { value: STATUS_TAG_PREFIX + STATUS.GREEN,  get label() { return t("tagStatus.green"); },  color: "#14b8a6", borderColor: "#0f766e" },
   { value: STATUS_TAG_PREFIX + STATUS.GRAY,   get label() { return t("tagStatus.gray"); },   color: "#6b7280" },
-  { value: STATUS_TAG_PREFIX + STATUS.BLUE,   get label() { return t("tagStatus.blue"); },   color: "#bfdbfe", borderColor: "#2563eb" },
+  { value: STATUS_TAG_PREFIX + STATUS.BLUE,   get label() { return t("tagStatus.blue"); },   color: "#2563eb", borderColor: "#1e3a8a" },
 ];
 
-// 色覚多様性対応: ステータスを「色だけ」でなく形マークでも示す。タグ選択チップ/
-// ピッカーの swatch に重ねる (色＋形の2軸)。形は互いに明確に異なるものを選ぶ
-// (三角/チェック/×/＋)。NONE は無印。i18n 対象外 (形マーク)。
+// 色覚多様性対応: ステータスを「色だけ」でなく形マークでも示す。各色に 1:1 の記号を
+// 割り当てる正準マッピング (CLAUDE.md にも明記)。形は互いに明確に異なるものを選ぶ。
+// 青は ★ (＋ は十字ルール違反 + 視認性が悪いため v8.4 で変更)。NONE は無印。i18n 対象外。
 const STATUS_TAG_MARK = {
   [STATUS.NONE]: "",
   [STATUS.YELLOW]: "▲",
   [STATUS.GREEN]: "✓",
   [STATUS.GRAY]: "✕",
-  [STATUS.BLUE]: "＋",
+  [STATUS.BLUE]: "★",
 };
 
 export function isStatusTag(value) {
@@ -78,6 +78,21 @@ export function getStatusFromTag(value) {
 
 export function getStatusTagMark(value) {
   return STATUS_TAG_MARK[getStatusFromTag(value)] || "";
+}
+
+// ステータス選択ポップアップ用の選択肢 (色 + 枠 + ラベル + 形マーク)。
+// STATUS_TAG_DEFS と STATUS_TAG_MARK を単一ソースに、患者画面のステータス選択で使う。
+export function getStatusOptions() {
+  return STATUS_TAG_DEFS.map(d => {
+    const status = getStatusFromTag(d.value);
+    return {
+      status,
+      label: d.label,
+      color: d.color,
+      borderColor: d.borderColor || d.color,
+      mark: STATUS_TAG_MARK[status] || "",
+    };
+  });
 }
 
 // ============================================================================
@@ -395,38 +410,18 @@ export function makeTagPicker(opts) {
 
   function refreshPopup() {
     popup.textContent = "";
-    // Mode toggle row (always shown when withModeToggle is true, regardless of grouping)
+    // フィルタ用ピッカー: かつ/または のモードトグルは撤去 (AND 固定で直感的に)。
+    // 選択クリアのみ短文ボタンで残す。(v8.4)
     if (withModeToggle) {
       const modeRow = document.createElement("div");
       modeRow.className = "tagPickerModeRow";
-      const mkBtn = (mode, svg, title) => {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "tagPickerModeBtn" + (getSharedFilterMode() === mode ? " selected" : "");
-        b.innerHTML = svg;
-        b.title = title;
-        b.addEventListener("click", (e) => {
-          e.stopPropagation();
-          setSharedFilterMode(mode);
-          refreshPopup();
-          refreshTrigger();
-          if (onChange) _pendingOnChange = onChange;
-        });
-        return b;
-      };
-      modeRow.appendChild(mkBtn(TAG_FILTER_MODE_AND, AND_SVG, t("tag.filter.mode.and")));
-      modeRow.appendChild(mkBtn(TAG_FILTER_MODE_OR, OR_SVG, t("tag.filter.mode.or")));
-      // Clear button (×) on the right of the mode toggles
       const clr = document.createElement("button");
       clr.type = "button";
       clr.className = "tagPickerClearBtn";
-      clr.title = t("tag.filter.clear.title");
-      clr.setAttribute("aria-label", t("tag.filter.clear.aria"));
-      clr.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+      clr.textContent = t("tag.filter.clear.label");
       clr.addEventListener("click", (e) => {
         e.stopPropagation();
         if (!getSelected().length) return;
-        if (!confirm(t("tag.filter.clear.confirm"))) return;
         setSelected([]);
         refreshPopup();
         refreshTrigger();

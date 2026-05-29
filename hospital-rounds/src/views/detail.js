@@ -7,7 +7,7 @@ import { STATUS } from "../constants.js";
 import { buildTabPayload } from "../payload.js";
 import { utf8ByteLength } from "../payload.js";
 import { qrcodegen } from "../libs/qrcodegen.js";
-import { makePatientTagPicker, getPatientTags, setPatientTags } from "../features/tags.js";
+import { makePatientTagPicker, getPatientTags, setPatientTags, getStatusOptions } from "../features/tags.js";
 import { makeRoomInput, formatPatientLabel } from "../features/room.js";
 import { isPatientTransferred } from "../features/move-patient.js";
 import { t } from "../i18n.js";
@@ -497,22 +497,43 @@ export function initStatusButtons(renderHomeFn) {
     renderQrIfNeeded();
   };
 
+  // ステータス選択ポップアップ: 色＋形マーク＋文字の大きい行から選ぶ。
+  // 小さいボタンの巡回タップより色盲/老眼に優しく、青(★)も選択肢として可視化。
+  const openStatusPicker = () => {
+    const p = appState.patients[selectedNo - 1];
+    const overlay = document.getElementById("statusPickerOverlay");
+    const list = document.getElementById("statusPickerList");
+    if (!p || !overlay || !list) return;
+    list.textContent = "";
+    for (const opt of getStatusOptions()) {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "statusPickerRow" + (p.status === opt.status ? " selected" : "");
+      const sw = document.createElement("span");
+      sw.className = "statusPickerSwatch";
+      const fg = opt.color === "#ffffff" ? "#111827" : "#fff";
+      sw.style.cssText = `background:${opt.color};border:2px solid ${opt.borderColor};color:${fg};`;
+      sw.textContent = opt.mark; // 無印(白)は空
+      const lbl = document.createElement("span");
+      lbl.className = "statusPickerLabel";
+      lbl.textContent = opt.label;
+      row.appendChild(sw);
+      row.appendChild(lbl);
+      row.addEventListener("click", () => {
+        setStatus(opt.status);
+        overlay.classList.remove("active");
+      });
+      list.appendChild(row);
+    }
+    overlay.classList.add("active");
+  };
+
   if (nameBtn) {
-    bindTapOrLongPress(
-      nameBtn,
-      () => {
-        if (nameToggle?.isEditing()) return; // 編集中はサイクルしない
-        const p = appState.patients[selectedNo - 1];
-        if (!p) return;
-        setStatus(nextStatusInCycle(p.status));
-      },
-      () => {
-        if (nameToggle?.isEditing()) return;
-        const p = appState.patients[selectedNo - 1];
-        if (!p) return;
-        setStatus(statusOnLongPress(p.status));
-      }
-    );
+    // タップでステータス選択ポップアップを開く (旧: タップ巡回/長押し青)。
+    nameBtn.addEventListener("click", () => {
+      if (nameToggle?.isEditing()) return; // 編集中は開かない
+      openStatusPicker();
+    });
   }
 
   nameToggle = createEditToggle({
