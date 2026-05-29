@@ -21,7 +21,7 @@ import { renderSettings, initSettingsView } from "./views/settings-view.js";
 
 import { showView, syncDetailMemoDisplay, createNavigators, createDocsOpener } from "./features/navigation.js";
 import { createRenderers } from "./features/renderers.js";
-import { initHeaderMenu, closeHeaderMenu } from "./features/header-menu.js";
+// header-menu.js (ハンバーガー) は v8.6 で廃止。import 削除済み。
 import { initAppTitle, refreshAppWsLabel } from "./features/app-title.js";
 import { initWsPicker } from "./features/ws-picker.js";
 import { DOCS_BUNDLE } from "./docs-bundle.js";
@@ -115,11 +115,8 @@ window.addEventListener("popstate", (e) => {
 
 document.getElementById("headerMemoBtn")?.addEventListener("click", navToMemo);
 document.getElementById("headerSharedBtn")?.addEventListener("click", navToShared);
-// 設定ボタンはハンバーガーメニュー内に移動済 (v7.6+)。click で menu を閉じてから遷移
-document.getElementById("headerSettingsBtn")?.addEventListener("click", () => {
-  closeHeaderMenu();
-  navToSettings();
-});
+// 設定ボタン: ヘッダーに直置き (ハンバーガー廃止)
+document.getElementById("headerSettingsBtn")?.addEventListener("click", navToSettings);
 
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".helpLinkBtn");
@@ -320,20 +317,24 @@ wireScanButton("sharedPasteScanBtn", "sharedPasteArea");
 wireScanButton("adminImportScanBtn", "adminImportArea");
 
 // ============================
-// Boot 9: Reset / Clear actions (header menu)
+// Boot 9: Reset / Clear actions
+// resetBtn = 設定画面最下部「全データを消去する」= このOriginのLocalStorage + IndexedDB 全削除。
+// clearAllBtn = ホーム画面のクリアボタン = アクティブWSの患者データのみクリア (他WSは無関係)。
 // ============================
-document.getElementById("resetBtn")?.addEventListener("click", () => {
-  closeHeaderMenu();
-  if (!confirm(t("main.clearAllInput.confirm"))) return;
-  setAppState(normalizeLoaded(null));
-  saveNow();
-  doRenderHome();
-  doRenderDetail();
-  showView("home");
+document.getElementById("resetBtn")?.addEventListener("click", async () => {
+  if (!confirm(t("settings.fullReset.confirm"))) return;
+  // 全Origin消去: LocalStorage + IndexedDB を全削除してリロード
+  try { localStorage.clear(); } catch (_) {}
+  if (window.indexedDB) {
+    try {
+      const req = indexedDB.deleteDatabase("hospital-rounds");
+      await new Promise(r => { req.onsuccess = req.onerror = req.onblocked = r; });
+    } catch (_) {}
+  }
+  location.reload();
 });
 
 document.getElementById("clearAllBtn")?.addEventListener("click", () => {
-  closeHeaderMenu();
   if (!confirm(t("clear.confirm"))) return;
   const ct = settings.clearTargets;
   const now = Date.now();
@@ -417,10 +418,8 @@ titleToggle = createEditToggle({
 initWsPicker();
 
 // ============================
-// Boot 12: Header menu (☰) + storage label
+// Boot 12: storage label (ハンバーガーメニューは v8.6 で廃止)
 // ============================
-initHeaderMenu();
-
 const storageKeyLabel = document.getElementById("storageKeyLabel");
 if (storageKeyLabel) storageKeyLabel.textContent = `${STORAGE_KEYS.db}.${STORAGE_KEYS.store}`;
 

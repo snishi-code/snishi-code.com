@@ -753,10 +753,7 @@ function openFormatEditModal(target, panel, onSaved) {
     if (last && FORMAT_ITEM_KINDS.includes(last.kind)) _currentEdit.lastKind = last.kind;
   }
   // パネル表記をモーダルタイトル横に表示 (固定: ユーザーは変更不可)
-  const titleEl = document.querySelector("#formatEditOverlay .popupTitle");
-  if (titleEl) {
-    titleEl.textContent = t(_currentEdit.isNew ? "format.editTitle.new" : "format.editTitle.edit", { panel: _currentEdit.target.panel });
-  }
+  // タイトル表示なし (UIを簡潔に保つため)
   renderFormatEditForm();
   overlay.classList.add("active");
   const nameInp = document.getElementById("formatEditName");

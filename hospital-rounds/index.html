@@ -71,8 +71,9 @@
           <!-- lucide: users (people/team = チームへの申し送り。OS共有シートを連想させる share node を回避) -->
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </button>
-        <button class="secondary" id="headerMenuBtn" type="button" data-i18n-title="header.menu" data-i18n-aria="header.menu" title="メニュー" aria-label="メニュー">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <button class="secondary" id="headerSettingsBtn" type="button" data-i18n-title="header.settings" data-i18n-aria="header.settings" title="設定" aria-label="設定">
+          <!-- lucide: settings (gear) -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
       </div>
     </div>
@@ -94,6 +95,10 @@
         <div class="detailTopActions">
           <button class="iconBtn helpLinkBtn" data-help-page="02_ホーム" type="button" title="ホーム画面の説明" aria-label="ホーム画面の説明">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </button>
+          <button class="iconBtn" id="clearAllBtn" type="button" data-i18n-title="home.clear.tooltip" data-i18n-aria="home.clear.tooltip" title="クリア" aria-label="クリア">
+            <!-- lucide: eraser (消去 = 患者データをクリア) -->
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
           </button>
           <button class="iconBtn" id="homeShowQrBtn" type="button" data-i18n-title="home.qr.show" data-i18n-aria="home.qr.show" title="ホームQR表示" aria-label="ホームQR表示">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="5" y="5" width="3" height="3" fill="currentColor"/><rect x="16" y="5" width="3" height="3" fill="currentColor"/><rect x="5" y="16" width="3" height="3" fill="currentColor"/><rect x="14" y="14" width="3" height="3" fill="currentColor"/><rect x="19" y="14" width="2" height="2" fill="currentColor"/><rect x="14" y="19" width="2" height="2" fill="currentColor"/><rect x="19" y="19" width="2" height="2" fill="currentColor"/></svg>
@@ -402,6 +407,12 @@
           </div>
         </div>
       </div>
+
+      <!-- 全データ消去 (稀な操作。このOriginのすべてのLocalStorage+IndexedDBを削除) -->
+      <div class="card settingsDangerCard">
+        <button class="danger settingsFullResetBtn" id="resetBtn" type="button" data-i18n="settings.fullReset.btn">全データを消去する</button>
+        <p class="settingsDangerHint" data-i18n="settings.fullReset.hint">全ワークスペース・設定を完全に削除します。元に戻せません。</p>
+      </div>
       </div>
     </section>
 
@@ -546,21 +557,6 @@
       </div>
     </section>
 
-    <div class="popupMenuOverlay" id="headerMenuOverlay">
-      <div class="popupMenu menuIcons">
-        <button class="iconBtn" id="headerSettingsBtn" type="button" data-i18n-title="header.settings" data-i18n-aria="header.settings" title="設定" aria-label="設定">
-          <!-- lucide: settings (gear) -->
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
-        <button class="iconBtn" id="clearAllBtn" type="button" title="全患者クリア" aria-label="全患者クリア">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
-        </button>
-        <button class="iconBtn dangerIcon" id="resetBtn" type="button" title="全消去" aria-label="全消去">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-        </button>
-      </div>
-    </div>
-
     <div class="popupMenuOverlay" id="actionMenuOverlay">
       <div class="popupMenu actionMenu">
         <div class="popupTitle" id="actionMenuTitle">患者の操作</div>
@@ -609,7 +605,6 @@
     <!-- フォーマット編集モーダル (新規/編集共通) -->
     <div class="popupMenuOverlay" id="formatEditOverlay">
       <div class="popupMenu formatEditMenu">
-        <div class="popupTitle">フォーマット編集</div>
         <div class="formatEditBody">
           <div class="formatEditNameRow">
             <label class="formatEditField formatEditNameField">

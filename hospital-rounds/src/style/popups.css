@@ -120,23 +120,23 @@
 
     /* 患者ステータス選択ポップアップ: 色＋形マークの大きいボックスを横1行で。
        色名テキスト/タイトルは出さない (色盲/老眼は色+形+大きさで識別)。 */
+    /* ステータス選択ポップアップ: 5つのボックスを1行で。
+       popup 幅は auto で中身に合わせ、ボックスは aspect-ratio で正方形を維持。 */
     .popupMenu.statusPickerMenu {
-      width: min(92vw, 380px);
-      max-width: 380px;
+      width: auto;
       box-sizing: border-box;
     }
     #statusPickerList {
       display: flex;
       flex-direction: row;
-      align-items: center;
-      justify-content: center; /* 固定サイズのボックスを中央寄せ */
-      gap: 10px;
+      align-items: stretch;
+      gap: 8px;
       padding: 4px 0;
     }
     .statusPickerBox {
-      flex: 0 0 auto; /* 固定サイズ。flex+aspect-ratio の端数ズレを避け完全に揃える */
-      width: 56px;
-      height: 56px;
+      flex: 0 0 52px;
+      width: 52px;
+      height: 52px;
       border-radius: 12px;
       display: inline-flex;
       align-items: center;
