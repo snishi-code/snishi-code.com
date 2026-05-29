@@ -280,12 +280,18 @@ export function initQrNavButtons() {
 // Status buttons
 // ============================
 
-// 名前ボタンの背景色を現在ステータスに合わせて更新する。
-// 旧 setSelectedStatusButtons の置き換え（外部呼び出し互換のため同名で残置）。
+// ステータススウォッチ (色+記号) を現在ステータスに合わせて更新する。
+// v8.7+: ステータス表示は名前ボタンから専用スウォッチボタンへ移動。名前ボタンは
+// 編集トリガーになり、色は持たない (中立)。外部呼び出し互換のため同名で残置。
 export function setSelectedStatusButtons(status) {
-  const btn = document.getElementById("detailNameBtn");
-  if (!btn) return;
-  btn.className = "patientBtn " + statusClass(status);
+  const sw = document.getElementById("detailStatusBtn");
+  if (!sw) return;
+  const opt = getStatusOptions().find(o => o.status === status) || getStatusOptions()[0];
+  const fg = opt.color === "#ffffff" ? "#111827" : "#fff";
+  sw.style.background = opt.color;
+  sw.style.border = `2px solid ${opt.borderColor}`;
+  sw.style.color = fg;
+  sw.textContent = opt.mark; // 白(none)も記号(−)を持つ
 }
 
 // ============================
@@ -514,13 +520,14 @@ function setDetailEditing(on) {
 
 export function initStatusButtons(renderHomeFn) {
   const nameBtn = document.getElementById("detailNameBtn");
-  const editBtn = document.getElementById("detailEditBtn");
+  const statusBtn = document.getElementById("detailStatusBtn");
   const container = document.querySelector("#detailView .detailTop");
 
-  if (nameBtn) {
-    // タップでステータス選択ポップアップを開く (旧: タップ巡回/長押し青)。
-    nameBtn.addEventListener("click", () => {
-      if (nameToggle?.isEditing()) return; // 編集中は開かない
+  // ステータススウォッチ: タップでステータス選択ポップアップ (旧: 鉛筆の位置)
+  if (statusBtn) {
+    statusBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (nameToggle?.isEditing()) return;
       openStatusPicker(selectedNo - 1, (s) => {
         setSelectedStatusButtons(s);
         if (renderHomeFn) renderHomeFn();
@@ -529,8 +536,9 @@ export function initStatusButtons(renderHomeFn) {
     });
   }
 
+  // 患者名タップで編集モードへ (旧: 鉛筆。名前=テキストなのでタップで編集が自然)
   nameToggle = createEditToggle({
-    triggerBtn: editBtn,
+    triggerBtn: nameBtn,
     container,
     onEnter: () => {
       applyEditingDom(true);

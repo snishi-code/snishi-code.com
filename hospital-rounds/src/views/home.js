@@ -2,9 +2,10 @@
 
 import { appState } from "../store.js";
 import { STATUS } from "../constants.js";
-import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
+import { openActionMenu } from "../features/drag.js";
 import { makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
-import { formatPatientLabel, isRoomSortActive } from "../features/room.js";
+import { formatPatientLabel, ensureRoomOrder } from "../features/room.js";
+import { bindTapOrLongPress } from "./detail.js";
 import { t } from "../i18n.js";
 
 export function statusClass(status) {
@@ -35,16 +36,10 @@ function renderHomeTagFilter(onChange) {
   slot.appendChild(picker);
 }
 
-function renderHomeSortBtn() {
-  const btn = document.getElementById("homeRoomSortBtn");
-  if (!btn) return;
-  btn.style.display = "";
-  btn.classList.toggle("editActive", isRoomSortActive());
-}
-
 export function renderHome(onPatientClick) {
+  // 自動部屋番号順 (描画前に in-place ソート。表示中は動かさない)
+  ensureRoomOrder();
   renderHomeTagFilter(() => renderHome(onPatientClick));
-  renderHomeSortBtn();
   const homeGrid = document.getElementById("homeGrid");
   if (!homeGrid) return;
   homeGrid.textContent = "";
@@ -58,10 +53,13 @@ export function renderHome(onPatientClick) {
     const displayName = formatPatientLabel(p, String(i));
     btn.textContent = displayName;
     btn.setAttribute("aria-label", displayName);
-    if (onPatientClick) {
-      btn.addEventListener("click", () => onPatientClick(i));
-    }
-    bindLongPressAndDrag(btn, () => appState.patients.indexOf(p), onPatientDrop, openActionMenu);
+    // タップ=患者を開く / 長押し=操作メニュー (追加/削除/移動)。
+    // v8.7+: ステータス一括編集 (色パレット) は撤去。ドラッグ並べ替えも自動ソート化で撤去。
+    bindTapOrLongPress(
+      btn,
+      () => { if (onPatientClick) onPatientClick(i); },
+      () => openActionMenu(appState.patients.indexOf(p))
+    );
     frag.appendChild(btn);
   }
   homeGrid.appendChild(frag);

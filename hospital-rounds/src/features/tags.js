@@ -61,7 +61,7 @@ const STATUS_TAG_DEFS = [
 // 割り当てる正準マッピング (CLAUDE.md にも明記)。形は互いに明確に異なるものを選ぶ。
 // 青は ★ (＋ は十字ルール違反 + 視認性が悪いため v8.4 で変更)。NONE は無印。i18n 対象外。
 const STATUS_TAG_MARK = {
-  [STATUS.NONE]: "",
+  [STATUS.NONE]: "−",
   [STATUS.YELLOW]: "▲",
   [STATUS.GREEN]: "✓",
   [STATUS.GRAY]: "✕",

@@ -1,12 +1,13 @@
 "use strict";
 
 import { appState, selectedNo, markUpdated, scheduleSave } from "../store.js";
-import { bindLongPressAndDrag, onPatientDrop, openActionMenu } from "../features/drag.js";
+import { openActionMenu } from "../features/drag.js";
 import { syncDetailMemoDisplay } from "../features/navigation.js";
 import { makePatientTagPicker, makeSharedTagFilterPicker, patientMatchesSharedFilter } from "../features/tags.js";
-import { makeRoomInput, formatPatientLabel, isRoomSortActive } from "../features/room.js";
+import { makeRoomInput, formatPatientLabel, ensureRoomOrder } from "../features/room.js";
 import { refreshMemoQrIfActive } from "../features/qr-shared.js";
 import { statusClass } from "./home.js";
+import { bindTapOrLongPress } from "./detail.js";
 
 let _editMode = false;
 
@@ -20,19 +21,13 @@ function renderMemoTagFilter(rerender) {
   slot.appendChild(makeSharedTagFilterPicker(rerender));
 }
 
-function renderMemoSortBtn() {
-  const btn = document.getElementById("memoRoomSortBtn");
-  if (!btn) return;
-  btn.style.display = "";
-  btn.classList.toggle("editActive", isRoomSortActive());
-}
-
 export function renderMemoScreen(renderHomeFn, opts, navigateToPatientFn) {
   const rerender = () => renderMemoScreen(renderHomeFn, opts, navigateToPatientFn);
+  // 自動部屋番号順 (編集モード中はインライン部屋入力があるので並べ替えない)
+  if (!_editMode) ensureRoomOrder();
   renderMemoTagFilter(rerender);
   // 上のタグフィルターが変わったらメモQRの対象も追随させる。
   refreshMemoQrIfActive();
-  renderMemoSortBtn();
   const memoListHost = document.getElementById("memoListHost");
   if (!memoListHost) return;
   const len = appState.patients.length;
@@ -56,7 +51,6 @@ export function renderMemoScreen(renderHomeFn, opts, navigateToPatientFn) {
       numInp.className = "memoNoInp";
       numInp.placeholder = String(i);
       numInp.value = String(appState.patients[i - 1]?.name ?? "");
-      bindLongPressAndDrag(numInp, () => appState.patients.indexOf(p), onPatientDrop, openActionMenu);
       numInp.addEventListener("input", () => {
         const next = String(numInp.value ?? "");
         const cur = appState.patients[i - 1];
@@ -77,12 +71,11 @@ export function renderMemoScreen(renderHomeFn, opts, navigateToPatientFn) {
       const displayName = formatPatientLabel(p, String(i));
       numBtn.textContent = displayName;
       numBtn.title = displayName;
-      bindLongPressAndDrag(
+      // タップ=患者へ / 長押し=操作メニュー (ドラッグ並べ替えは自動ソート化で撤去)
+      bindTapOrLongPress(
         numBtn,
-        () => appState.patients.indexOf(p),
-        onPatientDrop,
-        openActionMenu,
-        navigateToPatientFn ? () => navigateToPatientFn(i) : null
+        () => { if (navigateToPatientFn) navigateToPatientFn(i); },
+        () => openActionMenu(appState.patients.indexOf(p))
       );
       row.appendChild(numBtn);
     }
