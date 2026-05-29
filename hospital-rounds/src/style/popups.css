@@ -118,51 +118,35 @@
       margin-bottom: 10px;
     }
 
-    /* 患者ステータス選択ポップアップ (色＋形マーク＋文字の大きい行) */
+    /* 患者ステータス選択ポップアップ: 色＋形マークの大きいボックスを横1行で。
+       色名テキスト/タイトルは出さない (色盲/老眼は色+形+大きさで識別)。 */
     .popupMenu.statusPickerMenu {
-      width: min(92vw, 360px);
-      max-width: 360px;
+      width: min(92vw, 380px);
+      max-width: 380px;
       box-sizing: border-box;
     }
     #statusPickerList {
       display: flex;
-      flex-direction: column;
-      gap: 6px;
+      flex-direction: row;
+      gap: 8px;
+      padding: 4px 0;
     }
-    .statusPickerRow {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 12px;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: #fff;
-      cursor: pointer;
-      text-align: left;
-      min-height: 52px;
-    }
-    .statusPickerRow:hover { background: #f3f4f6; }
-    .statusPickerRow.selected {
-      border-color: var(--status-blue-bd);
-      background: var(--status-blue-bg);
-    }
-    .statusPickerSwatch {
-      flex: 0 0 auto;
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
+    .statusPickerBox {
+      flex: 1 1 0;
+      min-width: 0;
+      aspect-ratio: 1;
+      border-radius: 12px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
+      font-size: 22px;
       font-weight: 700;
       line-height: 1;
+      cursor: pointer;
     }
-    .statusPickerLabel {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text);
+    .statusPickerBox.selected {
+      outline: 3px solid var(--focus, #2563eb);
+      outline-offset: 2px;
     }
 
     /* WS picker (ヘッダー WS 名タップで開く軽量 popup。切替 + 新規のみ) */

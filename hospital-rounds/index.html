@@ -652,7 +652,7 @@
       </div>
     </div>
 
-    <div class="popupMenuOverlay" id="importActionOverlay">
+    <div class="popupMenuOverlay" id="importActionOverlay" data-no-backdrop-close>
       <div class="popupMenu">
         <div class="popupTitle">データ取込</div>
         <div style="font-size: 14px; margin-bottom: 15px; color: #333; line-height: 1.4;">患者は末尾に新規追加されます (青ステータス)。<br>設定も合わせて取り込みますか？<br><span style="font-size:12px;color:#6b7280;">※管理機能の設定は引き継がれません</span></div>
@@ -664,7 +664,7 @@
     </div>
 
     <!-- PWA 初回起動: ブラウザに残ったテストデータをクリアするか確認 -->
-    <div class="popupMenuOverlay" id="pwaInitOverlay">
+    <div class="popupMenuOverlay" id="pwaInitOverlay" data-no-backdrop-close>
       <div class="popupMenu">
         <div class="popupTitle" data-i18n="pwa.init.title">テスト用データが残っています</div>
         <div style="font-size:13px;color:#333;line-height:1.5;margin-bottom:12px;white-space:pre-line;" data-i18n="pwa.init.body">ブラウザでのテストデータが端末に残っています。
@@ -675,7 +675,7 @@
     </div>
 
     <!-- 月 1 回程度の利用注意スプラッシュ。splash-disclaimer.js が表示制御 -->
-    <div class="popupMenuOverlay" id="disclaimerOverlay">
+    <div class="popupMenuOverlay" id="disclaimerOverlay" data-no-backdrop-close>
       <div class="popupMenu">
         <div class="popupTitle" id="disclaimerTitle">これは個人メモです</div>
         <div id="disclaimerBody" style="font-size:13px;color:#333;line-height:1.6;margin-bottom:14px;white-space:pre-line;text-align:left;">本アプリは医師個人の業務支援メモであり、正式な医療記録ではありません。</div>
@@ -769,7 +769,6 @@
         <button class="popupCloseX" type="button" data-close-popup data-i18n-aria="common.close" aria-label="閉じる">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
-        <div class="popupTitle" data-i18n="status.picker.title">ステータスを選択</div>
         <div id="statusPickerList"></div>
       </div>
     </div>

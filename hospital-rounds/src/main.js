@@ -256,6 +256,22 @@ document.addEventListener("click", (e) => {
   btn.closest(".popupMenuOverlay")?.classList.remove("active");
 });
 
+// 背景タップで閉じる (グローバル・メタ動作)。.popupMenuOverlay の「背景そのもの」を
+// クリックしたら閉じる。これで個別 popup ごとに配線しなくても全 popup が背景タップで
+// 閉じる (今回のステータス選択や将来の popup も自動対応)。
+//   - 中身 (.popupMenu 配下) のクリックは e.target が overlay でないので閉じない。
+//   - 明示確認が要る popup (免責・PWA 初期化・取込選択など) は overlay に
+//     data-no-backdrop-close を付けて除外する。
+//   - 追加 cleanup が要る popup (例 QR カメラ) は従来の個別 listener を併用 (二重に
+//     active を外しても冪等)。
+document.addEventListener("click", (e) => {
+  const ov = e.target;
+  if (ov.classList && ov.classList.contains("popupMenuOverlay") &&
+      !ov.hasAttribute("data-no-backdrop-close")) {
+    ov.classList.remove("active");
+  }
+});
+
 // ============================
 // Boot 8: Shared/Memo/Home/Settings QR + paste cards
 // ============================

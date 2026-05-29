@@ -505,25 +505,22 @@ export function initStatusButtons(renderHomeFn) {
     const list = document.getElementById("statusPickerList");
     if (!p || !overlay || !list) return;
     list.textContent = "";
+    // 色名テキスト/タイトルは出さず、色＋形マークの大きいボックスを横1行で並べる。
+    // ラベルは title/aria-label に残しスクリーンリーダー対応 (視覚は色＋形のみ)。
     for (const opt of getStatusOptions()) {
-      const row = document.createElement("button");
-      row.type = "button";
-      row.className = "statusPickerRow" + (p.status === opt.status ? " selected" : "");
-      const sw = document.createElement("span");
-      sw.className = "statusPickerSwatch";
+      const box = document.createElement("button");
+      box.type = "button";
+      box.className = "statusPickerBox" + (p.status === opt.status ? " selected" : "");
       const fg = opt.color === "#ffffff" ? "#111827" : "#fff";
-      sw.style.cssText = `background:${opt.color};border:2px solid ${opt.borderColor};color:${fg};`;
-      sw.textContent = opt.mark; // 無印(白)は空
-      const lbl = document.createElement("span");
-      lbl.className = "statusPickerLabel";
-      lbl.textContent = opt.label;
-      row.appendChild(sw);
-      row.appendChild(lbl);
-      row.addEventListener("click", () => {
+      box.style.cssText = `background:${opt.color};border:2px solid ${opt.borderColor};color:${fg};`;
+      box.textContent = opt.mark; // 無印(白)は空
+      box.title = opt.label;
+      box.setAttribute("aria-label", opt.label);
+      box.addEventListener("click", () => {
         setStatus(opt.status);
         overlay.classList.remove("active");
       });
-      list.appendChild(row);
+      list.appendChild(box);
     }
     overlay.classList.add("active");
   };

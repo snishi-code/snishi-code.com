@@ -167,6 +167,7 @@ snishi-code.com のソースリポジトリ。医療・個人向けの PWA / 単
 ```
 
 - `data-close-popup` 属性により `main.js` のグローバルハンドラが overlay を閉じる (event delegation。新しい popup を追加しても配線不要)
+- **背景タップで閉じるのもグローバル**: `.popupMenuOverlay` の背景そのものをタップすると `main.js` のグローバルハンドラが閉じる。**個別 popup で `overlay.addEventListener('click', e=>e.target===overlay && close())` を新規配線しない**。明示確認が必須な popup (免責・PWA 初期化・取込選択など、背景タップで閉じてほしくないもの) は overlay に `data-no-backdrop-close` を付けて除外する
 - タッチ領域は 44x44 を維持 (CSS で確保)、視覚的な × アイコンは 20px の控えめサイズ
 - 「保存」「キャンセル」「適用」など意味のあるアクションを持つポップアップは従来通り横幅ボタンを使う (× は使わない)
 - 「確認しました」など単一アクションの確認系は従来通り (× ではなく大きなボタンが metaphor 的に正しい)
