@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """Generate the in-app docs bundle from Markdown (Obsidian-flavoured).
 
-This script lives inside the hospital-rounds app and every input/output
-also lives inside ``hospital-rounds/`` so the manual stays fully
-self-contained. The Markdown source is a gitignored Obsidian vault at
-``hospital-rounds/docs-src/`` — open that folder in Obsidian to edit
-the manual, then re-run this script to refresh the in-app bundle.
+The Markdown source is an Obsidian vault at ``docs/hospital-rounds/``
+(sibling of the app dir, NOT inside it). The ``*.md`` files are git-tracked;
+``images/`` is gitignored (the served copy lives in the app's
+``public/docs-images/``, so screenshots are not double-stored in git).
+Open ``docs/hospital-rounds/`` in Obsidian to edit the manual, then
+re-run this script to refresh the in-app bundle + served images.
+
+Future Origin split: when the app moves to ``medical/hospital-rounds/``,
+move the vault to ``medical/docs/hospital-rounds/`` and update SRC below.
 """
 import json, re, shutil, html as htmllib
 from pathlib import Path
@@ -14,7 +18,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 APP_DIR    = SCRIPT_DIR.parent              # hospital-rounds/
 
-SRC          = APP_DIR / "docs-src"                                # gitignored Obsidian vault
+SRC          = APP_DIR.parent / "docs" / "hospital-rounds"        # Obsidian vault (MD git-tracked, images/ gitignored)
 SHARED_CSS   = APP_DIR / "shared.css"                              # app-local copy
 BUNDLE_DEST  = APP_DIR / "src" / "docs-bundle.js"                  # in-app embed bundle
 IMAGE_DEST   = APP_DIR / "public" / "docs-images"                  # served at <base>/docs-images/
@@ -344,7 +348,7 @@ def index_html(pages, shared_css):
 
 def main():
     if not SRC.exists():
-        raise SystemExit(f"docs-src not found: {SRC} — place the Obsidian vault here before running.")
+        raise SystemExit(f"docs vault not found: {SRC} — place the Obsidian vault here before running.")
 
     BUNDLE_DEST.parent.mkdir(parents=True, exist_ok=True)
     IMAGE_DEST.mkdir(parents=True, exist_ok=True)

@@ -23,8 +23,12 @@ node_modules/
 *.log
 npm-debug.log*
 
-# 説明書の元ネタ（Obsidian vault・画像含むため gitignore）
-docs-src/
+# 説明書 Obsidian vault (docs/<app>/)
+#   - *.md は git 管理（下書き〜清書をバージョン管理する）
+#   - images/ は gitignore：配信用コピーが各アプリの public/docs-images/ に
+#     git 管理されているため、スクショを git に二重保存しない
+#   - .obsidian/ は上の「エディタ」セクションで既に除外済み
+docs/*/images/
 
 # 患者データエクスポートJSON（タイトル_YYYY_MMDD_HHMM.json 形式）
 # 日本語タイトルも含めてタイムスタンプパターンで除外
