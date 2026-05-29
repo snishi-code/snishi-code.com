@@ -7,6 +7,7 @@
       "panel": "O",
       "joiner": ", ",
       "labelSep": " ",
+      "titleWrap": "（）",
       "tags": [],
       "items": [
         { "label": "BP",   "kind": "fraction", "unit": "mmHg" },
@@ -21,6 +22,7 @@
       "panel": "O",
       "joiner": "\n",
       "labelSep": "：",
+      "titleWrap": "（）",
       "tags": [],
       "items": [
         { "label": "General",  "kind": "text", "normal": "良好" },

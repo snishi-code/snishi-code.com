@@ -740,7 +740,7 @@ function openFormatEditModal(target, panel, onSaved) {
       panel: panel || "O",
       joiner: "\n",
       labelSep: DEFAULT_LABEL_SEP_OTHER,
-      titleWrap: "",
+      titleWrap: "（）", // 既定でタイトルを付ける (UI 非表示。データ構造は per-format で温存)
       tags: [],
       items: [],
     },
@@ -897,17 +897,20 @@ function saveFormatEdit() {
   }
 
   target.name = name;
-  // panel はモーダル外で固定
-  target.joiner = String(joinerInp?.value ?? ", ");
-  // labelSep: 空入力は許容するが、未指定 (UI 上はあり得ないが防御的に) なら item から推定
+  // panel はモーダル外で固定。
+  // 区切り / ラベル区切り / タイトル囲み は UI 非表示 (入力欄なし) なので、欄がある時
+  // だけ反映し、無い時は既存値 (defaults プリセット) を温存する。上書きでプリセットを
+  // 潰さないこと。
+  if (joinerInp) target.joiner = String(joinerInp.value);
+  else if (typeof target.joiner !== "string") target.joiner = ", ";
   if (labelSepInp) {
     target.labelSep = String(labelSepInp.value ?? "");
   } else if (typeof target.labelSep !== "string") {
     const allText = target.items.every(it => it && it.kind === "text");
     target.labelSep = allText ? DEFAULT_LABEL_SEP_TEXT : DEFAULT_LABEL_SEP_OTHER;
   }
-  // titleWrap: 展開時にフォーマット名を囲む括弧ペア (空 = タイトル無し)
-  target.titleWrap = String(titleWrapInp?.value ?? "");
+  if (titleWrapInp) target.titleWrap = String(titleWrapInp.value);
+  else if (typeof target.titleWrap !== "string") target.titleWrap = "（）";
   // tags: 削除済みタグを掃除 (UI で picker を介して付けたが、その後にタグ自体が消された場合に備えて)
   const knownTags = new Set(getAllTags());
   target.tags = (target.tags || []).filter(t => knownTags.has(t));

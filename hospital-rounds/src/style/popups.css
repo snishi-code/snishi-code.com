@@ -128,14 +128,15 @@
     #statusPickerList {
       display: flex;
       flex-direction: row;
-      align-items: center; /* stretch させない (aspect-ratio で正方形を保つ) */
-      gap: 8px;
+      align-items: center;
+      justify-content: center; /* 固定サイズのボックスを中央寄せ */
+      gap: 10px;
       padding: 4px 0;
     }
     .statusPickerBox {
-      flex: 1 1 0;
-      min-width: 0;
-      aspect-ratio: 1;
+      flex: 0 0 auto; /* 固定サイズ。flex+aspect-ratio の端数ズレを避け完全に揃える */
+      width: 56px;
+      height: 56px;
       border-radius: 12px;
       display: inline-flex;
       align-items: center;

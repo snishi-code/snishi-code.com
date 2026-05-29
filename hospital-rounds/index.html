@@ -621,20 +621,8 @@
               <div id="formatEditTagsHost"></div>
             </div>
           </div>
-          <div class="formatEditFieldRow">
-            <label class="formatEditField">
-              <span data-i18n="format.field.joiner">区切り</span>
-              <input type="text" id="formatEditJoiner" data-i18n-placeholder="format.placeholder.joiner" placeholder=", ">
-            </label>
-            <label class="formatEditField">
-              <span data-i18n="format.field.labelSep">ラベル区切り</span>
-              <input type="text" id="formatEditLabelSep" data-i18n-placeholder="format.placeholder.labelSep" placeholder="：">
-            </label>
-            <label class="formatEditField">
-              <span data-i18n="format.field.titleWrap">タイトル囲み</span>
-              <input type="text" id="formatEditTitleWrap" maxlength="2" data-i18n-placeholder="format.placeholder.titleWrap" placeholder="（）">
-            </label>
-          </div>
+          <!-- 区切り / ラベル区切り / タイトル囲み はユーザーに見せない (データ構造は
+               温存し、defaults.json で開発側がプリセット。将来 UI 露出する余地は残す) -->
           <div class="formatEditItemsHead" data-i18n="format.field.items">項目</div>
           <div id="formatEditItems"></div>
           <button class="secondary" id="formatEditAddItemBtn" type="button" data-i18n="format.addItem" style="width:100%;margin-top:8px;">＋ 項目追加</button>
@@ -686,9 +674,6 @@
     <!-- フォーマットグループ選択 (この患者のみで active 化される) -->
     <div class="popupMenuOverlay" id="formatGroupPickerOverlay">
       <div class="popupMenu formatGroupPickerMenu">
-        <button class="popupCloseX" type="button" id="formatGroupPickerCloseBtn" data-close-popup data-i18n-aria="common.close" aria-label="閉じる">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
         <div class="popupTitle" data-i18n="formatGroup.picker.title">フォーマットグループ</div>
         <div id="formatGroupPickerList"></div>
       </div>
@@ -724,9 +709,6 @@
          show ボタンはオーバーレイ open 時に自動 active 化されるため隠す。 -->
     <div class="popupMenuOverlay" id="qrFormatOverlay">
       <div class="popupMenu qrFormatMenu">
-        <button class="popupCloseX" type="button" id="qrFormatCloseBtn" data-close-popup data-i18n-aria="common.close" aria-label="閉じる">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
         <div class="popupTitle" data-i18n="qrFormat.title">フォーマット QR</div>
         <div class="card qrWrap" id="qrFormatWrap">
           <div class="cardHead">
@@ -753,9 +735,6 @@
     <!-- 患者を他ワークスペースへ移動: 移動先ピッカー -->
     <div class="popupMenuOverlay" id="movePatientOverlay">
       <div class="popupMenu movePatientMenu">
-        <button class="popupCloseX" type="button" id="movePatientCancelBtn" data-close-popup data-i18n-aria="common.close" aria-label="閉じる">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
         <div class="popupTitle" data-i18n="move.title">他のワークスペースへ移動</div>
         <div class="movePatientHint" id="movePatientHint" data-i18n="move.hint">移動先のワークスペースを選んでください。元のワークスペースには「(移)」マークで履歴が残ります。</div>
         <div class="ioDbList" id="movePatientList"></div>
@@ -766,9 +745,6 @@
          色＋形マーク＋文字で大きく出す = 色盲/老眼でも選びやすい。 -->
     <div class="popupMenuOverlay" id="statusPickerOverlay">
       <div class="popupMenu statusPickerMenu">
-        <button class="popupCloseX" type="button" data-close-popup data-i18n-aria="common.close" aria-label="閉じる">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
         <div id="statusPickerList"></div>
       </div>
     </div>
@@ -777,9 +753,6 @@
          切替 + 新規作成のみ。rename/delete は設定画面の「ワークスペース管理」へ。 -->
     <div class="popupMenuOverlay" id="wsPickerOverlay">
       <div class="popupMenu wsPickerMenu">
-        <button class="popupCloseX" type="button" data-close-popup data-i18n-aria="common.close" aria-label="閉じる">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
         <div class="popupTitle" data-i18n="wsPicker.title">ワークスペース</div>
         <div class="ioDbList" id="wsPickerList"></div>
         <div class="ioWsAddRow" id="wsPickerAdd"></div>
