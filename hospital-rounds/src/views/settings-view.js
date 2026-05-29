@@ -8,13 +8,14 @@ import { startNewFormat, startEditFormat, deleteFormatById } from "../features/f
 import { getAllFormatGroups, startNewFormatGroup, startEditFormatGroup, deleteFormatGroupById } from "../features/format-groups.js";
 import { listBundles, renameBundle, deleteBundle, getActiveWorkspaceId } from "../storage.js";
 import { updateAppTitle, refreshAppTitle } from "../features/app-title.js";
+import { getStatusOptions } from "../features/tags.js";
+import { icon } from "../icons.js";
 import { t } from "../i18n.js";
 
-const STATUS_SWATCHES = { statusYellow: "#f59e0b", statusGreen: "#14b8a6", statusGray: "#6b7280", statusBlue: "#2563eb" };
-
-const MEMO_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
-const SHARED_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`;
-const TRASH_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
+// アイコンは icons.js を単一ソースに (drift 防止)
+const MEMO_SVG = icon("memo", 16);
+const SHARED_SVG = icon("people", 16);
+const TRASH_SVG = icon("trash", 16);
 
 const CLEAR_KEY_ORDER = ["memo", "s", "o", "a", "p", "shared", "statusYellow", "statusGreen", "statusGray", "statusBlue"];
 
@@ -168,11 +169,19 @@ function renderFormatGroupList() {
   }
 }
 
+// clearTargets の statusXxx キー → STATUS 値
+const CLEAR_KEY_TO_STATUS = { statusYellow: "yellow", statusGreen: "green", statusGray: "gray", statusBlue: "blue" };
+
 function buildClearTargetLabelContent(key) {
-  if (STATUS_SWATCHES[key]) {
-    const dot = document.createElement("span");
-    dot.style.cssText = `display:inline-block;width:16px;height:16px;border-radius:3px;background:${STATUS_SWATCHES[key]};flex-shrink:0;`;
-    return dot;
+  const status = CLEAR_KEY_TO_STATUS[key];
+  if (status) {
+    // 色 + 形マークを canonical (getStatusOptions) から取得 = 全 UI で統一
+    const opt = getStatusOptions().find(o => o.status === status);
+    const sw = document.createElement("span");
+    const fg = opt && opt.color === "#ffffff" ? "#111827" : "#fff";
+    sw.style.cssText = `display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;background:${opt?.color};border:1px solid ${opt?.borderColor};color:${fg};font-size:11px;font-weight:700;line-height:1;flex-shrink:0;`;
+    sw.textContent = opt?.mark || "";
+    return sw;
   }
   if (key === "memo" || key === "shared") {
     const span = document.createElement("span");

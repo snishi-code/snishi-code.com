@@ -346,10 +346,12 @@
       line-height: 1.4;
     }
 
-    /* クリア対象セクションの説明文 (見出し下) */
+    /* クリア対象セクションの説明文 (見出し下)。card 直下なので cardBody と同じ
+       水平 padding(12px) を付けて端に寄らないようにする */
     .clearSectionHint {
       font-size: 12px;
       color: var(--muted);
       line-height: 1.5;
-      margin: 0 0 8px;
+      padding: 10px 12px 0;
+      margin: 0;
     }

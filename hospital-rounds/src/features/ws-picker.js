@@ -21,6 +21,7 @@
 import { listBundles, getActiveWorkspaceId, renameBundle } from "../storage.js";
 import { switchWorkspace, createWorkspace } from "../store.js";
 import { refreshAppWsLabel } from "./app-title.js";
+import { icon } from "../icons.js";
 import { t } from "../i18n.js";
 
 function vibrate() { try { navigator.vibrate?.(60); } catch (_) {} }
@@ -113,7 +114,7 @@ function buildRow(r, isActive) {
   editBtn.className = "wsPickerEdit";
   editBtn.title = t("common.edit");
   editBtn.setAttribute("aria-label", t("common.edit"));
-  editBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+  editBtn.innerHTML = icon("pencil", 16);
   editBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     startRename(row, r, isActive);
@@ -168,7 +169,7 @@ function initAddWidget() {
     btn.className = "ioWsAddBtn";
     btn.title = t("io.ws.create.action");
     btn.setAttribute("aria-label", t("io.ws.create.action"));
-    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+    btn.innerHTML = icon("plus", 18);
     btn.addEventListener("click", showInput);
     host.appendChild(btn);
   }

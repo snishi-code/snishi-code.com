@@ -57,7 +57,7 @@
           </button>
           <!-- 端末固定タイトル (localStorage 保存)。v8.9: ただのラベル化 (編集は設定画面)。
                タップ→ホームは家ボタンに移譲。 -->
-          <input type="text" id="appTitleInput" class="appTitleInput" value="回診" readonly tabindex="-1" data-i18n-title="header.title.tooltip" data-i18n-aria="header.title.tooltip" title="アプリ名" aria-label="アプリ名" />
+          <input type="text" id="appTitleInput" class="appTitleInput" value="回診" readonly data-i18n-title="header.title.tooltip" data-i18n-aria="header.title.tooltip" title="ホームに戻る" aria-label="ホームに戻る" style="cursor:pointer;" />
           <span class="appTitleWsSeparator" aria-hidden="true">/</span>
           <!-- ワークスペース名 (タップ→WSピッカー。リネームはピッカー内)。▾ で切替可を明示 -->
           <input type="text" id="appWsLabelInput" class="appTitleInput appWsLabelInput" value="" readonly data-i18n-title="header.ws.tooltip" data-i18n-aria="header.ws.tooltip" title="ワークスペースを切替" aria-label="ワークスペースを切替" />
@@ -433,9 +433,8 @@
                フォーマットグループ トグルが先頭に来る -->
           <!-- フォーマットグループ トグル: 通常時は薄グレー、active 時は青ハイライト。
                文字でグループ名を表示するので「適用中かどうか」が一目で分かる -->
-          <button class="formatGroupToggleBtn" id="detailFormatGroupBtn" type="button" data-i18n-title="formatGroup.toggle.title" data-i18n-aria="formatGroup.toggle.title" title="フォーマットグループを切替" aria-label="フォーマットグループを切替">
-            <!-- lucide: layers -->
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          <!-- セット切替: アイコン廃止。セット名 + ▾ (切替可の明示) のみ -->
+          <button class="formatGroupToggleBtn" id="detailFormatGroupBtn" type="button" data-i18n-title="formatGroup.toggle.title" data-i18n-aria="formatGroup.toggle.title" title="セットを切替" aria-label="セットを切替">
             <span class="formatGroupToggleLabel" id="detailFormatGroupLabel"></span>
             <svg class="formatGroupToggleChevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           </button>

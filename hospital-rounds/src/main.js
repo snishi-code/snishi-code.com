@@ -369,6 +369,8 @@ initAppTitle();
 // v8.9: ヘッダーの鉛筆 (タイトル/WS編集トグル) は撤去。タイトル編集は設定画面、
 // WS リネームは WS ピッカー内に移動。ホームへはヘッダー左の家ボタンで戻る。
 document.getElementById("homeNavBtn")?.addEventListener("click", navToHome);
+// タイトルタップもホームへ (家ボタンと同じ。支障ないので導線を増やす)
+document.getElementById("appTitleInput")?.addEventListener("click", navToHome);
 initWsPicker();
 
 // ============================
