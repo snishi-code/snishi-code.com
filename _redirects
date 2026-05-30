@@ -1,0 +1,14 @@
+# Cloudflare Pages リダイレクト規則 (apex / snishi-code.com)
+#
+# Origin 分離前、回診アプリは snishi-code.com/hospital-rounds/ で配信していた。
+# 分離後は medical.snishi-code.com/hospital-rounds/ へ移設したため、旧 URL を
+# 踏んだ人 (旧ブックマーク・PWA・検索結果) を新 URL へ 301 で恒久転送する。
+#
+# 形式: <旧パス>  <転送先>  <ステータス>
+#   :splat は * にマッチした部分 (パス末尾) に置換される。
+#   末尾スラッシュ有無の両方をカバーするため 2 行に分ける。
+#
+# 新しい医療アプリを分離するたびに、ここへ同様の 2 行を追加する。
+
+/hospital-rounds      https://medical.snishi-code.com/hospital-rounds/          301
+/hospital-rounds/*    https://medical.snishi-code.com/hospital-rounds/:splat    301
