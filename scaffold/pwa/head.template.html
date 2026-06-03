@@ -1,0 +1,47 @@
+<!-- ============================================================
+  PWA <head> スニペット（snishi-code.com 共通テンプレート）
+  新規 PWA の <head> にこのブロックを貼る。__PLACEHOLDER__ を置換する。
+  - CSP は外部送信ゼロ方針（憲法）に対応: connect-src 'self' で外部通信を遮断。
+    QR 等で data:/blob: を使う場合のみ img-src/media-src を調整する。
+  - 本番/テスト判定はホスト名規約ベース（site-links.js の prod/dev 命名に対応）。
+============================================================ -->
+
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; media-src 'self' blob:; worker-src 'self'; manifest-src 'self'; frame-src 'self'; child-src 'self'; form-action 'self'; base-uri 'self'; object-src 'none'" />
+
+<title>__APP_SHORT__</title>
+
+<script>
+  // 本番/テスト判定（特定ドメインを直書きしない）。構成が変わってもここは不変。
+  (function () {
+    var host = location.hostname;
+    var isTest = /(^|[.-])dev\./.test(host) || /\.pages\.dev$/.test(host)
+              || host === 'localhost' || host === '127.0.0.1' || /\.local$/.test(host);
+    document.documentElement.dataset.env = isTest ? 'test' : 'prod';
+  })();
+</script>
+
+<link rel="manifest" href="./manifest.json" id="appManifest" />
+<meta name="theme-color" content="#ffffff" id="appThemeColor" />
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" id="appTouchIcon" />
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon.png" id="appFavicon" />
+
+<script>
+  // test 環境では PWA 関連リンクを test 用へ差し替え（マニフェスト読込より前に実行）
+  (function () {
+    if (document.documentElement.dataset.env !== 'test') return;
+    var swap = [
+      ['appManifest',  'href',    './manifest-test.json'],
+      ['appTouchIcon', 'href',    './icons/apple-touch-icon-test.png'],
+      ['appFavicon',   'href',    './icons/favicon-test.png'],
+    ];
+    swap.forEach(function (s) {
+      var el = document.getElementById(s[0]);
+      if (el) el.setAttribute(s[1], s[2]);
+    });
+  })();
+</script>
+
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="__APP_SHORT__" />
