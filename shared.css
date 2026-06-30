@@ -163,6 +163,13 @@ main {
 }
 .app-icon-blue { background: var(--blue); }
 .app-icon-green { background: var(--green); }
+.app-icon-image {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  display: block;
+  flex-shrink: 0;
+}
+.app-card-featured { border-color: var(--blue-border); }
 
 .app-name { font-size: 16px; font-weight: 700; margin-bottom: 5px; }
 .app-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
@@ -178,6 +185,7 @@ main {
 }
 .tag-blue { color: var(--blue); background: var(--blue-light); }
 .tag-green { color: var(--green); background: var(--green-light); }
+.tag-neutral { color: var(--neutral); background: var(--neutral-light); }
 
 .arrow { color: var(--muted); font-size: 17px; transition: color .15s, transform .15s; }
 .app-card:hover .arrow { color: var(--blue); transform: translateX(3px); }
@@ -228,6 +236,9 @@ main {
 }
 .notice-title { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
 .notice ul { padding-left: 18px; font-size: 13px; color: var(--muted); line-height: 1.9; }
+.notice a { color: var(--blue); font-weight: 600; text-decoration: none; }
+.notice a:hover { text-decoration: underline; }
+.app-transition-note { margin: -34px 0 56px; }
 
 /* ── Footer ── */
 footer {
