@@ -15,17 +15,13 @@
  *   <script src="/site-links.js"></script>   ← </body> 直前で読み込む
  * 読み込み時に data-link を持つ全要素へ href を流し込む。
  *
- * ※ apex から個別アプリへ直接案内するリンクはここに置く。
- *   medical 側にも同名ルートを作るまで、URL の正本として扱う。
+ * ※ 同一カテゴリ内のアプリ (例 /hospital-rounds/) は origin 相対のまま書く
+ *   (prod/test どちらの origin でもそのまま動くため、ここには含めない)。
  * ========================================================================== */
 window.SITE_LINKS = {
   apex:        "https://snishi-code.com",
   medical:     "https://medical.snishi-code.com",
   medicalDev:  "https://medical-dev.snishi-code.com",
-  medicalWorkspace: "https://medical.snishi-code.com/hospital-workspace/",
-  medicalWorkspaceAbout: "https://medical.snishi-code.com/about/hospital-workspace/",
-  medicalRoundsAbout: "https://medical.snishi-code.com/about/hospital-rounds/",
-  medicalNoteAssistAbout: "https://medical.snishi-code.com/about/hospital-note-assist/",
   personal:    "https://personal.snishi-code.com",
   personalDev: "https://personal-dev.snishi-code.com",
   github:      "https://github.com/snishi-code",
